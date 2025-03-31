@@ -27,9 +27,6 @@ TAGS=()
 SHA=$(git rev-parse --short HEAD)
 TAGS+=("$REPO:$SHA")
 
-# Always add latest tag
-TAGS+=("$REPO:latest")
-
 # Check if we're on a tag
 if [[ "$GITHUB_REF" == refs/tags/* ]]; then
   VERSION=${GITHUB_REF#refs/tags/}
@@ -41,6 +38,9 @@ if [[ "$GITHUB_REF" == refs/heads/* && "$GITHUB_REF" != "refs/heads/main" ]]; th
   BRANCH=${GITHUB_REF#refs/heads/}
   TAGS+=("$REPO:$BRANCH")
 fi
+
+# Always add latest tag
+TAGS+=("$REPO:latest")
 
 echo "Building Docker image..."
 docker build -t temp-image .
