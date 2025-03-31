@@ -12,11 +12,13 @@ if [ -z "$DOCKERHUB_TOKEN" ]; then
   exit 1
 fi
 
+export REGISTRY_NAMESPACE="translatednet"
+
 echo "Logging in to Docker Hub..."
 echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
 # Set repository name
-REPO="${DOCKERHUB_USERNAME}/lara-mcp"
+REPO="${REGISTRY_NAMESPACE}/lara-mcp"
 
 # Initialize tags array
 TAGS=()
