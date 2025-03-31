@@ -81,7 +81,7 @@ To use this with Claude Desktop, add the following to your `claude_desktop_confi
         "LARA_ACCESS_KEY_ID",
         "-e",
         "LARA_ACCESS_KEY_SECRET",
-        "translatednet/lara-mcp"
+        "translatednet/lara-mcp:latest"
       ],
       "env": {
         "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",

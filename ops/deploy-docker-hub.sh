@@ -27,10 +27,8 @@ TAGS=()
 SHA=$(git rev-parse --short HEAD)
 TAGS+=("$REPO:$SHA")
 
-# Check if we're on default branch
-if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-  TAGS+=("$REPO:latest")
-fi
+# Always add latest tag
+TAGS+=("$REPO:latest")
 
 # Check if we're on a tag
 if [[ "$GITHUB_REF" == refs/tags/* ]]; then
