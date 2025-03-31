@@ -81,7 +81,7 @@ To use this with Claude Desktop, add the following to your `claude_desktop_confi
         "LARA_ACCESS_KEY_ID",
         "-e",
         "LARA_ACCESS_KEY_SECRET",
-        "translated/lara-mcp"
+        "translatednet/lara-mcp"
       ],
       "env": {
         "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
@@ -99,7 +99,7 @@ To use this with Claude Desktop, add the following to your `claude_desktop_confi
   "mcpServers": {
     "lara-translate": {
       "command": "npx",
-      "args": ["-y", "translated/lara-mcp"],
+      "args": ["-y", "@translated/lara-mcp"],
       "env": {
         "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
         "LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"

@@ -1,0 +1,28 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ 'v*' ]
+
+jobs:
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker
+        run: |
+          # Ensure Docker is installed and running
+          docker --version
+      
+      - name: Run Docker build and push script
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          ./ops/deploy-docker-hub.sh 

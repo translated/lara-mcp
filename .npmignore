@@ -1,0 +1,41 @@
+# Source files
+/src/
+
+# Build and packaging
+/node_modules/
+/.github/
+/ops/
+
+# Docker
+Dockerfile
+.dockerignore
+
+# IDE and editor files
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+
+# Git and CI
+.git/
+.gitignore
+
+# Logs and debugging
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Test files
+/__tests__/
+/test/
+/tests/
+*.spec.ts
+*.test.ts 

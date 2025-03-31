@@ -1,5 +1,5 @@
 {
-  "name": "lara-mcp",
+  "name": "@translated/lara-mcp",
   "version": "0.0.0",
   "description": "Lara API official MCP server",
   "author": {
@@ -8,8 +8,22 @@
   },
   "license": "MIT",
   "homepage": "https://laratranslate.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/translated/lara-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/translated/lara-mcp/issues"
+  },
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "lara-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",

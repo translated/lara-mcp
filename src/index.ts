@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -25,7 +27,7 @@ const lara = new Translator(credentials);
 const server = new Server(
   {
     name: "Lara Translate",
-    version: "0.0.0",
+    version: "1.0.0",
   },
   {
     capabilities: {
