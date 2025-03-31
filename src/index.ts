@@ -27,7 +27,7 @@ const lara = new Translator(credentials);
 const server = new Server(
   {
     name: "Lara Translate",
-    version: "1.0.0",
+    version: "0.0.5",
   },
   {
     capabilities: {
