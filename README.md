@@ -1,6 +1,6 @@
 # Lara Translate MCP Server
 
-A Model Control Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection and context-aware translations.
+A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection and context-aware translations.
 
 ## Table of Contents
 - [Introduction](#introduction)
