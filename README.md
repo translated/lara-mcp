@@ -24,7 +24,7 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 
 ### What is MCP?
 
-Model Control Protocol (MCP) is a standardized communication protocol that allows AI applications to connect with external tools and services. MCP servers act as bridges between AI models and specific functionalities, enabling AI applications to perform specialized tasks beyond their built-in capabilities.
+Model Context Protocol (MCP) is a standardized communication protocol that allows AI applications to connect with external tools and services. MCP servers act as bridges between AI models and specific functionalities, enabling AI applications to perform specialized tasks beyond their built-in capabilities.
 
 ### How Lara Translate MCP Works
 
