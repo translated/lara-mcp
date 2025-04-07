@@ -313,56 +313,6 @@ docker build -t lara-mcp .
 
 ---
 
-### ⚙️ Configuration
-
-The MCP configuration file location depends on which client you're using:
-
-<details open>
-<summary><strong>Claude Desktop</strong></summary>
-
-1. Open Claude desktop and go to Settings
-2. Open Developer tab
-3. Click `Edit Config` to see configuration file in file explorer
-4. Open the file in text editor
-5. This will open the configuration file in your default text editor. The file is located at:
-   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Linux**: `~/.config/Claude/claude_desktop_config.json`
-6. Add the Lara Translate MCP server configuration as described in the installation options above
-7. Save the file and restart Claude Desktop
-
-</details>
-
-<details>
-<summary><strong>Cursor</strong></summary>
-
-1. Open Cursor and go to Cursor Settings
-2. Open the MCP tab
-3. Click `+ Add new MCP server`
-4. This will open the configuration file in your default text editor
-5. Add the Lara Translate MCP server configuration as described in the installation options above
-6. Click "Save" and restart Cursor
-
-> For more detailed information about configuring MCP servers in Cursor, please refer to the [official Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol#configuring-mcp-servers).
-
-</details>
-
-<details>
-<summary><strong>Other MCP Clients</strong></summary>
-
-For other MCP clients, refer to their specific documentation for configuration file location. Common locations include:
-
-- **VS Code Extensions**: Usually in the extension settings
-- **Zed**: Settings panel under MCP configuration
-- **Windsurf**: Settings panel under MCP configuration
-- **Continue**: Settings panel under MCP configuration
-
-If the configuration file doesn't exist, you'll need to create it in the appropriate location.
-
-</details>
-
----
-
 ### 🧪 Testing Your Setup
 
 After setting up the MCP server and restarting your AI application, test if everything works:
