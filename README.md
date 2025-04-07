@@ -8,12 +8,16 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
    - [How Lara Translate MCP Works](#how-lara-translate-mcp-works)
 - [Features](#features)
 - [Available Tools](#available-tools)
+- [MCP-Compatible Tools](#mcp-compatible-tools)
 - [Prerequisites](#prerequisites)
 - [Installation & Setup](#installation--setup)
    - [Option 1: Using Docker (recommended)](#option-1-using-docker-recommended)
    - [Option 2: Using NPX](#option-2-using-npx)
-   - [Option 3: Building from Source](#option-3-building-from-source-recommended-for-development)
+   - [Option 3: Building from Source (recommended for development)](#option-3-building-from-source-recommended-for-development)
 - [Configuration Location](#configuration-location)
+   - [Claude Desktop](#claude-desktop)
+   - [Cursor](#cursor)
+   - [Other MCP-Compatible Tools](#other-mcp-compatible-tools)
 - [Verifying Installation](#verifying-installation)
 - [Usage Examples](#usage-examples)
    - [Basic Translation](#basic-translation)
@@ -25,6 +29,20 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 ### What is MCP?
 
 Model Context Protocol (MCP) is a standardized communication protocol that allows AI applications to connect with external tools and services. MCP servers act as bridges between AI models and specific functionalities, enabling AI applications to perform specialized tasks beyond their built-in capabilities.
+
+## MCP-Compatible Tools
+
+The following tools support MCP and can be used with Lara Translate MCP Server:
+
+- [Claude Desktop](https://claude.ai/download) - Desktop application for Claude AI
+- [Cursor](https://www.cursor.com/) - AI-first code editor
+- [Cline for VS Code](https://github.com/cline/cline) - VS Code extension for AI assistance
+- [GitHub Copilot MCP](https://github.com/VikashLoomba/copilot-mcp) - VS Code extension for GitHub Copilot MCP integration
+- [Zed](https://zed.dev/) - High-performance code editor with AI capabilities
+- [Windsurf](https://windsurf.com/editor) - AI-powered code editor and development environment
+- [Continue](https://github.com/continuedev/continue) - Open-source IDE extension for creating and using custom AI code assistants
+
+For a complete list of MCP-compatible tools and their feature support, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
 
 ### How Lara Translate MCP Works
 
@@ -80,7 +98,9 @@ There are three ways to install and run the Lara Translate MCP Server:
 
 This option requires Docker to be installed on your system.
 
-1. Add the following to your MCP configuration file:
+1. Make sure Docker is installed and running on your system. If not, download and install it from [Docker's official website](https://www.docker.com/products/docker-desktop/).
+
+2. Add the following to your MCP configuration file (see [Configuration Location](#configuration-location) section for details on where to find this file):
 ```json
 {
   "mcpServers": {
@@ -105,14 +125,18 @@ This option requires Docker to be installed on your system.
 }
 ```
 
-2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
+3. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
+
+4. Restart your MCP-compatible application for the changes to take effect.
 
 
 ### Option 2: Using NPX
 
 This option requires Node.js to be installed on your system.
 
-1. Add the following to your MCP configuration file:
+1. Make sure Node.js is installed on your system. If not, download and install it from [Node.js official website](https://nodejs.org/).
+
+2. Add the following to your MCP configuration file (see [Configuration Location](#configuration-location) section for details on where to find this file):
 ```json
 {
   "mcpServers": {
@@ -128,11 +152,13 @@ This option requires Node.js to be installed on your system.
 }
 ```
 
-2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
+3. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
+
+4. Restart your MCP-compatible application for the changes to take effect.
 
 ### Option 3: Building from Source (recommended for development)
 
-#### Using Node.js
+#### Alternative A: Local Build with Node.js
 
 1. Clone the repository:
 ```bash
@@ -149,7 +175,7 @@ pnpm install
 pnpm run build
 ```
 
-3. Add the following to your MCP configuration file:
+3. Add the following to your MCP configuration file (see [Configuration Location](#configuration-location) section for details on where to find this file):
 ```json
 {
   "mcpServers": {
@@ -168,7 +194,9 @@ pnpm run build
    - `<FULL_PATH_TO_PROJECT_FOLDER>` with the absolute path to your project folder
    - `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
 
-#### Building a Docker Image
+5. Restart your MCP-compatible application for the changes to take effect.
+
+#### Alternative B: Local Build with Docker
 
 1. Clone the repository:
 ```bash
@@ -181,7 +209,7 @@ cd lara-mcp
 docker build -t lara-mcp .
 ```
 
-3. Add the following to your MCP configuration file:
+3. Add the following to your MCP configuration file (see [Configuration Location](#configuration-location) section for details on where to find this file):
 ```json
 {
   "mcpServers": {
@@ -208,28 +236,76 @@ docker build -t lara-mcp .
 
 4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
 
+5. Restart your MCP-compatible application for the changes to take effect.
+
 ## Configuration Location
 
-The MCP configuration file location depends on the AI application you're using. Common locations include:
+The MCP configuration file location depends on the AI application you're using. Below are detailed instructions for finding and editing the configuration file in various clients:
 
-- **Claude Desktop**:
-   - **Windows**: `%APPDATA%\Claude Desktop\claude_desktop_config.json`
-   - **macOS**: `~/Library/Application Support/Claude Desktop/claude_desktop_config.json`
-   - **Linux**: `~/.config/Claude Desktop/claude_desktop_config.json`
+### Claude Desktop
 
-- **Other Applications**: Refer to the specific application's documentation for configuration file location
+1. Open Claude desktop and go to Settings.
+2. Open Developer tab
+3. Click `Edit Config` to see configuration file in file explorer.
+4. Open the file in text editor
+5. This will open the configuration file in your default text editor. The file is located at:
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Linux**: `~/.config/Claude/claude_desktop_config.json`
+6. Add the Lara Translate MCP server configuration as described in the installation options above
+7. Save the file and restart Claude Desktop
 
-If the configuration file doesn't exist, you'll need to create it.
+### Cursor
+
+1. Open Cursor and go to Cursor Settings
+2. Open the MCP tab
+3. Click `+ Add new MCP server`
+4. This will open the configuration file in your default text editor.
+5. Add the Lara Translate MCP server configuration as described in the installation options above
+6. Click "Save" and restart Cursor
+
+For more detailed information about configuring MCP servers in Cursor, please refer to the [official Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol#configuring-mcp-servers).
+
+### Other MCP-Compatible Tools
+
+For other MCP-compatible tools, refer to their specific documentation for configuration file location. Common locations include:
+
+- **VS Code Extensions**: Usually in the extension settings
+- **Zed**: Settings panel under MCP configuration
+- **Windsurf**: Settings panel under MCP configuration
+- **Continue**: Settings panel under MCP configuration
+
+If the configuration file doesn't exist, you'll need to create it in the appropriate location.
 
 ## Verifying Installation
 
 After setting up the MCP server and restarting your AI application:
 
-1. Open your MCP-compatible application
-2. Check if the translation functionality is available by trying a simple translation command:
-   ```
+1. Test the translation functionality with a simple example. The interaction will differ based on your AI application:
+
+   **In Claude Desktop:**
+   ```text
    Translate with Lara "Hello world" to Spanish
    ```
+   Expected workflow:
+   1. A security prompt will appear requesting permission to use the "translate" tool from "lara-translate"
+   2. Upon approval, you'll see a confirmation message: "Executing translate from lara-translate" along with the request details
+   3. The translation result will be displayed with a confirmation message: "View result from translate from lara-translate"
+
+   **In Cursor:**
+   ```text
+   Translate with Lara "Hello world" to Spanish
+   ```
+   Expected workflow:
+   1. A confirmation message will appear indicating the use of Lara Translate MCP
+   2. An interactive prompt will show: "Calling MCP tool (translate)" with an action confirmation button
+   3. The translated text will be displayed with a confirmation label: "Called MCP Tool (Translate)"
+
+If you don't see these indicators, check:
+- Your MCP configuration file is in the correct location
+- The API credentials are correctly set
+- The AI application has been restarted after configuration
+- Docker is running (if using Docker installation method)
 
 ## Usage Examples
 
