@@ -19,8 +19,7 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 - [MCP Clients](#mcp-compatible-tools)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
-  - [Installation & Setup](#installation--setup)
-  - [Configuration](#configuration-location)
+  - [Configuration](#configuration)
   - [Testing Your Setup](#verifying-installation)
 - [Usage Examples](#usage-examples)
 - [Support](#support)
@@ -110,20 +109,17 @@ Before installing, you need to:
 
 > ⚠️ **Important**: If you lose your credentials, they cannot be recovered, and you'll need to generate new ones.
 
----
+### ⚙️ Configuration
 
-### 💻 Installation & Setup
-
-First, you'll need to locate your configuration file based on which client you're using:
+First, locate your configuration file based on which client you're using:
 
 <details open>
-<summary><strong>Claude Desktop Configuration Location</strong></summary>
+<summary><strong>Claude Desktop</strong></summary>
 
 1. Open Claude desktop and go to Settings
 2. Open Developer tab
 3. Click `Edit Config` to see configuration file in file explorer
-4. Open the file in text editor
-5. The configuration file is located at:
+4. The configuration file is located at:
    - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
    - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
    - **Linux**: `~/.config/Claude/claude_desktop_config.json`
@@ -131,41 +127,42 @@ First, you'll need to locate your configuration file based on which client you'r
 </details>
 
 <details>
-<summary><strong>Cursor Configuration Location</strong></summary>
+<summary><strong>Cursor</strong></summary>
 
 1. Open Cursor and go to Cursor Settings
 2. Open the MCP tab
 3. Click `+ Add new MCP server`
-4. This will open the configuration file in your default text editor
 
-> For more detailed information about configuring MCP servers in Cursor, please refer to the [official Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol#configuring-mcp-servers).
+> For more detailed information, see the [official Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol#configuring-mcp-servers).
 
 </details>
 
 <details>
 <summary><strong>Other MCP Clients</strong></summary>
 
-For other MCP clients, configuration files are typically found in:
+Common configuration locations:
 
-- **VS Code Extensions**: Usually in the extension settings
+- **VS Code Extensions**: Extension settings
 - **Zed**: Settings panel under MCP configuration
 - **Windsurf**: Settings panel under MCP configuration
 - **Continue**: Settings panel under MCP configuration
 
-If the configuration file doesn't exist, you'll need to create it in the appropriate location.
+If the configuration file doesn't exist, you'll need to create it.
 
 </details>
 
-Once you've located your configuration file, choose one of these installation methods:
+### 💻 Installation Methods
+
+Choose one of these methods to install and configure Lara Translate MCP Server:
 
 <details open>
-<summary><strong>Option 1: Using Docker (recommended)</strong></summary>
+<summary><strong>Option 1: Docker (Recommended)</strong></summary>
 
-This option requires Docker to be installed on your system.
+Requirements:
+- Docker installed ([Download Docker](https://www.docker.com/products/docker-desktop/))
 
-1. Make sure Docker is installed and running on your system. If not, download and install it from [Docker's official website](https://www.docker.com/products/docker-desktop/).
-
-2. Add this configuration to your MCP configuration file:
+Steps:
+1. Add this configuration to your MCP configuration file:
 ```json
 {
   "mcpServers": {
@@ -190,20 +187,19 @@ This option requires Docker to be installed on your system.
 }
 ```
 
-3. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
-
-4. Save the file and restart your MCP client.
+2. Replace the credentials placeholders with your actual Lara API credentials
+3. Save and restart your MCP client
 
 </details>
 
 <details>
-<summary><strong>Option 2: Using NPX</strong></summary>
+<summary><strong>Option 2: NPX</strong></summary>
 
-This option requires Node.js to be installed on your system.
+Requirements:
+- Node.js installed ([Download Node.js](https://nodejs.org/))
 
-1. Make sure Node.js is installed on your system. If not, download and install it from [Node.js official website](https://nodejs.org/).
-
-2. Add this configuration to your MCP configuration file:
+Steps:
+1. Add this configuration to your MCP configuration file:
 ```json
 {
   "mcpServers": {
@@ -219,33 +215,29 @@ This option requires Node.js to be installed on your system.
 }
 ```
 
-3. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
-
-4. Save the file and restart your MCP client.
+2. Replace the credentials placeholders with your actual Lara API credentials
+3. Save and restart your MCP client
 
 </details>
 
 <details>
-<summary><strong>Option 3: Building from Source</strong></summary>
+<summary><strong>Option 3: Build from Source</strong></summary>
 
-#### Alternative A: Local Build with Node.js
+Requirements:
+- Node.js and pnpm for Method A
+- Docker for Method B
 
-1. Clone the repository:
+#### Method A: Node.js Build
+
+1. Clone and build:
 ```bash
 git clone https://github.com/translated/lara-mcp.git
 cd lara-mcp
-```
-
-2. Install dependencies and build:
-```bash
-# Install dependencies
 pnpm install
-
-# Build
 pnpm run build
 ```
 
-3. Add this configuration to your MCP configuration file:
+2. Add this configuration:
 ```json
 {
   "mcpServers": {
@@ -261,26 +253,21 @@ pnpm run build
 }
 ```
 
-4. Replace:
-   - `<FULL_PATH_TO_PROJECT_FOLDER>` with the absolute path to your project folder
-   - `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual Lara API credentials.
+3. Replace:
+   - `<FULL_PATH_TO_PROJECT_FOLDER>` with your project path
+   - The credentials placeholders with your Lara API credentials
+4. Save and restart your MCP client
 
-5. Save the file and restart your MCP client.
+#### Method B: Docker Build
 
-#### Alternative B: Local Build with Docker
-
-1. Clone the repository:
+1. Clone and build:
 ```bash
 git clone https://github.com/translated/lara-mcp.git
 cd lara-mcp
-```
-
-2. Build the Docker image:
-```bash
 docker build -t lara-mcp .
 ```
 
-3. Add this configuration to your MCP configuration file:
+2. Add this configuration:
 ```json
 {
   "mcpServers": {
@@ -305,67 +292,14 @@ docker build -t lara-mcp .
 }
 ```
 
-4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
-
-5. Save the file and restart your MCP client.
-
-</details>
-
----
-
-### ⚙️ Configuration
-
-The MCP configuration file location depends on which client you're using:
-
-<details open>
-<summary><strong>Claude Desktop</strong></summary>
-
-1. Open Claude desktop and go to Settings
-2. Open Developer tab
-3. Click `Edit Config` to see configuration file in file explorer
-4. Open the file in text editor
-5. This will open the configuration file in your default text editor. The file is located at:
-   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Linux**: `~/.config/Claude/claude_desktop_config.json`
-6. Add the Lara Translate MCP server configuration as described in the installation options above
-7. Save the file and restart Claude Desktop
+3. Replace the credentials placeholders with your Lara API credentials
+4. Save and restart your MCP client
 
 </details>
-
-<details>
-<summary><strong>Cursor</strong></summary>
-
-1. Open Cursor and go to Cursor Settings
-2. Open the MCP tab
-3. Click `+ Add new MCP server`
-4. This will open the configuration file in your default text editor
-5. Add the Lara Translate MCP server configuration as described in the installation options above
-6. Click "Save" and restart Cursor
-
-> For more detailed information about configuring MCP servers in Cursor, please refer to the [official Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol#configuring-mcp-servers).
-
-</details>
-
-<details>
-<summary><strong>Other MCP Clients</strong></summary>
-
-For other MCP clients, refer to their specific documentation for configuration file location. Common locations include:
-
-- **VS Code Extensions**: Usually in the extension settings
-- **Zed**: Settings panel under MCP configuration
-- **Windsurf**: Settings panel under MCP configuration
-- **Continue**: Settings panel under MCP configuration
-
-If the configuration file doesn't exist, you'll need to create it in the appropriate location.
-
-</details>
-
----
 
 ### ✅ Testing Your Setup
 
-After setting up the MCP server and restarting your AI application, test if everything works:
+After setup, test if everything works:
 
 <details open>
 <summary><strong>Try a simple translation</strong></summary>
