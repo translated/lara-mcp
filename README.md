@@ -13,7 +13,7 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 ## 📚 Table of Contents
 
 - 📖 [Introduction](#-introduction)
-- 🛠️ [Features](#-features)
+- 🛠️ [Features](#%EF%B8%8F-features)
 - 🔧 [Available Tools](#-available-tools)
 - 💻 [MCP Clients](#-mcp-clients)
 - [Getting Started](#getting-started)
