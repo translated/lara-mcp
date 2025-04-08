@@ -3,27 +3,40 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
-  ListToolsRequestSchema,
   CallToolRequestSchema,
+  ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Credentials, Translator } from "@translated/lara";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import {
-  translateHandler,
-  translateSchema,
-} from "./tools/translate.js";
+import { translateHandler, translateSchema } from "./tools/translate.js";
 
 import {
-  addTranslation,
-  addTranslationSchema,
-  createMemory, createMemorySchema, deleteMemory, deleteMemorySchema,
-  deleteTranslation,
-  deleteTranslationSchema,
-  updateMemory, updateMemorySchema,
-} from "./tools/memories.tool.js";
-import { listMemories, listMemoriesSchema } from "./resources/memories.resource.js";
+  listMemories,
+  listMemoriesSchema,
+} from "./resources/memories.resource.js";
 import { listLanguages, listLanguagesSchema } from "./tools/languages.tool.js";
+import {
+  addTranslationSchema,
+  addTranslation,
+} from "./tools/add_translation.tool.js";
+import {
+  createMemorySchema,
+  createMemory,
+} from "./tools/create_memory.tool.js";
+import {
+  deleteMemorySchema,
+  deleteMemory,
+} from "./tools/delete_memory.tool.js";
+import {
+  deleteTranslationSchema,
+  deleteTranslation,
+} from "./tools/delete_translation.tool.js";
+import {
+  updateMemorySchema,
+  updateMemory,
+} from "./tools/update_memory.tool.js";
+
 const LARA_ACCESS_KEY_ID = process.env.LARA_ACCESS_KEY_ID;
 const LARA_ACCESS_KEY_SECRET = process.env.LARA_ACCESS_KEY_SECRET;
 
@@ -52,51 +65,45 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "translate",
         description:
-          "Translate text between languages with support for language detection and context-aware translations.",
+          "Translate text between languages with support for language detection, context-aware translations, and translation memories.",
         inputSchema: zodToJsonSchema(translateSchema),
       },
       {
         name: "create_memory",
         description:
-            "Create a new translation memory with a custom name. Translation Memories are tools that save previously translated text segments, such as sentences or paragraphs . Each saved segment includes the 'source' text and its translated 'target' text, forming pairs known as translation units (TUs). You can check every language availabile using the ",
+          "Create a new translation memory with a custom name, translation memories are buckets that save previously translated text segments, such as sentences or paragraphs. Each saved segment includes the 'source' text and its translated 'target' text, forming pairs known as translation units (TUs).",
         inputSchema: zodToJsonSchema(createMemorySchema),
       },
       {
         name: "delete_memory",
-        description:
-            "Deletes a translation memory.",
+        description: "Deletes a translation memory.",
         inputSchema: zodToJsonSchema(deleteMemorySchema),
       },
       {
         name: "update_memory",
-        description:
-            "Updates a translation memory.",
-        inputSchema: zodToJsonSchema(updateMemorySchema)
+        description: "Updates a translation memory.",
+        inputSchema: zodToJsonSchema(updateMemorySchema),
       },
       {
         name: "list_memories",
-        description:
-            "Lists all saved translation memories.",
-        inputSchema: zodToJsonSchema(listMemoriesSchema)
+        description: "Lists all saved translation memories.",
+        inputSchema: zodToJsonSchema(listMemoriesSchema),
       },
       {
         name: "add_translation",
-        description:
-            "Adds a translation to a translation memory.",
-        inputSchema: zodToJsonSchema(addTranslationSchema)
+        description: "Adds a translation to a translation memory.",
+        inputSchema: zodToJsonSchema(addTranslationSchema),
       },
       {
         name: "delete_translation",
-        description:
-            "Deletes a translation from a translation memory.",
-        inputSchema: zodToJsonSchema(deleteTranslationSchema)
+        description: "Deletes a translation from a translation memory.",
+        inputSchema: zodToJsonSchema(deleteTranslationSchema),
       },
       {
         name: "list_languages",
-        description:
-            "Lists all supported languages.",
-        inputSchema: zodToJsonSchema(listLanguagesSchema)
-      }
+        description: "Lists all supported languages.",
+        inputSchema: zodToJsonSchema(listLanguagesSchema),
+      },
     ],
   };
 });
