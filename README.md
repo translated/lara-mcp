@@ -12,16 +12,16 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 
 ## 📚 Table of Contents
 
-- [Introduction](#introduction)
-- [Features](#features)
-- [Available Tools](#available-tools)
-- [MCP Clients](#mcp-compatible-tools)
+- 📖 [Introduction](#-introduction)
+- 🛠️ [Features](#-features)
+- 🔧 [Available Tools](#-available-tools)
+- 💻 [MCP Clients](#-mcp-clients)
 - [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation & Setup](#installation--setup)
-  - [Testing Your Setup](#verifying-installation)
-- [Usage Examples](#usage-examples)
-- [Support](#support)
+  - 📋 [Prerequisites](#-prerequisites)
+  - 💿 [Installation & Setup](#-installation--setup)
+  - 🧪 [Testing Your Setup](#-testing-your-setup)
+- 📝 [Usage Examples](#-usage-examples)
+- 🆘 [Support](#-support)
 
 ## 📖 Introduction
 
