@@ -10,8 +10,6 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 
 </div>
 
----
-
 ## 📚 Table of Contents
 - [Introduction](#introduction)
 - [Features](#features)
@@ -20,12 +18,9 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation & Setup](#installation--setup)
-  - [Configuration](#configuration-location)
   - [Testing Your Setup](#verifying-installation)
 - [Usage Examples](#usage-examples)
 - [Support](#support)
-
----
 
 ## 📖 Introduction
 
@@ -44,16 +39,12 @@ The Lara Translate MCP Server enables AI applications to access Lara Translate A
 
 This integration allows AI applications to seamlessly incorporate high-quality translations into their workflows without needing to directly implement the translation API.
 
----
-
 ## 🛠️ Features
 
 - **Language Detection**: Automatic detection of source language when not specified
 - **Context-Aware Translations**: Provide contextual hints to improve translation quality
 - **Custom Instructions**: Fine-tune translation behavior with specific instructions
 - **Multi-Language Support**: Translate between numerous language pairs
-
----
 
 ## 🔧 Available Tools
 
@@ -76,8 +67,6 @@ Translate text between languages with support for language detection and context
 
 </details>
 
----
-
 ## 💻 MCP Clients
 
 The following clients support MCP and can be used with Lara Translate MCP Server:
@@ -93,8 +82,6 @@ The following clients support MCP and can be used with Lara Translate MCP Server
 
 > For a complete list of MCP clients and their feature support, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
 
----
-
 ## Getting Started
 
 ### 📋 Prerequisites
@@ -109,8 +96,6 @@ Before installing, you need to:
    - Store your `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` securely
 
 > ⚠️ **Important**: If you lose your credentials, they cannot be recovered, and you'll need to generate new ones.
-
----
 
 ### 💿 Installation & Setup
 
@@ -311,8 +296,6 @@ docker build -t lara-mcp .
 
 </details>
 
----
-
 ### 🧪 Testing Your Setup
 
 After setting up the MCP server and restarting your AI application, test if everything works:
@@ -345,8 +328,6 @@ If nothing happens, check that:
 - Your API credentials are entered correctly
 - You've restarted your application after configuration
 - Docker is running (if using the Docker method)
-
----
 
 ## 📝 Usage Examples
 
@@ -416,8 +397,6 @@ This tells Lara to translate the Italian greeting and use a formal tone in Engli
 ```
 
 </details>
-
----
 
 ## 🆘 Support
 
