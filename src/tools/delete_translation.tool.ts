@@ -3,29 +3,29 @@ import { z } from "zod";
 
 export const deleteTranslationSchema = z.object({
   id: z
-    .string()
+    .array(z.string())
     .describe(
-      "The unique identifier of the memory to update. Format: mem_xyz123"
+      "The ID or list of IDs where to delete the translation unit from. Format: mem_xyz123"
     ),
   source: z
     .string()
     .describe(
-      "The source language code (e.g., 'en-EN' for English). If not specified, the system will attempt to detect it automatically. If you have a hint about the source language, you should specify it in the source_hint field."
+      "The source language code of the sentence"
     ),
   target: z
     .string()
     .describe(
-      "The target language code (e.g., 'it-IT' for Italian). This specifies the language you want the text translated into."
+      "The target language code of the translation"
     ),
   sentence: z
     .string()
     .describe(
-      "The source sentence. The block of text before it has been translated."
+      "The source sentence"
     ),
   translation: z
     .string()
     .describe(
-      "The translated sentence. The block of text after it has been translated."
+      "The translated sentence"
     ),
   tuid: z.string().describe("Translation Unit unique identifier").optional(),
   sentence_before: z

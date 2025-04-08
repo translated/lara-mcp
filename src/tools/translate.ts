@@ -45,7 +45,7 @@ export const translateSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      "The ID of the memory to be used in the next translation. Translations, stored inside memories, provide additional context to improve translation quality, coming from previously translated text segments. Each memory can have multiple translations. These translations have a sentence field, for the source sentence, and a translation field, for the translated sentence (e.g., source sentence: 'Ciao mondo!', translation sentence: 'Hello world!'). Context information and translation unit unique ID can be specified (they can have a sentence_before and a sentence_after the source sentence to specify the context of the translation unit). This helps the translation system better understand the domain."
+      "The ID of the memory to be used in the next translation. Translations, stored inside memories, provide additional context to improve translation quality, coming from previously translated text segments."
     ),
 });
 

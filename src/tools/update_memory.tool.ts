@@ -10,7 +10,7 @@ export const updateMemorySchema = z.object({
   name: z
     .string()
     .describe(
-      "Custom name of the memory, it can be any string including spaces and special characters and non-latin alphabets. Max length: 250 characters."
+      "The new name for the memory"
     )
     .refine((name) => name.length <= 250, {
       message: "Name can't be more than 250 characters",
