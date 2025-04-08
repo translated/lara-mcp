@@ -11,6 +11,7 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 </div>
 
 ## 📚 Table of Contents
+
 - [Introduction](#introduction)
 - [Features](#features)
 - [Available Tools](#available-tools)
