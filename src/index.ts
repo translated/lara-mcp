@@ -103,7 +103,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  const { file } = request.params;
 
   try {
     switch (name) {
