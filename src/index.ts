@@ -4,7 +4,9 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
+  ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Credentials, Translator } from "@translated/lara";
 import { z } from "zod";
@@ -14,30 +16,33 @@ import { translateHandler, translateSchema } from "./tools/translate.js";
 import {
   listMemories,
   listMemoriesSchema,
-} from "./resources/memories.resource.js";
-import { listLanguages, listLanguagesSchema } from "./tools/languages.tool.js";
+} from "./tools/list_memories.js";
+import { listLanguages, listLanguagesSchema } from "./tools/list_languages.js";
 import {
   addTranslationSchema,
   addTranslation,
-} from "./tools/add_translation.tool.js";
+} from "./tools/add_translation.js";
 import {
   createMemorySchema,
   createMemory,
-} from "./tools/create_memory.tool.js";
+} from "./tools/create_memory.js";
 import {
   deleteMemorySchema,
   deleteMemory,
-} from "./tools/delete_memory.tool.js";
+} from "./tools/delete_memory.js";
 import {
   deleteTranslationSchema,
   deleteTranslation,
-} from "./tools/delete_translation.tool.js";
+} from "./tools/delete_translation.js";
 import {
   updateMemorySchema,
   updateMemory,
 } from "./tools/update_memory.tool.js";
-import { importTmx, importTmxSchema } from "./tools/import_tmx.tool.js";
-import { checkImportStatus, checkImportStatusSchema } from "./tools/check_import_status.tool.js";
+import { importTmx, importTmxSchema } from "./tools/import_tmx.js";
+import {
+  checkImportStatus,
+  checkImportStatusSchema,
+} from "./tools/check_import_status.js";
 
 const LARA_ACCESS_KEY_ID = process.env.LARA_ACCESS_KEY_ID;
 const LARA_ACCESS_KEY_SECRET = process.env.LARA_ACCESS_KEY_SECRET;
@@ -57,6 +62,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      resources: {}
     },
   }
 );
@@ -73,48 +79,54 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "create_memory",
         description:
-          "Create a new translation memory with a custom name, translation memories are buckets that save previously translated text segments, such as sentences or paragraphs. Each saved segment includes the 'source' text and its translated 'target' text, forming pairs known as translation units (TUs).",
+          "Create a translation memory with a custom name. Translation memories store pairs of source and target text segments (translation units) for reuse in future translations.",
         inputSchema: zodToJsonSchema(createMemorySchema),
       },
       {
         name: "delete_memory",
-        description: "Deletes a translation memory.",
+        description:
+          "Deletes a translation memory.",
         inputSchema: zodToJsonSchema(deleteMemorySchema),
       },
       {
         name: "update_memory",
-        description: "Updates a translation memory.",
+        description:
+          "Updates a translation memory.",
         inputSchema: zodToJsonSchema(updateMemorySchema),
       },
       {
-        name: "list_memories",
-        description: "Lists all saved translation memories.",
-        inputSchema: zodToJsonSchema(listMemoriesSchema),
-      },
-      {
         name: "add_translation",
-        description: "Adds a translation to a translation memory.",
+        description:
+          "Adds a translation to a translation memory.",
         inputSchema: zodToJsonSchema(addTranslationSchema),
       },
       {
         name: "delete_translation",
-        description: "Deletes a translation from a translation memory.",
+        description:
+          "Deletes a translation from a translation memory.",
         inputSchema: zodToJsonSchema(deleteTranslationSchema),
       },
       {
-        name: "list_languages",
-        description: "Lists all supported languages.",
-        inputSchema: zodToJsonSchema(listLanguagesSchema),
-      },
-      {
         name: "import_tmx",
-        description: "Imports a TMX file into a translation memory.",
+        description:
+          "Imports a TMX file into a translation memory.",
         inputSchema: zodToJsonSchema(importTmxSchema),
       },
       {
         name: "check_import_status",
-        description: "Checks the status of an import job.",
+        description:
+          "Checks the status of an import job.",
         inputSchema: zodToJsonSchema(checkImportStatusSchema),
+      },
+      {
+        name: "list_memories",
+        description: "Lists all translation memories",
+        inputSchema: zodToJsonSchema(listMemoriesSchema),
+      },
+      {
+        name: "list_languages",
+        description: "Lists all supported languages",
+        inputSchema: zodToJsonSchema(listLanguagesSchema),
       },
     ],
   };
@@ -149,12 +161,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
       }
-      case "list_memories": {
-        const result = await listMemories(lara);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
-      }
       case "add_translation": {
         const result = await addTranslation(args, lara);
         return {
@@ -163,12 +169,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "delete_translation": {
         const result = await deleteTranslation(args, lara);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        };
-      }
-      case "list_languages": {
-        const result = await listLanguages(lara);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
@@ -185,8 +185,71 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
       }
+      case "list_memories": {
+        const result = await listMemories(lara);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+      case "list_languages": {
+        const result = await listLanguages(lara);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
       default:
         throw new Error(`Unknown tool: ${name}`);
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
+    }
+    throw error;
+  }
+});
+
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  return {
+    resources: [
+      {
+        name: "Translation Memories",
+        description: "A list of translation memories",
+        uri: "memories://list",
+      },
+      {
+        name: "Supported Languages",
+        description: "A list of supported languages",
+        uri: "languages://list",
+      }
+    ],
+  };
+});
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const { uri } = request.params;
+
+  try {
+    switch (uri) {
+      case "memories://list": {
+        const memories = await listMemories(lara);
+        return {
+          contents: [{
+            uri: uri,
+            text: JSON.stringify(memories, null, 2)
+          }]
+        };
+      }
+      case "languages://list": {
+        const languages = await listLanguages(lara);
+        return {
+          contents: [{
+            uri: uri,
+            text: JSON.stringify(languages, null, 2)
+          }]
+        };
+      }
+      default:
+        throw new Error(`Unknown resource: ${uri}`);
     }
   } catch (error) {
     if (error instanceof z.ZodError) {

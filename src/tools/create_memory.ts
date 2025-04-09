@@ -5,10 +5,10 @@ export const createMemorySchema = z.object({
   name: z
     .string()
     .describe(
-      "The name of the new memory."
+      "The name of the new memory, it should be short and generic, like 'catch_phrases' or 'brand_names'"
     )
     .refine((name) => name.length <= 250, {
-      message: "Name can't be more than 250 characters",
+      message: "Name of the memory can't be more than 250 characters",
     }),
   external_id: z
     .string()

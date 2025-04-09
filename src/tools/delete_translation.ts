@@ -1,32 +1,16 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod";
 
-export const addTranslationSchema = z.object({
+export const deleteTranslationSchema = z.object({
   id: z
     .array(z.string())
     .describe(
-      "The ID or list of IDs where to save the translation unit. Format: mem_xyz123"
+      "The ID or list of IDs where to delete the translation unit from. Format: mem_xyz123"
     ),
-  source: z
-    .string()
-    .describe(
-      "The source language code of the sentence"
-    ),
-  target: z
-    .string()
-    .describe(
-      "The target language code of the translation"
-    ),
-  sentence: z
-    .string()
-    .describe(
-      "The source sentence"
-    ),
-  translation: z
-    .string()
-    .describe(
-      "The translated sentence"
-    ),
+  source: z.string().describe("The source language code of the sentence"),
+  target: z.string().describe("The target language code of the translation"),
+  sentence: z.string().describe("The source sentence"),
+  translation: z.string().describe("The translated sentence"),
   tuid: z.string().describe("Translation Unit unique identifier").optional(),
   sentence_before: z
     .string()
@@ -42,8 +26,8 @@ export const addTranslationSchema = z.object({
     .optional(),
 });
 
-export async function addTranslation(args: unknown, lara: Translator) {
-  const validatedArgs = addTranslationSchema.parse(args);
+export async function deleteTranslation(args: any, lara: Translator) {
+  const validatedArgs = deleteTranslationSchema.parse(args);
   const {
     id,
     source,
@@ -56,7 +40,7 @@ export async function addTranslation(args: unknown, lara: Translator) {
   } = validatedArgs;
 
   if (!tuid) {
-    return await lara.memories.addTranslation(
+    return await lara.memories.deleteTranslation(
       id,
       source,
       target,
@@ -72,7 +56,7 @@ export async function addTranslation(args: unknown, lara: Translator) {
     throw new Error("Please provide both sentence_before and sentence_after");
   }
 
-  return await lara.memories.addTranslation(
+  return await lara.memories.deleteTranslation(
     id,
     source,
     target,
