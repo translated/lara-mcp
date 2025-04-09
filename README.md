@@ -58,6 +58,63 @@ This integration allows AI applications to seamlessly incorporate high-quality t
       - `instructions` (optional string[]): Instructions to adjust translation behavior
       - `source_hint` (optional string): Guidance for language detection
    - Returns: Translated text blocks maintaining the original structure
+   
+   
+2. `list_memories`
+   - List saved memories
+   - Returns: Array of memories and their details
+
+
+3. `create_memory`
+   - Create a new memory entity
+   - Inputs:
+      - `name` (string): Name of the new memory
+      - `external_id` (optional string):  ID of the memory to be imported from MyMemory (e.g., 'ext_my_[MyMemory ID]')
+   - Returns: Created memory data
+
+
+4. `update_memory`
+   - Update the name of a specific memory
+   - Inputs: 
+      - `id` (string): ID of the memory to update
+      - `name` (string): The new name for the memory
+   - Returns: Updated memory data
+
+
+5. `delete_memory`
+   - Deletes a specific memory
+   - Inputs:
+      - `id` (string): ID of the memory to delete
+   - Returns: Deleted memory data
+
+
+6. `add_translation`
+   - Add a translation unit (source sentence and translated sentence) in selected memory
+   - Inputs:
+      - `id` (string | string[]): ID or IDs of memories where to add the translation unit (e.g., 'mem_xyz123')
+      - `source` (string):  Source language code of the sentence
+      - `target` (string): Target language code of the translation
+      - `sentence` (string): The source sentence, before being translated
+      - `translation` (string): The translated sentence
+      - `tuid` (optional string): Translation Unit unique identifier
+      - `sentence_before` (optional string): The sentence before the source sentence to specify the context of the translation unit
+      - `sentence_before` (optional string): The sentence after the source sentence to specify the context of the translation unit
+   - Returns: Added translation details
+
+
+7. `delete_translation`
+   - Delete a translation unit (source sentence and translated sentence) in selected memory
+   - Inputs:
+      - `id` (string): ID of the memory where to delete the translation unit
+      - `source` (string):  Source language code of the sentence
+      - `target` (string): Target language code of the translation
+      - `sentence` (string): The source sentence, before being translated
+      - `translation` (string): The translated sentence
+      - `tuid` (optional string): Translation Unit unique identifier
+      - `sentence_before` (optional string): The sentence before the source sentence to specify the context of the translation unit
+      - `sentence_before` (optional string): The sentence after the source sentence to specify the context of the translation unit
+   - Returns: Removed translation details
+
 
 ## Prerequisites
 
