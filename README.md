@@ -116,6 +116,22 @@ This integration allows AI applications to seamlessly incorporate high-quality t
    - Returns: Removed translation details
 
 
+8. `import_tmx`
+   - Import a TMX file into an existing memory to add translations in bulk.
+   - Inputs: 
+      - `id` (string): ID of the memory to update
+      - `tmx` (file path):  The path of the tmx file to upload
+      - `gzip`(boolean): Indicates if the file is a compressed .gz file. 
+   - Returns: Import details
+
+
+9. `get_import_status`
+   - Checks the status of an ongoing memory import using the unique import_job id returned in the "Import TMX" method
+   - Inputs:
+      - `id` (string): The ID of the import job
+   - Returns: Import details
+
+
 ## Prerequisites
 
 Before installing, you need to:

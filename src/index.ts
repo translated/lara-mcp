@@ -36,6 +36,8 @@ import {
   updateMemorySchema,
   updateMemory,
 } from "./tools/update_memory.tool.js";
+import { importTmx, importTmxSchema } from "./tools/import_tmx.tool.js";
+import { checkImportStatus, checkImportStatusSchema } from "./tools/check_import_status.tool.js";
 
 const LARA_ACCESS_KEY_ID = process.env.LARA_ACCESS_KEY_ID;
 const LARA_ACCESS_KEY_SECRET = process.env.LARA_ACCESS_KEY_SECRET;
@@ -104,6 +106,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         description: "Lists all supported languages.",
         inputSchema: zodToJsonSchema(listLanguagesSchema),
       },
+      {
+        name: "import_tmx",
+        description: "Imports a TMX file into a translation memory.",
+        inputSchema: zodToJsonSchema(importTmxSchema),
+      },
+      {
+        name: "check_import_status",
+        description: "Checks the status of an import job.",
+        inputSchema: zodToJsonSchema(checkImportStatusSchema),
+      },
     ],
   };
 });
@@ -157,6 +169,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "list_languages": {
         const result = await listLanguages(lara);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+      case "import_tmx": {
+        const result = await importTmx(args, lara);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+      case "check_import_status": {
+        const result = await checkImportStatus(args, lara);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
