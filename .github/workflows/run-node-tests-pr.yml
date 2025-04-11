@@ -1,15 +1,13 @@
-name: Publish Package to NPM
+name: Run node tests on Pull Request
+
 
 on:
-  workflow_dispatch:
-  push:
-    tags: [ 'v*' ]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  build-and-publish:
-    name: Build and Publish
+  tests:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,11 +19,6 @@ jobs:
 
       - name: Install pnpm
         run: npm install -g pnpm@latest-10
-
+      
       - name: Run tests
         run: ./ops/run-tests.sh
-      
-      - name: Run publish script
-        run: ./ops/publish-npm.sh
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }} 
