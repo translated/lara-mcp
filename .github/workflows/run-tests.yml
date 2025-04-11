@@ -3,7 +3,8 @@ name: Publish Package to NPM
 on:
   workflow_dispatch:
   push:
-    tags: [ 'v*' ]
+    branches:
+      - main
 
 jobs:
   build-and-publish:
@@ -19,11 +20,6 @@ jobs:
 
       - name: Install pnpm
         run: npm install -g pnpm@latest-10
-
+      
       - name: Run tests
         run: ./ops/run-tests.sh
-      
-      - name: Run publish script
-        run: ./ops/publish-npm.sh
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }} 
