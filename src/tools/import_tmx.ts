@@ -15,13 +15,8 @@ export const importTmxSchema = z.object({
 
 export async function importTmx(args: any, lara: Translator) {
   const validatedArgs = importTmxSchema.parse(args);
-  const { id, tmx, gzip } = validatedArgs;
-
-  if (gzip) {
-    const file = fs.createReadStream(tmx);
-    return await lara.memories.importTmx(id, file);
-  }
+  const { id, tmx, gzip = false } = validatedArgs;
 
   const file = fs.createReadStream(tmx);
-  return await lara.memories.importTmx(id, tmx);
+  return await lara.memories.importTmx(id, file, gzip);
 }

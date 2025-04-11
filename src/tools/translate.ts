@@ -61,16 +61,9 @@ export async function translateHandler(args: unknown, lara: Translator) {
     instructionsList.push(makeInstructions(context));
   }
 
-  if (adapt_to) {
-    const result = await lara.translate(text, source ?? null, target, {
-      instructions: instructionsList,
-      adaptTo: adapt_to,
-    });
-    return result.translation;
-  }
-
   const result = await lara.translate(text, source ?? null, target, {
     instructions: instructionsList,
+    adaptTo: adapt_to,
   });
   return result.translation;
 }
