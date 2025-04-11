@@ -1,13 +1,12 @@
-name: Publish Package to NPM
+name: Run node tests on Pull Request
+
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  build-and-publish:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
