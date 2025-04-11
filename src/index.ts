@@ -12,7 +12,6 @@ import { Credentials, Translator } from "@translated/lara";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { translateHandler, translateSchema } from "./tools/translate.js";
-
 import {
   listMemories,
   listMemoriesSchema,
@@ -46,7 +45,6 @@ import {
 
 const LARA_ACCESS_KEY_ID = process.env.LARA_ACCESS_KEY_ID;
 const LARA_ACCESS_KEY_SECRET = process.env.LARA_ACCESS_KEY_SECRET;
-
 if (!LARA_ACCESS_KEY_ID || !LARA_ACCESS_KEY_SECRET) {
   throw new Error("LARA_ACCESS_KEY_ID and LARA_ACCESS_KEY_SECRET must be set");
 }
@@ -73,59 +71,59 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "translate",
         description:
-          "Translate text between languages with support for language detection, context-aware translations, and translation memories.",
+          "Translate text between languages with support for language detection, context-aware translations, and translation memories using Lara Translate.",
         inputSchema: zodToJsonSchema(translateSchema),
       },
       {
         name: "create_memory",
         description:
-          "Create a translation memory with a custom name. Translation memories store pairs of source and target text segments (translation units) for reuse in future translations.",
+          "Create a translation memory with a custom name in your Lara Translate account. Translation memories store pairs of source and target text segments (translation units) for reuse in future translations.",
         inputSchema: zodToJsonSchema(createMemorySchema),
       },
       {
         name: "delete_memory",
         description:
-          "Deletes a translation memory.",
+          "Deletes a translation memory from your Lara Translate account.",
         inputSchema: zodToJsonSchema(deleteMemorySchema),
       },
       {
         name: "update_memory",
         description:
-          "Updates a translation memory.",
+          "Updates a translation memory in your Lara Translate account.",
         inputSchema: zodToJsonSchema(updateMemorySchema),
       },
       {
         name: "add_translation",
         description:
-          "Adds a translation to a translation memory.",
+          "Adds a translation to a translation memory in your Lara Translate account.",
         inputSchema: zodToJsonSchema(addTranslationSchema),
       },
       {
         name: "delete_translation",
         description:
-          "Deletes a translation from a translation memory.",
+          "Deletes a translation from a translation memory from your Lara Translate account.",
         inputSchema: zodToJsonSchema(deleteTranslationSchema),
       },
       {
         name: "import_tmx",
         description:
-          "Imports a TMX file into a translation memory.",
+          "Imports a TMX file into a translation memory in your Lara Translate account.",
         inputSchema: zodToJsonSchema(importTmxSchema),
       },
       {
         name: "check_import_status",
         description:
-          "Checks the status of an import job.",
+          "Checks the status of a TMX file import job in your Lara Translate account.",
         inputSchema: zodToJsonSchema(checkImportStatusSchema),
       },
       {
         name: "list_memories",
-        description: "Lists all translation memories",
+        description: "Lists all translation memories in your Lara Translate account.",
         inputSchema: zodToJsonSchema(listMemoriesSchema),
       },
       {
         name: "list_languages",
-        description: "Lists all supported languages",
+        description: "Lists all supported languages in your Lara Translate account.",
         inputSchema: zodToJsonSchema(listLanguagesSchema),
       },
     ],
@@ -213,12 +211,12 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
     resources: [
       {
         name: "Translation Memories",
-        description: "A list of translation memories",
+        description: "List of translation memories in Lara Translate.",
         uri: "memories://list",
       },
       {
         name: "Supported Languages",
-        description: "A list of supported languages",
+        description: "List of Lara Translate supported languages.",
         uri: "languages://list",
       }
     ],
