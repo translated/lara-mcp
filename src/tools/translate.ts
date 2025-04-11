@@ -41,6 +41,12 @@ export const translateSchema = z.object({
     .describe(
       "Used to guide language detection. Specify this when the source language is uncertain to improve detection accuracy."
     ),
+  adapt_to: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "A list of translation memory IDs for adapting the translation."
+    ),
 });
 
 const makeInstructions = (text: string) =>
@@ -48,16 +54,23 @@ const makeInstructions = (text: string) =>
 
 export async function translateHandler(args: unknown, lara: Translator) {
   const validatedArgs = translateSchema.parse(args);
-  const { text, source, target, context, instructions } = validatedArgs;
+  const { text, source, target, context, instructions, adapt_to } = validatedArgs;
+  let instructionsList = [...(instructions ?? [])];
 
   if (context) {
+    instructionsList.push(makeInstructions(context));
+  }
+
+  if (adapt_to) {
     const result = await lara.translate(text, source ?? null, target, {
-      instructions: [...(instructions ?? []), makeInstructions(context)],
+      instructions: instructionsList,
+      adaptTo: adapt_to,
     });
     return result.translation;
   }
 
-  const result = await lara.translate(text, source ?? null, target);
-
+  const result = await lara.translate(text, source ?? null, target, {
+    instructions: instructionsList,
+  });
   return result.translation;
 }
