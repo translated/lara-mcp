@@ -55,7 +55,7 @@ const lara = new Translator(credentials);
 const server = new Server(
   {
     name: "Lara Translate",
-    version: "0.0.5",
+    version: "0.0.7",
   },
   {
     capabilities: {
@@ -211,7 +211,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
     resources: [
       {
         name: "Translation Memories",
-        description: "List of translation memories in Lara Translate.",
+        description: "List of translation memories in your Lara Translate account.",
         uri: "memories://list",
       },
       {
