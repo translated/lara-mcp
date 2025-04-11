@@ -8,11 +8,11 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 
 ## 📚 Table of Contents
 - 📖 [Introduction](#-introduction)
-- 🛠️ [Available Tools](#-available-tools)
+- 🛠 [Available Tools](#-available-tools)
 - 🚀 [Getting Started](#-getting-started)
   - 📋 [Requirements](#-requirements)
   - 🔌 [Installation](#-installation)
-- ⚙️ [Installation Engines](#-installation-engines)
+- 🧩 [Installation Engines](#-installation-engines)
 - 💻 [Popular Clients that supports MCPs](#-popular-clients-that-supports-mcps)
 - 🆘 [Support](#-support)
 
@@ -66,7 +66,7 @@ By offloading complex translation tasks to specialized T-LMs, Lara reduces compu
 Lara also lowers the cost of using models like GPT-4 in non-English workflows. Since tokenization (and pricing) is optimized for English, using Lara allows translation to take place before hitting the LLM, meaning that only the translated English content is processed. This improves cost efficiency and supports competitive scalability for global enterprises.
 </details>
 
-## 🛠️ Available Tools
+## 🛠 Available Tools
 
 ### Translation Tools
 
@@ -236,7 +236,7 @@ Translate with Lara "Hello world" to Spanish
 
 Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
 
-## ⚙️ Installation Engines
+## 🧩 Installation Engines
 
 <details>
 <summary><strong>Option 1: Using NPX</strong></summary>
