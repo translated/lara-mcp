@@ -7,13 +7,14 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 [![npm downloads](https://img.shields.io/npm/dm/@translated/lara-mcp.svg)](https://www.npmjs.com/package/@translated/lara-mcp)
 
 ## 📚 Table of Contents
-- 📖 [Introduction](#introduction)
-- 🗂️ [Available Tools](#available-tools)
-- 🚀 [Getting Started](#quick-start)
-  - 📋 [Requirements](#requirements)
-  - 🔌 [Installation](#installation)
-- ⚙️ [Installation Engines](#installation-engines)
-- 🆘 [Support](#support)
+- 📖 [Introduction](#-introduction)
+- 🗂️ [Available Tools](#-available-tools)
+- 🚀 [Getting Started](#-getting-started)
+  - 📋 [Requirements](#-requirements)
+  - 🔌 [Installation](#-installation)
+- ⚙️ [Installation Engines](#-installation-engines)
+- 💻 [Popular Clients that supports MCPs](#-popular-clients-that-supports-mcps-)
+- 🆘 [Support](#-support)
 
 ## 📖 Introduction
 
@@ -67,6 +68,8 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 
 ## 🗂️ Available Tools
 
+### Translation Tools
+
 <details>
 <summary><strong>translate</strong> - Translate text between languages</summary>
 
@@ -83,7 +86,10 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 **Returns**: Translated text blocks maintaining the original structure
 </details>
 
+### Translation Memories Tools
+
 <details>
+
 <summary><strong>list_memories</strong> - List saved translation memories</summary>
 
 **Returns**: Array of memories and their details
@@ -100,7 +106,7 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 </details>
 
 <details>
-<summary><strong>update_memory</strong> - Update memory name</summary>
+<summary><strong>update_memory</strong> - Update translation memory name</summary>
 
 **Inputs**:
 - `id` (string): ID of the memory to update
@@ -151,7 +157,7 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 </details>
 
 <details>
-<summary><strong>import_tmx</strong> - Import a TMX file into memory</summary>
+<summary><strong>import_tmx</strong> - Import a TMX file into a memory</summary>
 
 **Inputs**:
 - `id` (string): ID of the memory to update
@@ -162,7 +168,7 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 </details>
 
 <details>
-<summary><strong>get_import_status</strong> - Check import status</summary>
+<summary><strong>check_import_status</strong> - Checks the status of a TMX file import</summary>
 
 **Inputs**:
 - `id` (string): The ID of the import job
@@ -176,7 +182,7 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 
 - Lara Translate API Credentials
     - To get them you can refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)
-- An LLM client that supports Model Context Protocol (MCP), such as Claude Desktop, Cursors, or Microsoft Copilot Studio
+- An LLM client that supports Model Context Protocol (MCP), such as Claude Desktop, Cursors, or GitHub Copilot
 - NPX or Docker (depending on your preferred installation method)
 
 ### 🔌 Installation
@@ -369,6 +375,17 @@ docker build -t lara-mcp .
 4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
 </details>
 
+## 💻 Popular Clients that supports MCPs 
+
+> For a complete list of MCP clients and their feature support, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
+
+| Client                                                                                                         | Description |
+|----------------------------------------------------------------------------------------------------------------|-------------|
+| [Claude Desktop](https://claude.ai/download)                                                                   | Desktop application for Claude AI |
+| [Cursor](https://www.cursor.com/)                                                                              | AI-first code editor |
+| [Cline for VS Code](https://github.com/cline/cline)                                                            | VS Code extension for AI assistance |
+| [GitHub Copilot MCP](https://github.com/VikashLoomba/copilot-mcp)                                              | VS Code extension for GitHub Copilot MCP integration |
+| [Windsurf](https://windsurf.com/editor)                                                                        | AI-powered code editor and development environment |
 
 ## 🆘 Support
 
