@@ -9,8 +9,10 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 ## 📚 Table of Contents
 - 📖 [Introduction](#introduction)
 - 🗂️ [Available Tools](#available-tools)
-- 🚀 [Quick Start](#quick-start)
-- ⚙️ [Installation Options](#installation-options)
+- 🚀 [Getting Started](#quick-start)
+  - 📋 [Requirements](#requirements)
+  - 🔌 [Installation](#installation)
+- ⚙️ [Installation Engines](#installation-engines)
 - 🆘 [Support](#support)
 
 ## 📖 Introduction
@@ -40,6 +42,27 @@ Lara Translate MCP Server implements the Model Context Protocol to provide seaml
 5. **Result Integration**: The translation results are returned to the AI application, which can then incorporate them into its response
 
 This integration architecture allows AI applications to access professional-grade translations without implementing the API directly, while maintaining the security of your API credentials and offering flexibility to adjust translation parameters through natural language instructions.
+</details>
+
+<details>
+<summary><strong>Why to use Lara inside an LLM</strong></summary>
+
+Integrating Lara with LLMs creates a powerful synergy that significantly enhances translation quality for non-English languages.
+
+#### Why General LLMs Fall Short in Translation
+While large language models possess broad linguistic capabilities, they often lack the specialized expertise and up-to-date terminology required for accurate translations in specific domains and languages.
+
+#### Lara’s Domain-Specific Advantage
+Lara overcomes this limitation by leveraging Translation Language Models (T-LMs) trained on billions of professionally translated segments. These models provide domain-specific machine translation that captures cultural nuances and industry terminology that generic LLMs may miss. The result: translations that are contextually accurate and sound natural to native speakers.
+
+#### Designed for Non-English Strength
+Lara has a strong focus on non-English languages, addressing the performance gap found in models such as GPT-4. The dominance of English in datasets such as Common Crawl and Wikipedia results in lower quality output in other languages. Lara helps close this gap by providing higher quality understanding, generation, and restructuring in a multilingual context.
+
+#### Faster, Smarter Multilingual Performance
+By offloading complex translation tasks to specialized T-LMs, Lara reduces computational overhead and minimizes latency—a common issue for LLMs handling non-English input. Its architecture processes translations in parallel with the LLM, enabling for real-time, high-quality output without compromising speed or efficiency.
+
+#### Cost-Efficient Translation at Scale
+Lara also lowers the cost of using models like GPT-4 in non-English workflows. Since tokenization (and pricing) is optimized for English, using Lara allows translation to take place before hitting the LLM, meaning that only the translated English content is processed. This improves cost efficiency and supports competitive scalability for global enterprises.
 </details>
 
 ## 🗂️ Available Tools
@@ -147,35 +170,67 @@ This integration architecture allows AI applications to access professional-grad
 **Returns**: Import details
 </details>
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-1. **Get API Credentials**
-   - Create an account on [Lara Translate](https://laratranslate.com/sign-up)
-   - Subscribe to any plan (including the free tier)
-   - Generate API credentials in your account
-   - Save your `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET`
+### 📋 Requirements
 
-2. **Install Using NPX**
-   ```json
-   {
-     "mcpServers": {
-       "lara-translate": {
-         "command": "npx",
-         "args": ["-y", "@translated/lara-mcp"],
-         "env": {
-           "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
-           "LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"
-         }
-       }
-     }
-   }
-   ```
+- Lara Translate API Credentials
+    - To get them you can refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)
+- An LLM client that supports Model Context Protocol (MCP), such as Claude Desktop, Cursors, or Microsoft Copilot Studio
+- NPX or Docker (depending on your preferred installation method)
 
-3. **Verify Installation**
-   - Restart your AI application
-   - Try a simple translation: `Translate with Lara "Hello world" to Spanish`
+### 🔌 Installation
 
-## ⚙️ Installation Options
+#### Introduction
+The installation process is standardized across all MCP clients. It involves manually adding a configuration object to your client's MCP configuration JSON file.
+> If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
+
+Lara Translate MCP supports multiple installation methods, including NPX and Docker. \
+Below, we'll use NPX as an example.
+
+---
+
+#### Installation & Configuration
+
+**Step 1**: Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
+
+```json
+{
+  "mcpServers": {
+    "lara-translate": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@translated/lara-mcp"
+      ],
+      "env": {
+        "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
+        "LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"
+      }
+    }
+  }
+}
+```
+
+**Step 2**: Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials (refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details).
+
+**Step 3**: Restart your MCP client.
+
+---
+
+#### Verify Installation
+
+After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
+> The method for viewing installed MCPs varies by client. Please consult your MCP client's documentation.
+
+To verify that Lara Translate MCP is working correctly, try translating with a simple prompt:
+```text
+Translate with Lara "Hello world" to Spanish
+```
+
+Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
+
+## ⚙️ Installation Engines
 
 <details>
 <summary><strong>Option 1: Using NPX</strong></summary>
@@ -314,20 +369,6 @@ docker build -t lara-mcp .
 4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
 </details>
 
-<details>
-<summary><strong>Configuration File Locations</strong></summary>
-
-The MCP configuration file location depends on the AI application you're using. Common locations include:
-
-- **Claude Desktop**:
-   - **Windows**: `%APPDATA%\Claude Desktop\claude_desktop_config.json`
-   - **macOS**: `~/Library/Application Support/Claude Desktop/claude_desktop_config.json`
-   - **Linux**: `~/.config/Claude Desktop/claude_desktop_config.json`
-
-- **Other Applications**: Refer to the specific application's documentation for configuration file location
-
-If the configuration file doesn't exist, you'll need to create it.
-</details>
 
 ## 🆘 Support
 
