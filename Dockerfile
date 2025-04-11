@@ -7,6 +7,7 @@ RUN npm install -g pnpm@latest-10
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+RUN pnpm run test
 RUN pnpm run build
 
 
