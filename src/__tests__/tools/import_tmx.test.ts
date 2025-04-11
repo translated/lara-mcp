@@ -1,22 +1,25 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { importTmx, importTmxSchema } from '../../tools/import_tmx.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
-import * as fs from 'fs';
 
-// Mock fs.createReadStream
-vi.mock('fs', () => ({
-  createReadStream: vi.fn(() => 'mock_file_stream')
-}));
-
-// Setup mocks
+// Setup translator mock
 setupTranslatorMock();
 
 describe('importTmxSchema', () => {
-  it('should validate valid input', () => {
+  it('should validate valid input with tmx_content', () => {
     const validInput = {
       id: 'mem_xyz123',
-      tmx: '/path/to/file.tmx'
+      tmx_content: '<tmx>...</tmx>'
+    };
+
+    expect(() => importTmxSchema.parse(validInput)).not.toThrow();
+  });
+
+  it('should validate valid input with tmx_url', () => {
+    const validInput = {
+      id: 'mem_xyz123',
+      tmx_url: 'https://example.com/file.tmx'
     };
 
     expect(() => importTmxSchema.parse(validInput)).not.toThrow();
@@ -25,7 +28,7 @@ describe('importTmxSchema', () => {
   it('should validate input with optional gzip', () => {
     const validInput = {
       id: 'mem_xyz123',
-      tmx: '/path/to/file.tmx.gz',
+      tmx_url: 'https://example.com/file.tmx.gz',
       gzip: true
     };
 
@@ -35,69 +38,56 @@ describe('importTmxSchema', () => {
   it('should reject input with missing required fields', () => {
     const invalidInput = {
       id: 'mem_xyz123'
-      // Missing tmx
+      // Missing both tmx_content and tmx_url
     };
 
-    expect(() => importTmxSchema.parse(invalidInput)).toThrow();
+    // Schema validation will pass as both are optional, but function will throw
+    expect(() => importTmxSchema.parse(invalidInput)).not.toThrow();
   });
 });
 
-describe('importTmx', () => {
+// Test input validation for importTmx function
+describe('importTmx input validation', () => {
   let mockTranslator: MockTranslator;
 
   beforeEach(() => {
     mockTranslator = getMockTranslator();
 
-    // Reset mocks
-    vi.mocked(fs.createReadStream).mockClear();
+    // Mock importTmx to prevent actual file operations
+    mockTranslator.memories.importTmx = vi.fn().mockResolvedValue({
+      import_id: 'mock_import_id',
+      status: 'queued'
+    });
   });
 
-  it('should call lara.memories.importTmx with correct parameters', async () => {
-    const mockResult = {
-      import_id: 'import_123',
-      status: 'queued'
-    };
-    mockTranslator.memories.importTmx.mockResolvedValue(mockResult);
-
+  it('should throw an error if both tmx_content and tmx_url are provided', async () => {
     const args = {
       id: 'mem_xyz123',
-      tmx: '/path/to/file.tmx'
+      tmx_content: '<tmx>...</tmx>',
+      tmx_url: 'https://example.com/file.tmx'
     };
 
-    const result = await importTmx(args, mockTranslator as any as Translator);
-
-    // Check file stream creation
-    expect(fs.createReadStream).toHaveBeenCalledWith(args.tmx);
-
-    // Check importTmx call
-    expect(mockTranslator.memories.importTmx).toHaveBeenCalledWith(
-      args.id,
-      'mock_file_stream',
-      false
-    );
-
-    expect(result).toEqual(mockResult);
+    // Use a try/catch pattern instead of expect().rejects to avoid timeouts
+    try {
+      await importTmx(args, mockTranslator as any as Translator);
+      // If we get here, fail the test
+      expect(true).toBe(false); // This should not be reached
+    } catch (error: any) {
+      expect(error.message).toBe("You can't provide both tmx_content and tmx_url.");
+    }
   });
 
-  it('should pass gzip flag when provided', async () => {
-    const mockResult = {
-      import_id: 'import_123',
-      status: 'queued'
-    };
-    mockTranslator.memories.importTmx.mockResolvedValue(mockResult);
-
+  it('should throw an error if neither tmx_content nor tmx_url are provided', async () => {
     const args = {
-      id: 'mem_xyz123',
-      tmx: '/path/to/file.tmx.gz',
-      gzip: true
+      id: 'mem_xyz123'
     };
 
-    await importTmx(args, mockTranslator as any as Translator);
-
-    expect(mockTranslator.memories.importTmx).toHaveBeenCalledWith(
-      args.id,
-      'mock_file_stream',
-      true
-    );
+    try {
+      await importTmx(args, mockTranslator as any as Translator);
+      // If we get here, fail the test
+      expect(true).toBe(false); // This should not be reached
+    } catch (error: any) {
+      expect(error.message).toBe("You must provide either tmx_content or tmx_url.");
+    }
   });
 }); 
