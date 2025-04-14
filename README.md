@@ -207,7 +207,7 @@ Below, we'll use NPX as an example.
       "command": "npx",
       "args": [
         "-y",
-        "@translated/lara-mcp"
+        "@translated/lara-mcp@latest"
       ],
       "env": {
         "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
@@ -249,7 +249,7 @@ This option requires Node.js to be installed on your system.
   "mcpServers": {
     "lara-translate": {
       "command": "npx",
-      "args": ["-y", "@translated/lara-mcp"],
+      "args": ["-y", "@translated/lara-mcp@latest"],
       "env": {
         "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
         "LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"

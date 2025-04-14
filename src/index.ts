@@ -55,7 +55,7 @@ const lara = new Translator(credentials);
 const server = new Server(
   {
     name: "Lara Translate",
-    version: "0.0.9",
+    version: "0.0.10",
   },
   {
     capabilities: {
@@ -71,7 +71,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "translate",
         description:
-          "Translate text between languages with support for language detection, context-aware translations, and translation memories using Lara Translate.",
+          "Translate text between languages with support for language detection, context-aware translations and translation memories using Lara Translate.",
         inputSchema: zodToJsonSchema(translateSchema),
       },
       {
