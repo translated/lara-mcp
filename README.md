@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/translated-lara-mcp-badge.png)](https://mseep.ai/app/translated-lara-mcp)
+
 # Lara Translate MCP Server
 
 A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection, context-aware translations and translation memories.
