@@ -379,15 +379,16 @@ docker build -t lara-mcp .
 
 > For a complete list of MCP clients and their feature support, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
 
-| Client                                                                                                         | Description |
-|----------------------------------------------------------------------------------------------------------------|-------------|
-| [Claude Desktop](https://claude.ai/download)                                                                   | Desktop application for Claude AI |
-| [Cursor](https://www.cursor.com/)                                                                              | AI-first code editor |
-| [Cline for VS Code](https://github.com/cline/cline)                                                            | VS Code extension for AI assistance |
-| [GitHub Copilot MCP](https://github.com/VikashLoomba/copilot-mcp)                                              | VS Code extension for GitHub Copilot MCP integration |
-| [Windsurf](https://windsurf.com/editor)                                                                        | AI-powered code editor and development environment |
+| Client                                                            | Description                                          |
+|-------------------------------------------------------------------|------------------------------------------------------|
+| [Claude Desktop](https://claude.ai/download)                      | Desktop application for Claude AI                    |
+| [Aixplain](https://aixplain.com/)                                 | Production-ready AI Agents                           |
+| [Cursor](https://www.cursor.com/)                                 | AI-first code editor                                 |
+| [Cline for VS Code](https://github.com/cline/cline)               | VS Code extension for AI assistance                  |
+| [GitHub Copilot MCP](https://github.com/VikashLoomba/copilot-mcp) | VS Code extension for GitHub Copilot MCP integration |
+| [Windsurf](https://windsurf.com/editor)                           | AI-powered code editor and development environment   |
 
 ## 🆘 Support
 
-- For issues with Lara Translate API: Contact [Lara Support](https://support.laratranslate.com)
+- For issues with Lara Translate API: Visit [Lara Translate API and Integrations Support](https://support.laratranslate.com)
 - For issues with this MCP Server: Open an issue on [GitHub](https://github.com/translated/lara-mcp/issues)
