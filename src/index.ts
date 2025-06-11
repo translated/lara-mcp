@@ -4,7 +4,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
-  ListResourcesRequestSchema,
+  ListResourcesRequestSchema, ListResourceTemplatesRequestSchema,
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
@@ -42,6 +42,7 @@ import {
   checkImportStatus,
   checkImportStatusSchema,
 } from "./tools/check_import_status.js";
+import {memoryByName} from "./tools/memory_by_name.js";
 
 const LARA_ACCESS_KEY_ID = process.env.LARA_ACCESS_KEY_ID;
 const LARA_ACCESS_KEY_SECRET = process.env.LARA_ACCESS_KEY_SECRET;
@@ -60,7 +61,8 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
-      resources: {}
+      resources: {},
+      resourceTemplates: {},
     },
   }
 );
@@ -223,12 +225,24 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
   };
 });
 
+server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+    return {
+        resourceTemplates: [
+        {
+            name: "Memory by Name",
+            uriTemplate: "memories://list/{name}",
+            description: "Check if a memory exists from its name",
+        }
+        ]
+    };
+})
+
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
 
   try {
-    switch (uri) {
-      case "memories://list": {
+    switch (true) {
+      case uri === "memories://list": {
         const memories = await listMemories(lara);
         return {
           contents: [{
@@ -237,12 +251,40 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
           }]
         };
       }
-      case "languages://list": {
+      case uri === "languages://list": {
         const languages = await listLanguages(lara);
         return {
           contents: [{
             uri: uri,
             text: JSON.stringify(languages, null, 2)
+          }]
+        };
+      }
+      case uri.startsWith(`memories://list/`): {
+        const name = uri.slice("memories://list/".length).trim();
+        if (!name) {
+            return {
+                contents: [{
+                uri: uri,
+                text: JSON.stringify({ error: "Memory name is required." }, null, 2)
+                }]
+            };
+        }
+
+        const memory = await memoryByName(lara, name);
+        if (!memory) {
+          return {
+            contents: [{
+              uri: uri,
+              text: JSON.stringify({ error: `Memory with name "${name}" not found.` }, null, 2)
+            }]
+          };
+        }
+
+        return {
+          contents: [{
+            uri: uri,
+            text: JSON.stringify(memory, null, 2)
           }]
         };
       }
