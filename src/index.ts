@@ -42,7 +42,7 @@ import {
   checkImportStatus,
   checkImportStatusSchema,
 } from "./tools/check_import_status.js";
-import {memoryByName} from "./tools/memory_by_name.js";
+import {getMemoryByName} from "./tools/get_memory_by_name.js";
 
 const LARA_ACCESS_KEY_ID = process.env.LARA_ACCESS_KEY_ID;
 const LARA_ACCESS_KEY_SECRET = process.env.LARA_ACCESS_KEY_SECRET;
@@ -229,9 +229,9 @@ server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
     return {
         resourceTemplates: [
         {
-            name: "Memory by Name",
+            name: "Get Memory by Name",
             uriTemplate: "memories://list/{name}",
-            description: "Check if a memory exists from its name",
+            description: "Returns a memory by its name",
         }
         ]
     };
@@ -271,7 +271,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
             };
         }
 
-        const memory = await memoryByName(lara, name);
+        const memory = await getMemoryByName(lara, name);
         if (!memory) {
           return {
             contents: [{
