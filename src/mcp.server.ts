@@ -4,6 +4,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
@@ -41,6 +42,7 @@ import {
   checkImportStatus,
   checkImportStatusSchema,
 } from "./tools/check_import_status.js";
+import {getMemoryByName} from "./tools/get_memory_by_name.js";
 
 // Creates a new MCP server instance for every new connection.
 export default function getServer(accessKeyId: string, accessKeySecret: string) {
@@ -55,7 +57,8 @@ export default function getServer(accessKeyId: string, accessKeySecret: string) 
     {
       capabilities: {
         tools: {},
-        resources: {}
+        resources: {},
+        resourceTemplates: {}
       },
     }
   );
@@ -200,6 +203,18 @@ export default function getServer(accessKeyId: string, accessKeySecret: string) 
       throw error;
     }
   });
+
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => {
+    return {
+        resourceTemplates: [
+        {
+            name: "Get Memory by Name",
+            uriTemplate: "memories://list/{name}",
+            description: "Returns a memory by its name",
+        }
+        ]
+    };
+  });
   
   server.setRequestHandler(ListResourcesRequestSchema, async () => {
     return {
@@ -222,28 +237,56 @@ export default function getServer(accessKeyId: string, accessKeySecret: string) 
     const { uri } = request.params;
   
     try {
-      switch (uri) {
-        case "memories://list": {
-          const memories = await listMemories(lara);
-          return {
-            contents: [{
-              uri: uri,
-              text: JSON.stringify(memories, null, 2)
-            }]
-          };
-        }
-        case "languages://list": {
-          const languages = await listLanguages(lara);
-          return {
-            contents: [{
-              uri: uri,
-              text: JSON.stringify(languages, null, 2)
-            }]
-          };
-        }
-        default:
-          throw new Error(`Unknown resource: ${uri}`);
+      if (uri === "memories://list") {
+        const memories = await listMemories(lara);
+        return {
+          contents: [{
+            uri: uri,
+            text: JSON.stringify(memories, null, 2)
+          }]
+        };
       }
+
+      if (uri === "languages://list") {
+        const languages = await listLanguages(lara);
+        return {
+          contents: [{
+            uri: uri,
+            text: JSON.stringify(languages, null, 2)
+          }]
+        };
+      }
+
+      if (uri.startsWith("memories://list/")) {
+        const name = uri.slice("memories://list/".length).trim();
+        if (!name) {
+          return {
+            contents: [{
+              uri: uri,
+              text: JSON.stringify({ error: "Memory name is required." }, null, 2)
+            }]
+          };;
+        }
+
+        const memory = await getMemoryByName(lara, name);
+        if (!memory) {
+          return {
+            contents: [{
+              uri: uri,
+              text: JSON.stringify({ error: `Memory with name "${name}" not found.` }, null, 2)
+            }]
+          };
+        }
+
+        return {
+          contents: [{
+            uri: uri,
+            text: JSON.stringify(memory, null, 2)
+          }]
+        };
+      }
+
+      throw new Error(`Unknown resource: ${uri}`);
     } catch (error) {
       if (error instanceof z.ZodError) {
         throw new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
