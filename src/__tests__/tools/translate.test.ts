@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { translateHandler, translateSchema } from '../../tools/translate.js';
+import { translateHandler, translateSchema } from '../../mcp/tools/translate.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
 

@@ -1,0 +1,14 @@
+services:
+  lara-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - ${PORT}:${PORT}
+    environment:
+      - LARA_API_ID=${LARA_API_ID}
+      - LARA_API_KEY=${LARA_API_KEY}
+      - USE_HTTP_SERVER=true
+      - PORT=${PORT}
+    volumes:
+      - ./:/app
