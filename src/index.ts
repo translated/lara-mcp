@@ -1,78 +1,38 @@
-import express, { Request } from "express";
-import { randomUUID } from "node:crypto";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { InvalidCredentialsError, InvalidSessionIdError } from "./exception.js";
-import { createErrorResponse } from "./utils/rpc.js";
-import getServer from "./mcp.server.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { env } from "./env.js";
+import getMcpServer from "./mcp/server.js";
+import mcpRouter from "./rest/routes/mcp.js";
+import serverInfoRouter from "./rest/routes/server-info.js";
+import { RestServer } from "./rest/server.js";
 
-const app = express();
-app.use(express.json());
+function httpServer() {
+  const restServer = new RestServer();
 
-const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+  restServer.configure()
+    .use("/mcp", mcpRouter(restServer))
+    .use("/server-info", serverInfoRouter(restServer));
 
-app.post("/mcp", async (req, res) => {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  let transport: StreamableHTTPServerTransport;
+  restServer.start();
+}
 
-  if (sessionId && transports[sessionId]) {
-    transport = transports[sessionId];
-  } else if (!sessionId && isInitializeRequest(req.body)) {
-    // A single header is reccomended instead of multiple headers,
-    // since OAuth2 with a Bearer token is the standard way to authenticate with the streammable http server.
-    // In this case, we're using a api key authentication method in a accessKey:secretKey format.
-    const xLaraApiKey = req.headers["x-lara-api-key"] as string | undefined;
-    if(!xLaraApiKey || xLaraApiKey.split(":").length !== 2) {
-      res.status(400).json(createErrorResponse(new InvalidCredentialsError()));
-      return;
-    }
-
-    const [laraAccessKeyId, laraAccessKeySecret] = xLaraApiKey.split(":");
-    
-    transport = await handleInitializeRequest(laraAccessKeyId, laraAccessKeySecret);
-  } else {
-    res.status(400).json(createErrorResponse(new InvalidSessionIdError()));
-    return;
+function stdioServer() {
+  if(!env.LARA_API_ID || !env.LARA_API_KEY) {
+    throw new Error("LARA_API_ID and LARA_API_KEY must be set when using stdio server");
   }
 
-  await transport.handleRequest(req, res, req.body);
-});
+  const mcpServer = getMcpServer(env.LARA_API_ID, env.LARA_API_KEY);
 
-const handleInitializeRequest = async (laraAccessKeyId: string, laraAccessKeySecret: string) => {
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-    onsessioninitialized: (sessionId) => {
-      transports[sessionId] = transport;
-    },
-  });
+  mcpServer.connect(new StdioServerTransport());
+}
 
-  transport.onclose = () => {
-    if (transport.sessionId) {
-      delete transports[transport.sessionId];
-    }
+if(require.main === module) {
+  env.USE_HTTP_SERVER ? httpServer() : stdioServer();
+
+  const signalHandler = async (signal: string) => {
+    process.exit(0);
   };
-
-  const server = getServer(laraAccessKeyId, laraAccessKeySecret); 
-  await server.connect(transport);
-
-  return transport;
-};
-
-app.get("/mcp", (req, res) => handleSessionRequest(req, res));
-app.delete("/mcp", (req, res) => handleSessionRequest(req, res));
-
-const handleSessionRequest = async (
-  req: express.Request,
-  res: express.Response
-) => {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  if (!sessionId || !transports[sessionId]) {
-    res.status(400).json(createErrorResponse(new InvalidSessionIdError()));
-    return;
-  }
-
-  const transport = transports[sessionId];
-  await transport.handleRequest(req, res);
-};
-
-app.bind("127.0.0.1").listen(3000);
+  
+  process.on("SIGINT", () => signalHandler("SIGINT"));
+  process.on("SIGTERM", () => signalHandler("SIGTERM"));
+  process.on("SIGQUIT", () => signalHandler("SIGQUIT"));
+}

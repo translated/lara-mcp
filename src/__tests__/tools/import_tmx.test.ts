@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { importTmx, importTmxSchema } from '../../tools/import_tmx.js';
+import { importTmx, importTmxSchema } from '../../mcp/tools/import_tmx.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
 

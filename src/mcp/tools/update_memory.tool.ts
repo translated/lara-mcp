@@ -1,5 +1,5 @@
 import { Translator } from "@translated/lara";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const updateMemorySchema = z.object({
   id: z

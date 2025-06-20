@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { listMemories, listMemoriesSchema } from '../../tools/list_memories.js';
+import { listMemories, listMemoriesSchema } from '../../mcp/tools/list_memories.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
 

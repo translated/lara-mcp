@@ -14,11 +14,11 @@ class InvalidSessionIdError extends ServerException {
   }
 }
 
-class InvalidRequestError extends ServerException {
+class MethodNotAllowedError extends ServerException {
   code: number = -32600;
 
   constructor() {
-    super("Invalid request");
+    super("Method not allowed");
   }
 }
 
@@ -33,6 +33,6 @@ class InvalidCredentialsError extends ServerException {
 export {
   ServerException,
   InvalidSessionIdError,
-  InvalidRequestError,
+  MethodNotAllowedError,
   InvalidCredentialsError,
 };

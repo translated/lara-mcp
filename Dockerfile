@@ -24,6 +24,4 @@ ENV NODE_ENV=production
 RUN npm install -g pnpm@latest-10
 RUN pnpm install --frozen-lockfile --prod
 
-EXPOSE 3000
-
 ENTRYPOINT ["node", "/app/dist/index.js"]
