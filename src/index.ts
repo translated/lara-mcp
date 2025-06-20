@@ -19,7 +19,7 @@ app.post("/mcp", async (req, res) => {
     transport = transports[sessionId];
   } else if (!sessionId && isInitializeRequest(req.body)) {
     // A single header is reccomended instead of multiple headers,
-    // since it's the reccomended way to authenticate with the streammable http server.
+    // since OAuth2 with a Bearer token is the standard way to authenticate with the streammable http server.
     // In this case, we're using a api key authentication method in a accessKey:secretKey format.
     const xLaraApiKey = req.headers["x-lara-api-key"] as string | undefined;
     if(!xLaraApiKey || xLaraApiKey.split(":").length !== 2) {
@@ -67,7 +67,7 @@ const handleSessionRequest = async (
 ) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (!sessionId || !transports[sessionId]) {
-    res.status(400).send("Invalid or missing session ID");
+    res.status(400).json(createErrorResponse(new InvalidSessionIdError()));
     return;
   }
 
@@ -75,4 +75,4 @@ const handleSessionRequest = async (
   await transport.handleRequest(req, res);
 };
 
-app.listen(3000);
+app.bind("127.0.0.1").listen(3000);
