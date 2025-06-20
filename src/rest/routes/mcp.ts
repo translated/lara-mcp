@@ -1,8 +1,8 @@
 import express from "express";
 import { RestServer } from "../server.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import getMcpServer from "../../mcp/server.js";
-import { InvalidCredentialsError, MethodNotAllowedError } from "../../exception.js";
+import getMcpServer from "@/mcp/server.js";
+import { InvalidCredentialsError, MethodNotAllowedError } from "@/exception.js";
 
 function mcpRouter(restServer: RestServer): express.Router {
   const router = express.Router();

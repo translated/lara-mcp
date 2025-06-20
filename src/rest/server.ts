@@ -1,8 +1,8 @@
 import express, { Express, Request, Response } from "express";
 import helmet from "helmet";
 import cors from "./middleware/cors.js";
-import { env } from "../env.js";
-import { ServerException } from "../exception.js";
+import { env } from "@/env.js";
+import { ServerException } from "@/exception.js";
 import {
   JSONRPCError,
   JSONRPCResponse,
