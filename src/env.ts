@@ -7,6 +7,4 @@ const envSchema = z.object({
     LARA_API_KEY: z.string().optional(),
 });
 
-console.log(process.env);
-
 export const env = envSchema.parse(process.env);
