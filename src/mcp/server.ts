@@ -9,11 +9,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { CallTool, ListTools } from "./tools.js";
 import { ListResources, ListResourceTemplates, ReadResource } from "./resources.js";
+import { logger } from "../logger.js";
 
 export default function getMcpServer(
   accessKeyId: string,
   accessKeySecret: string
 ) {
+  logger.debug("Creating MCP server with credentials: " + accessKeyId);
+
   const credentials = new Credentials(accessKeyId, accessKeySecret);
   const lara = new Translator(credentials);
 
@@ -30,6 +33,7 @@ export default function getMcpServer(
       },
     }
   );
+  logger.debug("MCP server created! Setting request handlers...");
 
   // -- Tools
   server.setRequestHandler(ListToolsRequestSchema, ListTools);
@@ -43,6 +47,8 @@ export default function getMcpServer(
   server.setRequestHandler(ReadResourceRequestSchema, (request) =>
     ReadResource(request, lara)
   );
+
+  logger.debug("Request handlers set!");
 
   return server;
 }

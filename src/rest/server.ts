@@ -1,12 +1,15 @@
 import express, { Express, Request, Response } from "express";
 import helmet from "helmet";
 import cors from "./middleware/cors.js";
-import { env } from "@/env.js";
-import { ServerException } from "@/exception.js";
+import { env } from "../env.js";
+import { ServerException } from "../exception.js";
 import {
   JSONRPCError,
   JSONRPCResponse,
 } from "@modelcontextprotocol/sdk/types.js";
+import { logger } from "../logger.js";
+import loggingMiddleware from "./middleware/logging.js";
+import { createServer } from "node:http";
 
 export class RestServer {
   private port: number;
@@ -27,11 +30,17 @@ export class RestServer {
     // -- Security
     this.express.use(cors);
     this.express.use(helmet());
+
+    // -- Logging
+    this.express.use(loggingMiddleware);
   }
 
   public start() {
+    logger.info(`Starting HTTP server on ${this.host}:${this.port}...`);
     // Bind specifically on 127.0.0.1 to avoid binding to all interfaces
-    this.express.bind(this.host).listen(this.port, () => {});
+    createServer(this.express).listen(this.port, this.host, () => {
+      logger.info(`HTTP server successfully started on ${this.host}:${this.port}`);
+    });
   }
 
   public configure() {
@@ -39,6 +48,7 @@ export class RestServer {
   }
 
   public send(res: Response, payload: ServerException | any): void {
+    logger.debug("Sending response to client: " + JSON.stringify(payload));
     if (payload instanceof ServerException) {
       res.status(400).json({
         error: {
@@ -53,6 +63,7 @@ export class RestServer {
   }
 
   public sendJsonRpc(res: Response, payload: ServerException | any): void {
+    logger.debug("Sending JSON-RPC response to client: " + JSON.stringify(payload));
     if (payload instanceof ServerException) {
       res.status(400).json(this.createJsonRpcResponse(payload));
       return;
@@ -74,7 +85,7 @@ export class RestServer {
         id: "",
       };
     }
-
+    
     return {
       jsonrpc: "2.0",
       result: payload,

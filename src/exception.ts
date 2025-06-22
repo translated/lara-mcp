@@ -30,9 +30,18 @@ class InvalidCredentialsError extends ServerException {
   }
 }
 
+class InvalidInputError extends ServerException {
+  code: number = -32600;
+
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 export {
   ServerException,
   InvalidSessionIdError,
   MethodNotAllowedError,
   InvalidCredentialsError,
+  InvalidInputError,
 };

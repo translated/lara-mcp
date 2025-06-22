@@ -1,8 +1,14 @@
 import express from "express";
 import { RestServer } from "../server.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import getMcpServer from "@/mcp/server.js";
-import { InvalidCredentialsError, MethodNotAllowedError } from "@/exception.js";
+import getMcpServer from "../../mcp/server.js";
+import {
+  InvalidCredentialsError,
+  InvalidInputError,
+  MethodNotAllowedError,
+  ServerException,
+} from "../../exception.js";
+import { logger } from "../../logger.js";
 
 function mcpRouter(restServer: RestServer): express.Router {
   const router = express.Router();
@@ -11,26 +17,45 @@ function mcpRouter(restServer: RestServer): express.Router {
     const xLaraApiId = req.headers["x-lara-api-id"] as string | undefined;
     const xLaraApiKey = req.headers["x-lara-api-key"] as string | undefined;
 
-    if(!xLaraApiId || !xLaraApiKey) {
-        restServer.sendJsonRpc(res, new InvalidCredentialsError());
-        return;
+    if (!xLaraApiId || !xLaraApiKey) {
+      restServer.sendJsonRpc(res, new InvalidCredentialsError());
+      return;
     }
-    const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
+
+    const transport: StreamableHTTPServerTransport =
+      new StreamableHTTPServerTransport({
         // In stateless mode we don't need to track the client session
-        sessionIdGenerator: undefined
-    })
+        sessionIdGenerator: undefined,
+      });
 
-    const server = getMcpServer(xLaraApiId, xLaraApiKey); 
-
+    const server = getMcpServer(xLaraApiId, xLaraApiKey);
     await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+
+    try {
+      await transport.handleRequest(req, res, req.body);
+    } catch (error) {
+      if (error instanceof InvalidInputError) {
+        logger.error(
+          "Invalid input error while handling MCP request: " + error.message
+        );
+        restServer.sendJsonRpc(res, error);
+        return;
+      }
+
+      logger.error("Generic error while handling MCP request: " + error);
+      restServer.sendJsonRpc(res, new ServerException("Internal server error"));
+    }
   });
 
-  router.get("/mcp", (req, res) => {
+  router.get("/mcp", (_req, res) => {
+    logger.debug("Received GET request on /mcp, sending MethodNotAllowedError");
     restServer.sendJsonRpc(res, new MethodNotAllowedError());
   });
 
-  router.delete("/mcp", (req, res) => {
+  router.delete("/mcp", (_req, res) => {
+    logger.debug(
+      "Received DELETE request on /mcp, sending MethodNotAllowedError"
+    );
     restServer.sendJsonRpc(res, new MethodNotAllowedError());
   });
 

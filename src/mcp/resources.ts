@@ -9,6 +9,7 @@ import { listLanguages } from "./tools/list_languages.js";
 import { listMemories } from "./tools/list_memories.js";
 import { Translator } from "@translated/lara";
 import * as z from "zod/v4";
+import { InvalidInputError } from "../exception.js";
 
 async function ListResourceTemplates(): Promise<ListResourceTemplatesResult> {
   return {
@@ -108,10 +109,10 @@ async function ReadResource(
       };
     }
 
-    throw new Error(`Unknown resource: ${uri}`);
+    throw new InvalidInputError(`Unknown resource: ${uri}`);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new Error(`Invalid input: ${JSON.stringify(error.issues)}`);
+      throw new InvalidInputError(`Invalid input: ${JSON.stringify(error.issues)}`);
     }
     throw error;
   }
