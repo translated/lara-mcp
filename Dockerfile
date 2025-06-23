@@ -1,25 +1,15 @@
-FROM node:22.13.1-alpine AS builder
+FROM node:22.14.0-alpine
 
-WORKDIR /app
+ENV CI=true
 
-COPY package.json pnpm-lock.yaml ./
+RUN apk update && apk upgrade
+RUN apk add curl
+
+WORKDIR /opt
+COPY . .
+
 RUN npm install -g pnpm@latest-10
 RUN pnpm install --frozen-lockfile
+RUN pnpm build
 
-COPY . .
-RUN pnpm run test
-RUN pnpm run build
-
-
-FROM node:22.13.1-alpine AS release
-
-WORKDIR /app
-
-COPY --from=builder /app/dist /app/dist
-COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/pnpm-lock.yaml /app/pnpm-lock.yaml
-
-RUN npm install -g pnpm@latest-10
-RUN pnpm install --frozen-lockfile --prod
-
-ENTRYPOINT ["node", "/app/dist/index.js"]
+CMD ["pnpm", "start"]

@@ -42,7 +42,8 @@ import {
   updateMemory,
   updateMemorySchema
 } from "./tools/update_memory.tool.js";
-import { InvalidInputError } from "../exception.js";
+import { InvalidInputError } from "#exception";
+import { logger } from "#logger";
 
 type Handler = (args: any, lara: Translator) => Promise<any>;
 type Lister = (lara: Translator) => Promise<any>;
@@ -81,6 +82,7 @@ async function CallTool(request: CallToolRequest, lara: Translator): Promise<Cal
       };
     }
 
+    logger.warn(`Requested a tool with name ${name}, but it was not found`);
     throw new InvalidInputError(`Tool ${name} not found`);
   } catch (error) {
     if (error instanceof z.ZodError) {

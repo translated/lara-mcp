@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import express from "express";
-import { RestServer } from "../server.js";
+import { RestServer } from "#rest/server";
 
 const buildInfoJson: string = fs.readFileSync(
   path.join(import.meta.dirname, "..", "..", "..", "package.json"),

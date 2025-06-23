@@ -9,7 +9,8 @@ import { listLanguages } from "./tools/list_languages.js";
 import { listMemories } from "./tools/list_memories.js";
 import { Translator } from "@translated/lara";
 import * as z from "zod/v4";
-import { InvalidInputError } from "../exception.js";
+import { InvalidInputError } from "#exception";
+import { logger } from "#logger";
 
 async function ListResourceTemplates(): Promise<ListResourceTemplatesResult> {
   return {
@@ -109,6 +110,7 @@ async function ReadResource(
       };
     }
 
+    logger.warn(`Requested a resource with uri ${uri}, but it was not found`);
     throw new InvalidInputError(`Unknown resource: ${uri}`);
   } catch (error) {
     if (error instanceof z.ZodError) {

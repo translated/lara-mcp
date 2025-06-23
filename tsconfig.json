@@ -7,7 +7,14 @@
     "strict": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "#env": ["./src/env.js"],
+      "#exception": ["./src/exception.js"],
+      "#logger": ["./src/logger.js"],
+      "#rest/server": ["./src/rest/server.js"],
+      "#mcp/server": ["./src/mcp/server.js"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

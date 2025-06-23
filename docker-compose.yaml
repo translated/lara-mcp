@@ -3,21 +3,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    tty: true
+    container_name: lara-mcp
+    restart: unless-stopped
     working_dir: /opt
+    command: ["pnpm", "start"]
     ports:
       - ${PORT}:${PORT}
-    environment:
-      - LARA_API_ID=${LARA_API_ID}
-      - LARA_API_KEY=${LARA_API_KEY}
-      - USE_HTTP_SERVER=${USE_HTTP_SERVER}
-      - PORT=${PORT}
-      - LOGGING_LEVEL=${LOGGING_LEVEL}
-    volumes:
-      - ./src:/opt/src
-      - ./.env:/opt/.env
-      - ./package.json:/opt/package.json
-      - ./pnpm-lock.yaml:/opt/pnpm-lock.yaml
-      - ./tsconfig.json:/opt/tsconfig.json
-      - ./nodemon.json:/opt/nodemon.json
-      - ./vitest.config.ts:/opt/vitest.config.ts
-      - ./tsconfig.json:/opt/tsconfig.json
+    env_file:
+      - .env

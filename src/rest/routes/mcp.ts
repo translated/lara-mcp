@@ -1,14 +1,14 @@
 import express from "express";
-import { RestServer } from "../server.js";
+import { RestServer } from "#rest/server";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import getMcpServer from "../../mcp/server.js";
+import getMcpServer from "#mcp/server";
 import {
   InvalidCredentialsError,
   InvalidInputError,
   MethodNotAllowedError,
   ServerException,
-} from "../../exception.js";
-import { logger } from "../../logger.js";
+} from "#exception";
+import { logger } from "#logger";
 
 function mcpRouter(restServer: RestServer): express.Router {
   const router = express.Router();

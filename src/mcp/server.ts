@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { CallTool, ListTools } from "./tools.js";
 import { ListResources, ListResourceTemplates, ReadResource } from "./resources.js";
-import { logger } from "../logger.js";
+import { logger } from "#logger";
 
 export default function getMcpServer(
   accessKeyId: string,

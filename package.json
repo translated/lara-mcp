@@ -24,10 +24,17 @@
   "files": [
     "dist"
   ],
+  "imports": {
+    "#env": "./dist/env.js",
+    "#exception": "./dist/exception.js",
+    "#logger": "./dist/logger.js",
+    "#rest/server": "./dist/rest/server.js",
+    "#mcp/server": "./dist/mcp/server.js"
+  },
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
+    "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
