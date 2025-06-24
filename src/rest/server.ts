@@ -20,7 +20,7 @@ export class RestServer {
   constructor() {
     // -- Member variables
     this.port = env.PORT;
-    this.host = "127.0.0.1";
+    this.host = env.HOST;
 
     this.express = express();
 

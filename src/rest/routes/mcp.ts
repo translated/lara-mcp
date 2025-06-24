@@ -13,11 +13,11 @@ import { logger } from "#logger";
 function mcpRouter(restServer: RestServer): express.Router {
   const router = express.Router();
 
-  router.post("/mcp", async (req, res) => {
+  router.post("/", async (req, res) => {
     const xLaraApiId = req.headers["x-lara-api-id"] as string | undefined;
-    const xLaraApiKey = req.headers["x-lara-api-key"] as string | undefined;
+    const xLaraApiSecret = req.headers["x-lara-api-secret"] as string | undefined;
 
-    if (!xLaraApiId || !xLaraApiKey) {
+    if (!xLaraApiId || !xLaraApiSecret) {
       restServer.sendJsonRpc(res, new InvalidCredentialsError());
       return;
     }
@@ -28,7 +28,7 @@ function mcpRouter(restServer: RestServer): express.Router {
         sessionIdGenerator: undefined,
       });
 
-    const server = getMcpServer(xLaraApiId, xLaraApiKey);
+    const server = getMcpServer(xLaraApiId, xLaraApiSecret);
     await server.connect(transport);
 
     try {
@@ -47,12 +47,12 @@ function mcpRouter(restServer: RestServer): express.Router {
     }
   });
 
-  router.get("/mcp", (_req, res) => {
+  router.get("/", (_req, res) => {
     logger.debug("Received GET request on /mcp, sending MethodNotAllowedError");
     restServer.sendJsonRpc(res, new MethodNotAllowedError());
   });
 
-  router.delete("/mcp", (_req, res) => {
+  router.delete("/", (_req, res) => {
     logger.debug(
       "Received DELETE request on /mcp, sending MethodNotAllowedError"
     );
