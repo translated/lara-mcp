@@ -12,4 +12,4 @@ RUN npm install -g pnpm@latest-10
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
-CMD ["pnpm", "start"]
+CMD ["node", "dist/index.js"]

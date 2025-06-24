@@ -14,10 +14,10 @@ function mcpRouter(restServer: RestServer): express.Router {
   const router = express.Router();
 
   router.post("/", async (req, res) => {
-    const xLaraApiId = req.headers["x-lara-api-id"] as string | undefined;
-    const xLaraApiSecret = req.headers["x-lara-api-secret"] as string | undefined;
+    const xLaraAccessKeyId = req.headers["x-lara-access-key-id"] as string | undefined;
+    const xLaraAccessKeySecret = req.headers["x-lara-access-key-secret"] as string | undefined;
 
-    if (!xLaraApiId || !xLaraApiSecret) {
+    if (!xLaraAccessKeyId || !xLaraAccessKeySecret) {
       restServer.sendJsonRpc(res, new InvalidCredentialsError());
       return;
     }
@@ -28,7 +28,7 @@ function mcpRouter(restServer: RestServer): express.Router {
         sessionIdGenerator: undefined,
       });
 
-    const server = getMcpServer(xLaraApiId, xLaraApiSecret);
+    const server = getMcpServer(xLaraAccessKeyId, xLaraAccessKeySecret);
     await server.connect(transport);
 
     try {

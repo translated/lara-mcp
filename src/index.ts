@@ -9,7 +9,7 @@ import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 
 // -- Start server
 logger.info("Detected server mode: " + (env.USE_HTTP_SERVER ? "HTTP" : "STDIO"));
-const server = env.USE_HTTP_SERVER ? httpServer() : stdioServer();
+const server = env.USE_HTTP_SERVER ? httpServer() : await stdioServer();
 
 process.on("SIGINT", () => signalHandler(server));
 process.on("SIGTERM", () => signalHandler(server));
@@ -41,18 +41,22 @@ function httpServer() {
 }
 
 // -- STDIO server
-function stdioServer() {
+async function stdioServer() {
   logger.info(
     "Detected stdio server mode, starting MCP server with stdio transport..."
   );
-  if (!env.LARA_API_ID || !env.LARA_API_SECRET) {
+  if (!env.LARA_ACCESS_KEY_ID || !env.LARA_ACCESS_KEY_SECRET) {
     throw new Error(
-      "LARA_API_ID and LARA_API_SECRET must be set when using stdio server"
+      "LARA_ACCESS_KEY_ID and LARA_ACCESS_KEY_SECRET must be set when using stdio server"
     );
   }
 
-  const mcpServer = getMcpServer(env.LARA_API_ID, env.LARA_API_SECRET);
+  const mcpServer = getMcpServer(env.LARA_ACCESS_KEY_ID, env.LARA_ACCESS_KEY_SECRET);
 
-  mcpServer.connect(new StdioServerTransport());
+  await mcpServer.connect(new StdioServerTransport()).catch((error) => {
+    logger.error("Error connecting to MCP server: " + error);
+    process.exit(1);
+  });
+
   return mcpServer;
 }

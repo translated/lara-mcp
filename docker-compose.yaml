@@ -7,7 +7,6 @@ services:
     container_name: lara-mcp
     restart: unless-stopped
     working_dir: /opt
-    command: ["pnpm", "start"]
     ports:
       - ${PORT}:${PORT}
     env_file:
