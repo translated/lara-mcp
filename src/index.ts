@@ -5,19 +5,26 @@ import mcpRouter from "./rest/routes/mcp.js";
 import serverInfoRouter from "./rest/routes/server-info.js";
 import { RestServer } from "./rest/server.js";
 import { logger } from "./logger.js";
+import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 
 // -- Start server
 logger.info("Detected server mode: " + (env.USE_HTTP_SERVER ? "HTTP" : "STDIO"));
-env.USE_HTTP_SERVER ? httpServer() : stdioServer();
+const server = env.USE_HTTP_SERVER ? httpServer() : stdioServer();
 
-const signalHandler = async (signal: string) => {
-  logger.info(`Received ${signal}, shutting down...`);
+process.on("SIGINT", () => signalHandler(server));
+process.on("SIGTERM", () => signalHandler(server));
+process.on("SIGQUIT", () => signalHandler(server));
+
+// -- Signal handler
+function signalHandler(server: RestServer | McpServer) {
+  if (env.USE_HTTP_SERVER) {
+    (server as RestServer).stop();
+  } else {
+    (server as McpServer).close();
+  }
+
   process.exit(0);
-};
-
-process.on("SIGINT", () => signalHandler("SIGINT"));
-process.on("SIGTERM", () => signalHandler("SIGTERM"));
-process.on("SIGQUIT", () => signalHandler("SIGQUIT"));
+}
 
 // -- HTTP server
 function httpServer() {
@@ -30,6 +37,7 @@ function httpServer() {
     .use("/server-info", serverInfoRouter(restServer));
 
   restServer.start();
+  return restServer;
 }
 
 // -- STDIO server
@@ -46,4 +54,5 @@ function stdioServer() {
   const mcpServer = getMcpServer(env.LARA_API_ID, env.LARA_API_SECRET);
 
   mcpServer.connect(new StdioServerTransport());
+  return mcpServer;
 }

@@ -9,13 +9,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { logger } from "#logger";
 import loggingMiddleware from "./middleware/logging.js";
-import { createServer } from "node:http";
+import { createServer, Server } from "node:http";
 
 export class RestServer {
   private port: number;
   private host: string;
 
   private express: Express;
+  private httpServer?: Server;
 
   constructor() {
     // -- Member variables
@@ -38,8 +39,20 @@ export class RestServer {
   public start() {
     logger.info(`Starting HTTP server on ${this.host}:${this.port}...`);
     // Bind specifically on 127.0.0.1 to avoid binding to all interfaces
-    createServer(this.express).listen(this.port, this.host, () => {
+    this.httpServer = createServer(this.express).listen(this.port, this.host, () => {
       logger.info(`HTTP server successfully started on ${this.host}:${this.port}`);
+    });
+  }
+
+  public stop() {
+    if (!this.httpServer) {
+      logger.error("Cannot stop HTTP server, it is not started");
+      return;
+    }
+
+    logger.info(`Stopping HTTP server on ${this.host}:${this.port}...`);
+    this.httpServer.close(() => {
+      logger.info(`HTTP server successfully stopped on ${this.host}:${this.port}`);
     });
   }
 
