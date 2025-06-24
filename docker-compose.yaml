@@ -3,11 +3,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    tty: true
     container_name: lara-mcp
     restart: unless-stopped
     working_dir: /opt
+    command: ["pnpm", "--reporter=silent", "dev"]
     ports:
       - ${PORT}:${PORT}
     env_file:
       - .env
+    volumes:
+      - ./src:/opt/src
+      - ./.env:/opt/.env
+      - ./package.json:/opt/package.json
+      - ./pnpm-lock.yaml:/opt/pnpm-lock.yaml
+      - ./vitest.config.ts:/opt/vitest.config.ts
+      - ./nodemon.json:/opt/nodemon.json
+      - ./tsconfig.json:/opt/tsconfig.json
