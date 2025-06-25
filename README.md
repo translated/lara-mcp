@@ -1,3 +1,4 @@
+
 # Lara Translate MCP Server
 
 A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection, context-aware translations and translation memories.
@@ -12,6 +13,9 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 - 🚀 [Getting Started](#-getting-started)
   - 📋 [Requirements](#-requirements)
   - 🔌 [Installation](#-installation)
+    - 🖥️ [STDIO Server](#stdio-server)
+    - 🌐 [HTTP Server](#http-server)
+  - ⚙️ [Enviromental Variables](#enviromental-variables)
 - 🧩 [Installation Engines](#-installation-engines)
 - 💻 [Popular Clients that supports MCPs](#-popular-clients-that-supports-mcps)
 - 🆘 [Support](#-support)
@@ -188,19 +192,20 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 ### 🔌 Installation
 
 #### Introduction
-The installation process is standardized across all MCP clients. It involves manually adding a configuration object to your client's MCP configuration JSON file.
-> If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
+Lara Translate MCP Server can be installed and then started using STDIO or HTTP. Each transport layer has its own strength.
+- STDIO transport layer is suited better for local deployments and personal use and is straightforward to configure and use.
+- HTTP transport layer relies on a web server and can accept HTTP requests. Multiple clients can connect to the same server. Additional configuration (like firewall) might be needed.
 
-Lara Translate MCP supports multiple installation methods, including NPX and Docker. \
-Below, we'll use NPX as an example.
+Lara Translate MCP supports multiple installation methods, including NPX and Docker for both transports. 
+You will find below two praticals examples to setup both a STDIO and HTTP server for Lara Translate MCP.
 
 ---
 
-#### Installation & Configuration
+#### 🖥️ STDIO Server
+In the below example we'll use NPX.
 
 **Step 1**: Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
-
-```json
+```
 {
   "mcpServers": {
     "lara-translate": {
@@ -217,20 +222,55 @@ Below, we'll use NPX as an example.
   }
 }
 ```
-
-**Step 2**: Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials (refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details).
+**Step 2**: Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials (refer to the  [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)  for details).
 
 **Step 3**: Restart your MCP client.
 
 ---
 
-#### Verify Installation
+#### 🌐 Web server
+In the below example we'll use Docker.
 
+**Step 1**: Start the HTTP server by opening your terminal and typing:
+```
+docker run translatednet/lara_mcp:latest -e USE_HTTP_SERVER=true
+```
+**Step 2**: Open your client’s MCP configuration JSON file with a text editor, then copy and paste the following snippet:
+```
+{
+  "mcpServers":{
+    "lara-translate":{
+      "url":"http://localhost:3000/mcp",
+      "headers":{
+        "x-lara-api-id":"<YOUR_ACCESS_KEY_ID>",
+        "x-lara-api-secret":"<YOUR_ACCESS_KEY_SECRET>"
+      }
+    }
+  }
+}
+```
+**Step 3**: Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials (refer to the  [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)  for details).
+
+### ⚙️ Environment Variables
+
+You can customize the MCP Server installation by setting the following environment variables **before** starting the server:
+
+| Variable                   | Type    | Default     | Example              | Description                                                                 |
+|----------------------------|---------|-------------|----------------------|-----------------------------------------------------------------------------|
+| `USE_HTTP_SERVER`          | boolean | `false`     | `true`               | Starts the server with the HTTP transport layer. If `false`, STDIO is used. |
+| `HOST`                     | string  | `0.0.0.0`   | `127.0.0.1`          | Network interface the server should bind to.                                |
+| `PORT`                     | number  | `3000`      | `80`                 | Port the server should listen on.                                           |
+| `LARA_ACCESS_KEY_ID`       | string  | *(empty)*   | `MY_ACCESS_KEY_ID`   | Lara Translate API access key ID. Used only in STDIO mode.                  |
+| `LARA_ACCESS_KEY_SECRET`   | string  | *(empty)*   | `MY_ACCESS_KEY_SECRET` | Lara Translate API secret access key. Used only in STDIO mode.            |
+
+#### Verifying the installation
 After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
+
 > The method for viewing installed MCPs varies by client. Please consult your MCP client's documentation.
 
 To verify that Lara Translate MCP is working correctly, try translating with a simple prompt:
-```text
+
+```
 Translate with Lara "Hello world" to Spanish
 ```
 
