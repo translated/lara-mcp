@@ -251,18 +251,6 @@ docker run translatednet/lara_mcp:latest -e USE_HTTP_SERVER=true
 ```
 **Step 3**: Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials (refer to the  [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)  for details).
 
-### ⚙️ Environment Variables
-
-You can customize the MCP Server installation by setting the following environment variables **before** starting the server:
-
-| Variable                   | Type    | Default     | Example              | Description                                                                 |
-|----------------------------|---------|-------------|----------------------|-----------------------------------------------------------------------------|
-| `USE_HTTP_SERVER`          | boolean | `false`     | `true`               | Starts the server with the HTTP transport layer. If `false`, STDIO is used. |
-| `HOST`                     | string  | `0.0.0.0`   | `127.0.0.1`          | Network interface the server should bind to.                                |
-| `PORT`                     | number  | `3000`      | `80`                 | Port the server should listen on.                                           |
-| `LARA_ACCESS_KEY_ID`       | string  | *(empty)*   | `MY_ACCESS_KEY_ID`   | Lara Translate API access key ID. Used only in STDIO mode.                  |
-| `LARA_ACCESS_KEY_SECRET`   | string  | *(empty)*   | `MY_ACCESS_KEY_SECRET` | Lara Translate API secret access key. Used only in STDIO mode.            |
-
 #### Verifying the installation
 After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
 
@@ -276,7 +264,21 @@ Translate with Lara "Hello world" to Spanish
 
 Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
 
+### ⚙️ Environment Variables
+
+You can customize the MCP Server installation by setting the following environment variables **before** starting the server:
+
+| Variable                   | Type    | Default     | Example              | Description                                                                 |
+|----------------------------|---------|-------------|----------------------|-----------------------------------------------------------------------------|
+| `USE_HTTP_SERVER`          | boolean | `false`     | `true`               | Starts the server with the HTTP transport layer. If `false`, STDIO is used. |
+| `HOST`                     | string  | `0.0.0.0`   | `127.0.0.1`          | Network interface the server should bind to.                                |
+| `PORT`                     | number  | `3000`      | `80`                 | Port the server should listen on.                                           |
+| `LARA_ACCESS_KEY_ID`       | string  | *(empty)*   | `MY_ACCESS_KEY_ID`   | Lara Translate API access key ID. Used only in STDIO mode.                  |
+| `LARA_ACCESS_KEY_SECRET`   | string  | *(empty)*   | `MY_ACCESS_KEY_SECRET` | Lara Translate API secret access key. Used only in STDIO mode.            |
+
 ## 🧩 Installation Engines
+
+### 🖥️ STDIO Server
 
 <details>
 <summary><strong>Option 1: Using NPX</strong></summary>
@@ -413,6 +415,34 @@ docker build -t lara-mcp .
 ```
 
 4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
+</details>
+
+### 🌐 Web server
+
+<details>
+<summary><strong>Option 1: Using Docker</strong></summary>
+
+This option requires Docker to be installed on your system.
+
+1. Start the HTTP server by opening your terminal and typing:
+```
+docker run translatednet/lara_mcp:latest -e USE_HTTP_SERVER=true
+```
+2. Open your client’s MCP configuration JSON file with a text editor, then copy and paste the following snippet:
+```
+{
+  "mcpServers":{
+    "lara-translate":{
+      "url":"http://localhost:3000/mcp",
+      "headers":{
+        "x-lara-api-id":"<YOUR_ACCESS_KEY_ID>",
+        "x-lara-api-secret":"<YOUR_ACCESS_KEY_SECRET>"
+      }
+    }
+  }
+}
+```
+3. Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials.
 </details>
 
 ## 💻 Popular Clients that supports MCPs 
