@@ -445,6 +445,46 @@ docker run translatednet/lara_mcp:latest -e USE_HTTP_SERVER=true
 3. Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials.
 </details>
 
+<details>
+<summary><strong>Option 3: Building from Source</strong></summary>
+
+#### Building a Docker Image
+
+1. Clone the repository:
+```bash
+git clone https://github.com/translated/lara-mcp.git
+cd lara-mcp
+```
+
+2. Build the Docker image:
+```bash
+docker build -t lara-mcp .
+```
+
+3. Start the server
+```bash
+docker run lara_mcp -e USE_HTTP_SERVER=true
+```
+
+3. Add the following to your MCP configuration file:
+```json
+{
+  "mcpServers":{
+    "lara-translate":{
+      "url":"http://localhost:3000/mcp",
+      "headers":{
+        "x-lara-api-id":"<YOUR_ACCESS_KEY_ID>",
+        "x-lara-api-secret":"<YOUR_ACCESS_KEY_SECRET>"
+      }
+    }
+  }
+}
+```
+
+4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
+</details>
+
+
 ## 💻 Popular Clients that supports MCPs 
 
 > For a complete list of MCP clients and their feature support, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
