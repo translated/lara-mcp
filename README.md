@@ -446,7 +446,7 @@ docker run translatednet/lara_mcp:latest -e USE_HTTP_SERVER=true
 </details>
 
 <details>
-<summary><strong>Option 3: Building from Source</strong></summary>
+<summary><strong>Option 2: Building from Source</strong></summary>
 
 #### Building a Docker Image
 
