@@ -461,12 +461,12 @@ cd lara-mcp
 docker build -t lara-mcp .
 ```
 
-3. Start the server
+4. Start the server
 ```bash
 docker run lara_mcp -e USE_HTTP_SERVER=true
 ```
 
-3. Add the following to your MCP configuration file:
+5. Add the following to your MCP configuration file:
 ```json
 {
   "mcpServers":{
@@ -481,7 +481,7 @@ docker run lara_mcp -e USE_HTTP_SERVER=true
 }
 ```
 
-4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
+6. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
 </details>
 
 
