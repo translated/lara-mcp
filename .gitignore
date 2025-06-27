@@ -18,6 +18,9 @@ coverage/*
 # IntelliJ
 out/
 
+# Env
+.env
+
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 

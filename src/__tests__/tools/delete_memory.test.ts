@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { deleteMemory, deleteMemorySchema } from '../../tools/delete_memory.js';
+import { deleteMemory, deleteMemorySchema } from '../../mcp/tools/delete_memory.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
 

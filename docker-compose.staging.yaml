@@ -1,0 +1,37 @@
+services:
+  lara-mcp:
+    image: '${IMAGE}'
+    command: ['node', 'dist/index.js']
+    environment:
+      - NODE_ENV=staging
+    networks:
+      translated_swarm:
+        aliases:
+          - # TODO: add alias
+    logging:
+      driver: awslogs
+      options:
+        awslogs-create-group: 'true'
+        awslogs-region: 'eu-central-1'
+        awslogs-group: # TODO: add aws logs group
+        tag: '{{.Name}}'
+    deploy:
+      replicas: 1
+      labels:
+        # TODO: add labels for traefik
+      restart_policy:
+        condition: any
+        delay: 10s
+        window: 60s
+      rollback_config:
+        parallelism: 0
+        order: start-first
+        failure_action: continue
+      update_config:
+        parallelism: 0
+        order: start-first
+        failure_action: rollback
+
+networks:
+  translated_swarm:
+    external: true
