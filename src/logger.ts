@@ -7,7 +7,7 @@ export const logger = pino(
   },
   // Since STDIO server logs to stdout, we need to log to stderr in order
   // to avoid the client from reading the logs
-  env.USE_HTTP_SERVER
-    ? pino.destination(process.stdout)
-    : pino.destination(process.stderr)
+  env.TRANSPORT === "stdio"
+    ? pino.destination(process.stderr)
+    : pino.destination(process.stdout)
 );

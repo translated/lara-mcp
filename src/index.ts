@@ -8,8 +8,19 @@ import { logger } from "./logger.js";
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 
 // -- Start server
-logger.info("Detected server mode: " + (env.USE_HTTP_SERVER ? "HTTP" : "STDIO"));
-const server = env.USE_HTTP_SERVER ? httpServer() : await stdioServer();
+logger.info("Detected server mode: " + env.TRANSPORT);
+
+let server: RestServer | McpServer;
+switch (env.TRANSPORT) {
+  case "stdio":
+    server = await stdioServer();
+    break;
+  case "http":
+    server = httpServer();
+    break;
+  default:
+    throw new Error("Invalid transport: " + env.TRANSPORT + ". Must be either 'stdio' or 'http'");
+}
 
 process.on("SIGINT", () => signalHandler(server));
 process.on("SIGTERM", () => signalHandler(server));
@@ -17,10 +28,10 @@ process.on("SIGQUIT", () => signalHandler(server));
 
 // -- Signal handler
 function signalHandler(server: RestServer | McpServer) {
-  if (env.USE_HTTP_SERVER) {
-    (server as RestServer).stop();
+  if (server instanceof RestServer) {
+    server.stop();
   } else {
-    (server as McpServer).close();
+    server.close();
   }
 
   process.exit(0);

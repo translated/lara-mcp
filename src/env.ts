@@ -4,7 +4,9 @@ const envSchema = z.object({
     // Http Server
     HOST: z.string().default("0.0.0.0"),
     PORT: z.coerce.number().default(3000),
-    USE_HTTP_SERVER: z.coerce.boolean().default(false),
+    
+    // Transport
+    TRANSPORT: z.enum(["stdio", "http"]).default("stdio"),
 
     // Logging
     LOGGING_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
