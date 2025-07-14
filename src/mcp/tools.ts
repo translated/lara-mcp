@@ -7,10 +7,6 @@ import {
   addTranslationSchema 
 } from "./tools/add_translation.js";
 import { 
-  checkImportStatus,
-  checkImportStatusSchema 
-} from "./tools/check_import_status.js";
-import { 
   createMemory,
   createMemorySchema 
 } from "./tools/create_memory.js";
@@ -22,10 +18,6 @@ import {
   deleteTranslation,
   deleteTranslationSchema
 } from "./tools/delete_translation.js";
-import {
-  importTmx,
-  importTmxSchema
-} from "./tools/import_tmx.js";
 import {
   listLanguages,
   listLanguagesSchema
@@ -54,9 +46,7 @@ const handlers: Record<string, Handler> = {
   delete_memory: deleteMemory,
   update_memory: updateMemory,
   add_translation: addTranslation,
-  delete_translation: deleteTranslation,
-  import_tmx: importTmx,
-  check_import_status: checkImportStatus,
+  delete_translation: deleteTranslation
 };
 
 const listers: Record<string, Lister> = {
@@ -130,18 +120,6 @@ async function ListTools() {
         description:
           "Deletes a translation from a translation memory from your Lara Translate account.",
         inputSchema: z.toJSONSchema(deleteTranslationSchema),
-      },
-      {
-        name: "import_tmx",
-        description:
-          "Imports a TMX file into a translation memory in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(importTmxSchema),
-      },
-      {
-        name: "check_import_status",
-        description:
-          "Checks the status of a TMX file import job in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(checkImportStatusSchema),
       },
       {
         name: "list_memories",

@@ -81,16 +81,18 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `text` (array): An array of text blocks to translate, each with:
     - `text` (string): The text content
     - `translatable` (boolean): Whether this block should be translated
-- `source` (optional string): Source language code (e.g., 'en-EN')
+- `source` (string, optional): Source language code (e.g., 'en-EN')
 - `target` (string): Target language code (e.g., 'it-IT')
-- `context` (optional string): Additional context to improve translation quality
-- `instructions` (optional string[]): Instructions to adjust translation behavior
-- `source_hint` (optional string): Guidance for language detection
+- `context` (string, optional): Additional context to improve translation quality
+- `instructions` (string[], optional): Instructions to adjust translation behavior
+- `source_hint` (string, optional): Guidance for language detection
 
 **Returns**: Translated text blocks maintaining the original structure
 </details>
 
 ### Translation Memories Tools
+
+The following tools allow you to manage translation memories for advanced workflows:
 
 <details>
 
@@ -104,7 +106,7 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 
 **Inputs**:
 - `name` (string): Name of the new memory
-- `external_id` (optional string): ID of the memory to import from MyMemory (e.g., 'ext_my_[MyMemory ID]')
+- `external_id` (string, optional): ID of the memory to import from MyMemory (e.g., 'ext_my_[MyMemory ID]')
 
 **Returns**: Created memory data
 </details>
@@ -137,9 +139,9 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `target` (string): Target language code
 - `sentence` (string): The source sentence
 - `translation` (string): The translated sentence
-- `tuid` (optional string): Translation Unit unique identifier
-- `sentence_before` (optional string): Context sentence before
-- `sentence_after` (optional string): Context sentence after
+- `tuid` (string, optional): Translation Unit unique identifier
+- `sentence_before` (string, optional): Context sentence before
+- `sentence_after` (string, optional): Context sentence after
 
 **Returns**: Added translation details
 </details>
@@ -153,31 +155,11 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `target` (string): Target language code
 - `sentence` (string): The source sentence
 - `translation` (string): The translated sentence
-- `tuid` (optional string): Translation Unit unique identifier
-- `sentence_before` (optional string): Context sentence before
-- `sentence_after` (optional string): Context sentence after
+- `tuid` (string, optional): Translation Unit unique identifier
+- `sentence_before` (string, optional): Context sentence before
+- `sentence_after` (string, optional): Context sentence after
 
 **Returns**: Removed translation details
-</details>
-
-<details>
-<summary><strong>import_tmx</strong> - Import a TMX file into a memory</summary>
-
-**Inputs**:
-- `id` (string): ID of the memory to update
-- `tmx` (file path): The path of the TMX file to upload
-- `gzip` (boolean): Indicates if the file is compressed (.gz)
-
-**Returns**: Import details
-</details>
-
-<details>
-<summary><strong>check_import_status</strong> - Checks the status of a TMX file import</summary>
-
-**Inputs**:
-- `id` (string): The ID of the import job
-
-**Returns**: Import details
 </details>
 
 ## 🚀 Getting Started
@@ -192,12 +174,12 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 ### 🔌 Installation
 
 #### Introduction
-Lara Translate MCP Server can be installed and then started using STDIO or HTTP. Each transport layer has its own strength.
-- STDIO transport layer is suited better for local deployments and personal use and is straightforward to configure and use.
-- HTTP transport layer relies on a web server and can accept HTTP requests. Multiple clients can connect to the same server. Additional configuration (like firewall) might be needed.
+Lara Translate MCP Server can be installed and then started using STDIO or HTTP. Each transport layer has its own strengths.
+- The STDIO transport layer is better suited for local deployments and personal use, and is straightforward to configure and use.
+- Multiple clients can connect to the same server. Additional configuration (such as firewall settings) might be needed.
 
 Lara Translate MCP supports multiple installation methods, including NPX and Docker for both transports. 
-You will find below two praticals examples to setup both a STDIO and HTTP server for Lara Translate MCP.
+You will find below two practical examples to set up both a STDIO and an HTTP server for Lara Translate MCP.
 
 ---
 
@@ -233,7 +215,7 @@ In the below example we'll use Docker.
 
 **Step 1**: Start the HTTP server by opening your terminal and typing:
 ```
-docker run translatednet/lara_mcp:latest -e USE_HTTP_SERVER=true
+docker run translatednet/lara_mcp:latest -e TRANSPORT=http
 ```
 **Step 2**: Open your client’s MCP configuration JSON file with a text editor, then copy and paste the following snippet:
 ```
@@ -270,7 +252,7 @@ You can customize the MCP Server installation by setting the following environme
 
 | Variable                   | Type    | Default     | Example              | Description                                                                 |
 |----------------------------|---------|-------------|----------------------|-----------------------------------------------------------------------------|
-| `USE_HTTP_SERVER`          | boolean | `false`     | `true`               | Starts the server with the HTTP transport layer. If `false`, STDIO is used. |
+| `TRANSPORT`                | string  | `stdio`     | `http`               | Sets the transport layer. Use `http` for HTTP server, `stdio` for STDIO server. |
 | `HOST`                     | string  | `0.0.0.0`   | `127.0.0.1`          | Network interface the server should bind to.                                |
 | `PORT`                     | number  | `3000`      | `80`                 | Port the server should listen on.                                           |
 | `LARA_ACCESS_KEY_ID`       | string  | *(empty)*   | `MY_ACCESS_KEY_ID`   | Lara Translate API access key ID. Used only in STDIO mode.                  |
@@ -426,7 +408,7 @@ This option requires Docker to be installed on your system.
 
 1. Start the HTTP server by opening your terminal and typing:
 ```
-docker run translatednet/lara_mcp:latest -e USE_HTTP_SERVER=true
+docker run translatednet/lara-mcp:latest -e TRANSPORT=http
 ```
 2. Open your client’s MCP configuration JSON file with a text editor, then copy and paste the following snippet:
 ```
@@ -463,7 +445,7 @@ docker build -t lara-mcp .
 
 4. Start the server
 ```bash
-docker run lara_mcp -e USE_HTTP_SERVER=true
+docker run lara-mcp -e TRANSPORT=http
 ```
 
 5. Add the following to your MCP configuration file:
