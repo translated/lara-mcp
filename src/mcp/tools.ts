@@ -1,38 +1,31 @@
-import { CallToolRequest, CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequest,
+  CallToolResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import { Translator } from "@translated/lara";
 import * as z from "zod/v4";
 
-import { 
+import {
   addTranslation,
-  addTranslationSchema 
+  addTranslationSchema,
 } from "./tools/add_translation.js";
-import { 
-  createMemory,
-  createMemorySchema 
-} from "./tools/create_memory.js";
-import { 
-  deleteMemory,
-  deleteMemorySchema 
-} from "./tools/delete_memory.js";
+import {
+  checkImportStatus,
+  checkImportStatusSchema,
+} from "./tools/check_import_status.js";
+import { createMemory, createMemorySchema } from "./tools/create_memory.js";
+import { deleteMemory, deleteMemorySchema } from "./tools/delete_memory.js";
 import {
   deleteTranslation,
-  deleteTranslationSchema
+  deleteTranslationSchema,
 } from "./tools/delete_translation.js";
-import {
-  listLanguages,
-  listLanguagesSchema
-} from "./tools/list_languages.js";
-import {
-  listMemories,
-  listMemoriesSchema
-} from "./tools/list_memories.js";
-import {
-  translateHandler,
-  translateSchema
-} from "./tools/translate.js";
+import { importTmx, importTmxSchema } from "./tools/import_tmx.js";
+import { listLanguages, listLanguagesSchema } from "./tools/list_languages.js";
+import { listMemories, listMemoriesSchema } from "./tools/list_memories.js";
+import { translateHandler, translateSchema } from "./tools/translate.js";
 import {
   updateMemory,
-  updateMemorySchema
+  updateMemorySchema,
 } from "./tools/update_memory.tool.js";
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
@@ -46,7 +39,9 @@ const handlers: Record<string, Handler> = {
   delete_memory: deleteMemory,
   update_memory: updateMemory,
   add_translation: addTranslation,
-  delete_translation: deleteTranslation
+  delete_translation: deleteTranslation,
+  import_tmx: importTmx,
+  check_import_status: checkImportStatus,
 };
 
 const listers: Record<string, Lister> = {
@@ -54,7 +49,10 @@ const listers: Record<string, Lister> = {
   list_languages: listLanguages,
 };
 
-async function CallTool(request: CallToolRequest, lara: Translator): Promise<CallToolResult> {
+async function CallTool(
+  request: CallToolRequest,
+  lara: Translator
+): Promise<CallToolResult> {
   const { name, arguments: args } = request.params;
 
   try {
@@ -76,7 +74,9 @@ async function CallTool(request: CallToolRequest, lara: Translator): Promise<Cal
     throw new InvalidInputError(`Tool ${name} not found`);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new InvalidInputError(`Invalid input: ${JSON.stringify(error.issues)}`);
+      throw new InvalidInputError(
+        `Invalid input: ${JSON.stringify(error.issues)}`
+      );
     }
     throw error;
   }
@@ -122,6 +122,18 @@ async function ListTools() {
         inputSchema: z.toJSONSchema(deleteTranslationSchema),
       },
       {
+        name: "import_tmx",
+        description:
+          "Imports a TMX file into a translation memory in your Lara Translate account.",
+        inputSchema: z.toJSONSchema(importTmxSchema),
+      },
+      {
+        name: "check_import_status",
+        description:
+          "Checks the status of a TMX file import job in your Lara Translate account.",
+        inputSchema: z.toJSONSchema(checkImportStatusSchema),
+      },
+      {
         name: "list_memories",
         description:
           "Lists all translation memories in your Lara Translate account.",
@@ -137,4 +149,4 @@ async function ListTools() {
   };
 }
 
-export {CallTool, ListTools};
+export { CallTool, ListTools };

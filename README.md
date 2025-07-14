@@ -162,6 +162,26 @@ The following tools allow you to manage translation memories for advanced workfl
 **Returns**: Removed translation details
 </details>
 
+<details>
+<summary><strong>import_tmx</strong> - Import a TMX file into a memory</summary>
+
+**Inputs**:
+- `id` (string): ID of the memory to update
+- `content` (string): Content of the tmx to import
+- `gzip` (boolean): Indicates if the file is compressed (.gz)
+
+**Returns**: Import details
+</details>
+
+<details>
+<summary><strong>check_import_status</strong> - Checks the status of a TMX file import</summary>
+
+**Inputs**:
+- `id` (string): The ID of the import job
+
+**Returns**: Import details
+</details>
+
 ## 🚀 Getting Started
 
 ### 📋 Requirements

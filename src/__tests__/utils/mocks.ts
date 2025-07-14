@@ -19,6 +19,8 @@ export function createMockTranslator() {
     getMemories: vi.fn(),
     addTranslation: vi.fn(),
     deleteTranslation: vi.fn(),
+    importTmx: vi.fn(),
+    getImportStatus: vi.fn(),
     memories: {
       create: vi.fn(),
       update: vi.fn(),
@@ -27,6 +29,8 @@ export function createMockTranslator() {
       list: vi.fn(),
       addTranslation: vi.fn(),
       deleteTranslation: vi.fn(),
+      importTmx: vi.fn(),
+      getImportStatus: vi.fn(),
     },
     client: {}
   };
