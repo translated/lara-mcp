@@ -3,10 +3,10 @@ import { z } from "zod/v4";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export const importTmxSchema = z.object({
   id: z
@@ -55,7 +55,7 @@ export async function importTmx(args: any, lara: Translator) {
 
   try {
     if (tmx_url) {
-      await execAsync(`curl -L "${tmx_url}" -o "${tempFilePath}"`);
+      await execFileAsync("curl", ["-L", tmx_url, "-o", tempFilePath]);
     } else if (tmx_content) {
       fs.writeFileSync(tempFilePath, tmx_content);
     }
