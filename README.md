@@ -15,7 +15,7 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
   - 🔌 [Installation](#-installation)
     - 🖥️ [STDIO Server](#%EF%B8%8F-stdio-server)
     - 🌐 [HTTP Server](#-web-server)
-  - ⚙️ [Enviromental Variables](#%EF%B8%8F-environment-variables)
+  - ⚙️ [Environmental Variables](#%EF%B8%8F-environmental-variables)
 - 🧩 [Installation Engines](#-installation-engines)
 - 💻 [Popular Clients that supports MCPs](#-popular-clients-that-supports-mcps)
 - 🆘 [Support](#-support)
