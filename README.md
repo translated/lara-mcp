@@ -168,7 +168,6 @@ The following tools allow you to manage translation memories for advanced workfl
 **Inputs**:
 - `id` (string): ID of the memory to update
 - `content` (string): Content of the tmx to import
-- `gzip` (boolean): Indicates if the file is compressed (.gz)
 
 **Returns**: Import details
 </details>
