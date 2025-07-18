@@ -188,7 +188,7 @@ TODO
 </details>
 
 <details>
-<summary><strong>✅ Clients supporting <code>url</code> configuration (e.g., Cursor, Continue)<strong/></summary>
+<summary><strong>✅ Clients supporting <code>url</code> configuration (e.g., Cursor, Continue)</strong></summary>
   
 #### This installation guide is intended for clients that support the url-based configuration. These clients can connect to Lara through a remote HTTP endpoint by specifying a simple configuration object.
 
@@ -213,7 +213,7 @@ Some examples of supported clients include Cursor, Continue, OpenDevin, and Aide
 }
 ```
 
-2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials (refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details).
+2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials. Refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details.
 
 3. Restart your MCP client.
 
