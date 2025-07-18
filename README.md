@@ -1,4 +1,3 @@
-
 # Lara Translate MCP Server
 
 A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection, context-aware translations and translation memories.
@@ -11,12 +10,9 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 - 📖 [Introduction](#-introduction)
 - 🛠 [Available Tools](#-available-tools)
 - 🚀 [Getting Started](#-getting-started)
-  - 📋 [Requirements](#-requirements)
-  - 🔌 [Installation](#-installation)
-    - 🖥️ [STDIO Server](#%EF%B8%8F-stdio-server)
-    - 🌐 [HTTP Server](#-web-server)
-  - ⚙️ [Environmental Variables](#%EF%B8%8F-environmental-variables)
-- 🧩 [Installation Engines](#-installation-engines)
+  - 📋 [HTTP Server](#http-server-)
+  - 🔌 [STDIO Server](#stdio-server-%EF%B8%8F)
+- 🧪 [Verify Installation](#-verify-installation)
 - 💻 [Popular Clients that supports MCPs](#-popular-clients-that-supports-mcps)
 - 🆘 [Support](#-support)
 
@@ -81,18 +77,16 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `text` (array): An array of text blocks to translate, each with:
     - `text` (string): The text content
     - `translatable` (boolean): Whether this block should be translated
-- `source` (string, optional): Source language code (e.g., 'en-EN')
+- `source` (optional string): Source language code (e.g., 'en-EN')
 - `target` (string): Target language code (e.g., 'it-IT')
-- `context` (string, optional): Additional context to improve translation quality
-- `instructions` (string[], optional): Instructions to adjust translation behavior
-- `source_hint` (string, optional): Guidance for language detection
+- `context` (optional string): Additional context to improve translation quality
+- `instructions` (optional string[]): Instructions to adjust translation behavior
+- `source_hint` (optional string): Guidance for language detection
 
 **Returns**: Translated text blocks maintaining the original structure
 </details>
 
 ### Translation Memories Tools
-
-The following tools allow you to manage translation memories for advanced workflows:
 
 <details>
 
@@ -106,7 +100,7 @@ The following tools allow you to manage translation memories for advanced workfl
 
 **Inputs**:
 - `name` (string): Name of the new memory
-- `external_id` (string, optional): ID of the memory to import from MyMemory (e.g., 'ext_my_[MyMemory ID]')
+- `external_id` (optional string): ID of the memory to import from MyMemory (e.g., 'ext_my_[MyMemory ID]')
 
 **Returns**: Created memory data
 </details>
@@ -139,9 +133,9 @@ The following tools allow you to manage translation memories for advanced workfl
 - `target` (string): Target language code
 - `sentence` (string): The source sentence
 - `translation` (string): The translated sentence
-- `tuid` (string, optional): Translation Unit unique identifier
-- `sentence_before` (string, optional): Context sentence before
-- `sentence_after` (string, optional): Context sentence after
+- `tuid` (optional string): Translation Unit unique identifier
+- `sentence_before` (optional string): Context sentence before
+- `sentence_after` (optional string): Context sentence after
 
 **Returns**: Added translation details
 </details>
@@ -155,9 +149,9 @@ The following tools allow you to manage translation memories for advanced workfl
 - `target` (string): Target language code
 - `sentence` (string): The source sentence
 - `translation` (string): The translated sentence
-- `tuid` (string, optional): Translation Unit unique identifier
-- `sentence_before` (string, optional): Context sentence before
-- `sentence_after` (string, optional): Context sentence after
+- `tuid` (optional string): Translation Unit unique identifier
+- `sentence_before` (optional string): Context sentence before
+- `sentence_after` (optional string): Context sentence after
 
 **Returns**: Removed translation details
 </details>
@@ -167,7 +161,8 @@ The following tools allow you to manage translation memories for advanced workfl
 
 **Inputs**:
 - `id` (string): ID of the memory to update
-- `content` (string): Content of the tmx to import
+- `tmx_content` (string): The content of the tmx file to upload
+- `gzip` (boolean): Indicates if the file is compressed (.gz)
 
 **Returns**: Import details
 </details>
@@ -182,107 +177,53 @@ The following tools allow you to manage translation memories for advanced workfl
 </details>
 
 ## 🚀 Getting Started
+Lara supports both the STDIO and streamable HTTP protocols. For a hassle-free setup, we recommend using the HTTP protocol. If you prefer to use STDIO, it must be installed locally on your machine.
 
-### 📋 Requirements
+You'll find setup instructions for both protocols in the sections below.
 
-- Lara Translate API Credentials
-    - To get them you can refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)
-- An LLM client that supports Model Context Protocol (MCP), such as Claude Desktop, Cursors, or GitHub Copilot
-- NPX or Docker (depending on your preferred installation method)
-
-### 🔌 Installation
-
-#### Introduction
-Lara Translate MCP Server can be installed and then started using STDIO or HTTP. Each transport layer has its own strengths.
-- The STDIO transport layer is better suited for local deployments and personal use, and is straightforward to configure and use.
-- Multiple clients can connect to the same server. Additional configuration (such as firewall settings) might be needed.
-
-Lara Translate MCP supports multiple installation methods, including NPX and Docker for both transports. 
-You will find below two practical examples to set up both a STDIO and an HTTP server for Lara Translate MCP.
-
----
-
-#### 🖥️ STDIO Server
-In the below example we'll use NPX.
-
-**Step 1**: Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
-```
-{
-  "mcpServers": {
-    "lara-translate": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@translated/lara-mcp@latest"
-      ],
-      "env": {
-        "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
-        "LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"
-      }
-    }
-  }
-}
-```
-**Step 2**: Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials (refer to the  [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)  for details).
-
-**Step 3**: Restart your MCP client.
-
----
-
-#### 🌐 Web server
-In the below example we'll use Docker.
-
-**Step 1**: Start the HTTP server by opening your terminal and typing:
-```
-docker run translatednet/lara_mcp:latest -e TRANSPORT=http
-```
-**Step 2**: Open your client’s MCP configuration JSON file with a text editor, then copy and paste the following snippet:
-```
-{
-  "mcpServers":{
-    "lara-translate":{
-      "url":"http://localhost:3000/mcp",
-      "headers":{
-        "x-lara-api-id":"<YOUR_ACCESS_KEY_ID>",
-        "x-lara-api-secret":"<YOUR_ACCESS_KEY_SECRET>"
-      }
-    }
-  }
-}
-```
-**Step 3**: Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials (refer to the  [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)  for details).
-
-#### Verifying the installation
-After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
-
-> The method for viewing installed MCPs varies by client. Please consult your MCP client's documentation.
-
-To verify that Lara Translate MCP is working correctly, try translating with a simple prompt:
-
-```
-Translate with Lara "Hello world" to Spanish
-```
-
-Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
-
-### ⚙️ Environment Variables
-
-You can customize the MCP Server installation by setting the following environment variables **before** starting the server:
-
-| Variable                   | Type    | Default     | Example              | Description                                                                 |
-|----------------------------|---------|-------------|----------------------|-----------------------------------------------------------------------------|
-| `TRANSPORT`                | string  | `stdio`     | `http`               | Sets the transport layer. Use `http` for HTTP server, `stdio` for STDIO server. |
-| `HOST`                     | string  | `0.0.0.0`   | `127.0.0.1`          | Network interface the server should bind to.                                |
-| `PORT`                     | number  | `3000`      | `80`                 | Port the server should listen on.                                           |
-| `LARA_ACCESS_KEY_ID`       | string  | *(empty)*   | `MY_ACCESS_KEY_ID`   | Lara Translate API access key ID. Used only in STDIO mode.                  |
-| `LARA_ACCESS_KEY_SECRET`   | string  | *(empty)*   | `MY_ACCESS_KEY_SECRET` | Lara Translate API secret access key. Used only in STDIO mode.            |
-
-## 🧩 Installation Engines
-
-### 🖥️ STDIO Server
+### HTTP Server 🌐
+<details>
+<summary><strong>❌ Clients NOT supporting <code>url</code> configuration (e.g., Claude, OpenAI)</strong></summary>
+TODO
+</details>
 
 <details>
-<summary><strong>Option 1: Using NPX</strong></summary>
+<summary><strong>✅ Clients supporting <code>url</code> configuration (e.g., Cursor, Continue)<strong/></summary>
+  
+#### This installation guide is intended for clients that support the url-based configuration. These clients can connect to Lara through a remote HTTP endpoint by specifying a simple configuration object.
+
+Some examples of supported clients include Cursor, Continue, OpenDevin, and Aider.
+> If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
+
+---
+
+1. Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
+
+```json
+{
+  "mcpServers": {
+    "lara": {
+      "url": "https://mcp.laratranslate.it/mcp",
+      "headers": {
+        "x-lara-access-key-id": "<YOUR_ACCESS_KEY_ID>",
+        "x-lara-access-key-secret": "<YOUR_ACCESS_KEY_SECRET>"
+      }
+    }
+  }
+}
+```
+
+2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials (refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details).
+
+3. Restart your MCP client.
+
+</details>
+
+---
+
+### STDIO Server 🖥️
+<details>
+<summary><strong>Using NPX</strong></summary>
 
 This option requires Node.js to be installed on your system.
 
@@ -306,7 +247,7 @@ This option requires Node.js to be installed on your system.
 </details>
 
 <details>
-<summary><strong>Option 2: Using Docker</strong></summary>
+<summary><strong>Using Docker</strong></summary>
 
 This option requires Docker to be installed on your system.
 
@@ -339,7 +280,7 @@ This option requires Docker to be installed on your system.
 </details>
 
 <details>
-<summary><strong>Option 3: Building from Source</strong></summary>
+<summary><strong>Building from Source</strong></summary>
 
 #### Using Node.js
 
@@ -418,73 +359,17 @@ docker build -t lara-mcp .
 4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
 </details>
 
-### 🌐 Web server
+## 🧪 Verify Installation
 
-<details>
-<summary><strong>Option 1: Using Docker</strong></summary>
+After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
+> The method for viewing installed MCPs varies by client. Please consult your MCP client's documentation.
 
-This option requires Docker to be installed on your system.
-
-1. Start the HTTP server by opening your terminal and typing:
-```
-docker run translatednet/lara-mcp:latest -e TRANSPORT=http
-```
-2. Open your client’s MCP configuration JSON file with a text editor, then copy and paste the following snippet:
-```
-{
-  "mcpServers":{
-    "lara-translate":{
-      "url":"http://localhost:3000/mcp",
-      "headers":{
-        "x-lara-api-id":"<YOUR_ACCESS_KEY_ID>",
-        "x-lara-api-secret":"<YOUR_ACCESS_KEY_SECRET>"
-      }
-    }
-  }
-}
-```
-3. Replace  `<YOUR_ACCESS_KEY_ID>`  and  `<YOUR_ACCESS_KEY_SECRET>`  with your Lara Translate API credentials.
-</details>
-
-<details>
-<summary><strong>Option 2: Building from Source</strong></summary>
-
-#### Building a Docker Image
-
-1. Clone the repository:
-```bash
-git clone https://github.com/translated/lara-mcp.git
-cd lara-mcp
+To verify that Lara Translate MCP is working correctly, try translating with a simple prompt:
+```text
+Translate with Lara "Hello world" to Spanish
 ```
 
-2. Build the Docker image:
-```bash
-docker build -t lara-mcp .
-```
-
-4. Start the server
-```bash
-docker run lara-mcp -e TRANSPORT=http
-```
-
-5. Add the following to your MCP configuration file:
-```json
-{
-  "mcpServers":{
-    "lara-translate":{
-      "url":"http://localhost:3000/mcp",
-      "headers":{
-        "x-lara-api-id":"<YOUR_ACCESS_KEY_ID>",
-        "x-lara-api-secret":"<YOUR_ACCESS_KEY_SECRET>"
-      }
-    }
-  }
-}
-```
-
-6. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
-</details>
-
+Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
 
 ## 💻 Popular Clients that supports MCPs 
 
