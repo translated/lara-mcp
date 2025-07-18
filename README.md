@@ -185,7 +185,7 @@ You'll find setup instructions for both protocols in the sections below.
 <details>
 <summary><strong>❌ Clients NOT supporting <code>url</code> configuration (e.g., Claude, OpenAI)</strong></summary>
 
-This installation guide is intended for clients that do NOT support the url-based configuration.
+This installation guide is intended for clients that do NOT support the url-based configuration. This option requires Node.js to be installed on your system.
 
 Some examples of supported clients include Claude.
 > If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
