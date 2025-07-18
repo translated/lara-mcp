@@ -184,7 +184,42 @@ You'll find setup instructions for both protocols in the sections below.
 ### HTTP Server 🌐
 <details>
 <summary><strong>❌ Clients NOT supporting <code>url</code> configuration (e.g., Claude, OpenAI)</strong></summary>
-TODO
+
+This installation guide is intended for clients that do NOT support the url-based configuration.
+
+Some examples of supported clients include Claude.
+> If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
+
+---
+
+1. Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
+
+```json
+{
+  "mcpServers": {
+    "lara": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://mcp.laratranslate.it/mcp",
+        "--header",
+        "x-lara-access-key-id: ${X_LARA_ACCESS_KEY_ID}",
+        "--header",
+        "x-lara-access-key-secret: ${X_LARA_ACCESS_KEY_SECRET}"
+      ],
+      "env": {
+        "X_LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
+        "X_LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"
+      }
+    }
+  }
+}
+```
+
+2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials. Refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details.
+
+3. Restart your MCP client.
+
 </details>
 
 <details>
