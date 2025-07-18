@@ -189,8 +189,7 @@ TODO
 
 <details>
 <summary><strong>✅ Clients supporting <code>url</code> configuration (e.g., Cursor, Continue)</strong></summary>
-  
-#### This installation guide is intended for clients that support the url-based configuration. These clients can connect to Lara through a remote HTTP endpoint by specifying a simple configuration object.
+This installation guide is intended for clients that support the url-based configuration. These clients can connect to Lara through a remote HTTP endpoint by specifying a simple configuration object.
 
 Some examples of supported clients include Cursor, Continue, OpenDevin, and Aider.
 > If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
