@@ -18,6 +18,7 @@ function mcpRouter(restServer: RestServer): express.Router {
     const xLaraAccessKeySecret = req.headers["x-lara-access-key-secret"] as string | undefined;
 
     if (!xLaraAccessKeyId || !xLaraAccessKeySecret) {
+      logger.debug("No credentials provided in MCP request");
       restServer.sendJsonRpc(res, new InvalidCredentialsError());
       return;
     }
@@ -48,13 +49,13 @@ function mcpRouter(restServer: RestServer): express.Router {
   });
 
   router.get("/", (_req, res) => {
-    logger.debug("Received GET request on /mcp, sending MethodNotAllowedError");
+    logger.debug("Received GET request on /v1, sending MethodNotAllowedError");
     restServer.sendJsonRpc(res, new MethodNotAllowedError());
   });
 
   router.delete("/", (_req, res) => {
     logger.debug(
-      "Received DELETE request on /mcp, sending MethodNotAllowedError"
+      "Received DELETE request on /v1, sending MethodNotAllowedError"
     );
     restServer.sendJsonRpc(res, new MethodNotAllowedError());
   });

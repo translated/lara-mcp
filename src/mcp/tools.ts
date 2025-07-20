@@ -55,6 +55,8 @@ async function CallTool(
 ): Promise<CallToolResult> {
   const { name, arguments: args } = request.params;
 
+  logger.debug({ toolName: name }, "Tool called");
+
   try {
     if (name in handlers) {
       const result = await handlers[name as keyof typeof handlers](args, lara);
