@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { deleteTranslation, deleteTranslationSchema } from '../../tools/delete_translation.js';
+import { deleteTranslation, deleteTranslationSchema } from '../../mcp/tools/delete_translation.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
 

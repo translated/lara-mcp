@@ -6,7 +6,16 @@
     "esModuleInterop": true,
     "strict": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "#env": ["./src/env.js"],
+      "#exception": ["./src/exception.js"],
+      "#logger": ["./src/logger.js"],
+      "#rest/server": ["./src/rest/server.js"],
+      "#mcp/server": ["./src/mcp/server.js"]
+    }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

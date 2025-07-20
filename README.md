@@ -10,9 +10,9 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 - 📖 [Introduction](#-introduction)
 - 🛠 [Available Tools](#-available-tools)
 - 🚀 [Getting Started](#-getting-started)
-  - 📋 [Requirements](#-requirements)
-  - 🔌 [Installation](#-installation)
-- 🧩 [Installation Engines](#-installation-engines)
+  - 📋 [HTTP Server](#http-server-)
+  - 🔌 [STDIO Server](#stdio-server-%EF%B8%8F)
+- 🧪 [Verify Installation](#-verify-installation)
 - 💻 [Popular Clients that supports MCPs](#-popular-clients-that-supports-mcps)
 - 🆘 [Support](#-support)
 
@@ -161,7 +161,7 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 
 **Inputs**:
 - `id` (string): ID of the memory to update
-- `tmx` (file path): The path of the TMX file to upload
+- `tmx_content` (string): The content of the tmx file to upload
 - `gzip` (boolean): Indicates if the file is compressed (.gz)
 
 **Returns**: Import details
@@ -177,69 +177,87 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 </details>
 
 ## 🚀 Getting Started
+Lara supports both the STDIO and streamable HTTP protocols. For a hassle-free setup, we recommend using the HTTP protocol. If you prefer to use STDIO, it must be installed locally on your machine.
 
-### 📋 Requirements
+You'll find setup instructions for both protocols in the sections below.
 
-- Lara Translate API Credentials
-    - To get them you can refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials)
-- An LLM client that supports Model Context Protocol (MCP), such as Claude Desktop, Cursors, or GitHub Copilot
-- NPX or Docker (depending on your preferred installation method)
+### HTTP Server 🌐
+<details>
+<summary><strong>❌ Clients NOT supporting <code>url</code> configuration (e.g., Claude, OpenAI)</strong></summary>
 
-### 🔌 Installation
+This installation guide is intended for clients that do NOT support the url-based configuration. This option requires Node.js to be installed on your system.
 
-#### Introduction
-The installation process is standardized across all MCP clients. It involves manually adding a configuration object to your client's MCP configuration JSON file.
 > If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
-
-Lara Translate MCP supports multiple installation methods, including NPX and Docker. \
-Below, we'll use NPX as an example.
 
 ---
 
-#### Installation & Configuration
-
-**Step 1**: Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
+1. Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
 
 ```json
 {
   "mcpServers": {
-    "lara-translate": {
+    "lara": {
       "command": "npx",
       "args": [
-        "-y",
-        "@translated/lara-mcp@latest"
+        "mcp-remote",
+        "https://mcp.laratranslate.it/mcp",
+        "--header",
+        "x-lara-access-key-id: ${X_LARA_ACCESS_KEY_ID}",
+        "--header",
+        "x-lara-access-key-secret: ${X_LARA_ACCESS_KEY_SECRET}"
       ],
       "env": {
-        "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
-        "LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"
+        "X_LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
+        "X_LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>"
       }
     }
   }
 }
 ```
 
-**Step 2**: Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials (refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details).
+2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials. Refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details.
 
-**Step 3**: Restart your MCP client.
+3. Restart your MCP client.
+
+</details>
+
+<details>
+<summary><strong>✅ Clients supporting <code>url</code> configuration (e.g., Cursor, Continue)</strong></summary>
+
+This installation guide is intended for clients that support the url-based configuration. These clients can connect to Lara through a remote HTTP endpoint by specifying a simple configuration object.
+
+Some examples of supported clients include Cursor, Continue, OpenDevin, and Aider.
+> If you're unsure how to configure an MCP with your client, please refer to your MCP client's official documentation.
 
 ---
 
-#### Verify Installation
+1. Open your client's MCP configuration JSON file with a text editor, then copy and paste the following snippet:
 
-After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
-> The method for viewing installed MCPs varies by client. Please consult your MCP client's documentation.
-
-To verify that Lara Translate MCP is working correctly, try translating with a simple prompt:
-```text
-Translate with Lara "Hello world" to Spanish
+```json
+{
+  "mcpServers": {
+    "lara": {
+      "url": "https://mcp.laratranslate.it/mcp",
+      "headers": {
+        "x-lara-access-key-id": "<YOUR_ACCESS_KEY_ID>",
+        "x-lara-access-key-secret": "<YOUR_ACCESS_KEY_SECRET>"
+      }
+    }
+  }
+}
 ```
 
-Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
+2. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your Lara Translate API credentials. Refer to the [Official Documentation](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials) for details.
 
-## 🧩 Installation Engines
+3. Restart your MCP client.
 
+</details>
+
+---
+
+### STDIO Server 🖥️
 <details>
-<summary><strong>Option 1: Using NPX</strong></summary>
+<summary><strong>Using NPX</strong></summary>
 
 This option requires Node.js to be installed on your system.
 
@@ -263,7 +281,7 @@ This option requires Node.js to be installed on your system.
 </details>
 
 <details>
-<summary><strong>Option 2: Using Docker</strong></summary>
+<summary><strong>Using Docker</strong></summary>
 
 This option requires Docker to be installed on your system.
 
@@ -296,7 +314,7 @@ This option requires Docker to be installed on your system.
 </details>
 
 <details>
-<summary><strong>Option 3: Building from Source</strong></summary>
+<summary><strong>Building from Source</strong></summary>
 
 #### Using Node.js
 
@@ -374,6 +392,18 @@ docker build -t lara-mcp .
 
 4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
 </details>
+
+## 🧪 Verify Installation
+
+After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
+> The method for viewing installed MCPs varies by client. Please consult your MCP client's documentation.
+
+To verify that Lara Translate MCP is working correctly, try translating with a simple prompt:
+```text
+Translate with Lara "Hello world" to Spanish
+```
+
+Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
 
 ## 💻 Popular Clients that supports MCPs 
 

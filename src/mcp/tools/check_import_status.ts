@@ -1,5 +1,5 @@
 import { Translator } from "@translated/lara";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const checkImportStatusSchema = z.object({
   id: z.string().describe("The ID of the import job"),
