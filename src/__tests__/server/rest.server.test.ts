@@ -10,7 +10,7 @@ let app: Express;
 beforeAll(() => {
   const restServer = new RestServer();
   app = restServer.configure();
-  app.use("/mcp", mcpRouter(restServer));
+  app.use("/v1", mcpRouter(restServer));
   app.use("/server-info", serverInfoRouter(restServer));
 });
 
@@ -41,9 +41,9 @@ describe("RestServer", () => {
     expect(res.body).toHaveProperty("version");
   });
 
-  it("POST /mcp without credentials should return error", async () => {
+  it("POST /v1 without credentials should return error", async () => {
     const res = await request(app)
-      .post("/mcp")
+      .post("/v1")
       .set(defaultHeaders)
       .send(defaultPostMcpBody);
 
@@ -53,9 +53,9 @@ describe("RestServer", () => {
     expect(res.body.error).toHaveProperty("message");
   });
 
-  it("POST /mcp with only one credential header should return error", async () => {
+  it("POST /v1 with only one credential header should return error", async () => {
     const res1 = await request(app)
-      .post("/mcp")
+      .post("/v1")
       .set("x-lara-access-key-id", "test")
       .set(defaultHeaders)
       .send(defaultPostMcpBody);
@@ -64,7 +64,7 @@ describe("RestServer", () => {
     expect(res1.body).toHaveProperty("error");
 
     const res2 = await request(app)
-      .post("/mcp")
+      .post("/v1")
       .set("x-lara-access-key-secret", "test")
       .set(defaultHeaders)
       .send(defaultPostMcpBody);
@@ -73,9 +73,9 @@ describe("RestServer", () => {
     expect(res2.body).toHaveProperty("error");
   });
 
-  it("POST /mcp with both credentials should return success", async () => {
+  it("POST /v1 with both credentials should return success", async () => {
     const res = await request(app)
-      .post("/mcp")
+      .post("/v1")
       .set("x-lara-access-key-id", "test")
       .set("x-lara-access-key-secret", "test")
       .set(defaultHeaders)
@@ -84,8 +84,8 @@ describe("RestServer", () => {
     expect(res.status).toBe(200);
   });
 
-  it("GET /mcp should return MethodNotAllowedError", async () => {
-    const res = await request(app).get("/mcp").set(defaultHeaders);
+  it("GET /v1 should return MethodNotAllowedError", async () => {
+    const res = await request(app).get("/v1").set(defaultHeaders);
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty("error");
@@ -93,8 +93,8 @@ describe("RestServer", () => {
     expect(res.body.error).toHaveProperty("message");
   });
 
-  it("DELETE /mcp should return MethodNotAllowedError", async () => {
-    const res = await request(app).delete("/mcp").set(defaultHeaders);
+    it("DELETE /v1 should return MethodNotAllowedError", async () => {
+    const res = await request(app).delete("/v1").set(defaultHeaders);
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty("error");

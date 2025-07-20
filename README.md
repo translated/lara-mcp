@@ -200,7 +200,7 @@ This installation guide is intended for clients that do NOT support the url-base
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp.laratranslate.it/mcp",
+        "https://mcp.laratranslate.com/v1",
         "--header",
         "x-lara-access-key-id: ${X_LARA_ACCESS_KEY_ID}",
         "--header",
@@ -237,7 +237,7 @@ Some examples of supported clients include Cursor, Continue, OpenDevin, and Aide
 {
   "mcpServers": {
     "lara": {
-      "url": "https://mcp.laratranslate.it/mcp",
+      "url": "https://mcp.laratranslate.com/v1",
       "headers": {
         "x-lara-access-key-id": "<YOUR_ACCESS_KEY_ID>",
         "x-lara-access-key-secret": "<YOUR_ACCESS_KEY_SECRET>"

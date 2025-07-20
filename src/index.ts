@@ -44,7 +44,7 @@ function httpServer() {
 
   restServer
     .configure()
-    .use("/mcp", mcpRouter(restServer))
+    .use("/v1", mcpRouter(restServer))
     .use("/server-info", serverInfoRouter(restServer));
 
   restServer.start();
