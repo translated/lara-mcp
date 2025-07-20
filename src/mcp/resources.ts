@@ -48,6 +48,8 @@ async function ReadResource(
 ): Promise<ReadResourceResult> {
   const { uri } = request.params;
 
+  logger.debug({ uri }, "Resource accessed");
+
   try {
     if (uri === "memories://list") {
       const memories = await listMemories(lara);

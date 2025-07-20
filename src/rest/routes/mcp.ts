@@ -18,6 +18,7 @@ function mcpRouter(restServer: RestServer): express.Router {
     const xLaraAccessKeySecret = req.headers["x-lara-access-key-secret"] as string | undefined;
 
     if (!xLaraAccessKeyId || !xLaraAccessKeySecret) {
+      logger.debug("No credentials provided in MCP request");
       restServer.sendJsonRpc(res, new InvalidCredentialsError());
       return;
     }
