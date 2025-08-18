@@ -1,0 +1,25 @@
+name: Run node tests on commit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@latest-10
+      
+      - name: Run tests
+        run: ./ops/run-tests.sh

@@ -1,0 +1,24 @@
+name: Run docker tests on commit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        run: |
+          # Ensure Docker is installed and running
+          docker --version
+
+      - name: Build Docker image
+        run: |
+          docker build -t temp-image .
