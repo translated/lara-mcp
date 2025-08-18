@@ -6,6 +6,8 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 [![Docker Pulls](https://img.shields.io/docker/pulls/translatednet/lara-mcp.svg)](https://hub.docker.com/r/translatednet/lara-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/@translated/lara-mcp.svg)](https://www.npmjs.com/package/@translated/lara-mcp)
 
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/translated/lara-mcp)](https://archestra.ai/mcp-catalog/translated__lara-mcp)
+
 ## 📚 Table of Contents
 - 📖 [Introduction](#-introduction)
 - 🛠 [Available Tools](#-available-tools)
