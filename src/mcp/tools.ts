@@ -89,10 +89,15 @@ async function CallTool(
       );
     }
 
+    // Preserve existing InvalidInputError instances (and their messages)
+    if (error instanceof InvalidInputError) {
+      throw error;
+    }
+
     // Log full error internally for debugging
     logger.error({ error, toolName: name }, "Tool execution error");
 
-    // Return generic error to client
+    // Return generic error to client for unexpected errors
     throw new InvalidInputError("An error occurred while processing your request");
   }
 }

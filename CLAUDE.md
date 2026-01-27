@@ -73,9 +73,9 @@ The MCP server uses a **singleton caching pattern** with LRU eviction and TTL ex
 - Periodic cleanup runs every 15 minutes to remove expired entries
 - Thread-safe with mutex-protected cache operations
 
-The server factory function `getMcpServer(config)` accepts either:
-- `ApiKeyConfig`: `{ type: "apiKey", accessKeyId, accessKeySecret }`
-- `OAuthConfig`: `{ type: "oauth", authToken, refreshToken }`
+The server factory function `getMcpServer(accessKeyId, accessKeySecret)` accepts:
+- `accessKeyId`: The Lara Translate API access key ID
+- `accessKeySecret`: The Lara Translate API access key secret
 
 #### Authentication
 
@@ -151,11 +151,11 @@ Core configuration (`src/env.ts`):
 
 Custom exception classes (`src/exception.ts`):
 - `ServerException` - Base exception with error code
-- `InvalidInputError` - Invalid request parameters (code: -32602)
+- `InvalidInputError` - Invalid request parameters (code: -32600)
 - `InvalidCredentialsError` - Authentication failure (code: -32600)
 - `MethodNotAllowedError` - HTTP method not allowed (code: -32601)
 
-All tool errors are logged with detailed context including status codes, error types, and stack traces before being propagated.
+Tool errors are logged with detailed context. Validation (Zod) errors are returned with specific field details, while other errors are returned as a generic "An error occurred while processing your request" message for security.
 
 ### Logging
 

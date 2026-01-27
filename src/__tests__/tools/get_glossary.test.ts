@@ -14,6 +14,19 @@ describe('getGlossarySchema', () => {
   it('should reject missing id', () => {
     expect(() => getGlossarySchema.parse({})).toThrow();
   });
+
+  it('should reject empty glossary ID', () => {
+    expect(() => getGlossarySchema.parse({ id: '' })).toThrow();
+  });
+
+  it('should reject very long glossary ID', () => {
+    const longId = 'gls_' + 'a'.repeat(300);
+    expect(() => getGlossarySchema.parse({ id: longId })).toThrow();
+  });
+
+  it('should reject invalid glossary ID format', () => {
+    expect(() => getGlossarySchema.parse({ id: 'invalid-id' })).toThrow();
+  });
 });
 
 describe('getGlossary', () => {
