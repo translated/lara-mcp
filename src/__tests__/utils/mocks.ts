@@ -32,6 +32,10 @@ export function createMockTranslator() {
       importTmx: vi.fn(),
       getImportStatus: vi.fn(),
     },
+    glossaries: {
+      list: vi.fn(),
+      get: vi.fn(),
+    },
     client: {}
   };
 }

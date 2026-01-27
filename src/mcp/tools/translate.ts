@@ -47,6 +47,31 @@ export const translateSchema = z.object({
     .describe(
       "A list of translation memory IDs for adapting the translation."
     ),
+  glossaries: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Array of glossary IDs to apply during translation (e.g., ['gls_xyz123', 'gls_abc456']). Glossaries enforce specific terminology and terms."
+    ),
+  no_trace: z
+    .boolean()
+    .optional()
+    .describe(
+      "Privacy flag. If set to true, the translation request will not be traced or logged. Use for sensitive content."
+    ),
+  priority: z
+    .enum(["normal", "background"])
+    .optional()
+    .describe(
+      "Translation priority. 'normal' for real-time translations, 'background' for batch processing with lower priority."
+    ),
+  timeout_in_millis: z
+    .number()
+    .positive()
+    .optional()
+    .describe(
+      "Custom timeout for the translation request in milliseconds. Useful for very long texts. Default is SDK default timeout."
+    ),
 });
 
 const makeInstructions = (text: string) =>
@@ -54,7 +79,18 @@ const makeInstructions = (text: string) =>
 
 export async function translateHandler(args: unknown, lara: Translator) {
   const validatedArgs = translateSchema.parse(args);
-  const { text, source, target, context, instructions, adapt_to } = validatedArgs;
+  const {
+    text,
+    source,
+    target,
+    context,
+    instructions,
+    adapt_to,
+    glossaries,
+    no_trace,
+    priority,
+    timeout_in_millis
+  } = validatedArgs;
   let instructionsList = [...(instructions ?? [])];
 
   if (context) {
@@ -64,6 +100,10 @@ export async function translateHandler(args: unknown, lara: Translator) {
   const result = await lara.translate(text, source ?? null, target, {
     instructions: instructionsList,
     adaptTo: adapt_to,
+    glossaries: glossaries,
+    noTrace: no_trace,
+    priority: priority,
+    timeoutInMillis: timeout_in_millis
   });
   return result.translation;
 }

@@ -22,6 +22,8 @@ import {
 import { importTmx, importTmxSchema } from "./tools/import_tmx.js";
 import { listLanguages, listLanguagesSchema } from "./tools/list_languages.js";
 import { listMemories, listMemoriesSchema } from "./tools/list_memories.js";
+import { listGlossaries, listGlossariesSchema } from "./tools/list_glossaries.js";
+import { getGlossary, getGlossarySchema } from "./tools/get_glossary.js";
 import { translateHandler, translateSchema } from "./tools/translate.js";
 import {
   updateMemory,
@@ -42,11 +44,13 @@ const handlers: Record<string, Handler> = {
   delete_translation: deleteTranslation,
   import_tmx: importTmx,
   check_import_status: checkImportStatus,
+  get_glossary: getGlossary,
 };
 
 const listers: Record<string, Lister> = {
   list_memories: listMemories,
   list_languages: listLanguages,
+  list_glossaries: listGlossaries,
 };
 
 async function CallTool(
@@ -146,6 +150,18 @@ async function ListTools() {
         description:
           "Lists all supported languages in your Lara Translate account.",
         inputSchema: z.toJSONSchema(listLanguagesSchema),
+      },
+      {
+        name: "list_glossaries",
+        description:
+          "Lists all glossaries in your Lara Translate account. Glossaries are collections of terms with their translations that enforce specific terminology during translation.",
+        inputSchema: z.toJSONSchema(listGlossariesSchema),
+      },
+      {
+        name: "get_glossary",
+        description:
+          "Retrieves a specific glossary by ID from your Lara Translate account. Returns null if the glossary is not found.",
+        inputSchema: z.toJSONSchema(getGlossarySchema),
       },
     ],
   };

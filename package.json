@@ -52,7 +52,7 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.3",
-    "@translated/lara": "^1.4.0",
+    "@translated/lara": "^1.7.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "helmet": "^8.1.0",

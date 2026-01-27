@@ -82,8 +82,31 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `context` (optional string): Additional context to improve translation quality
 - `instructions` (optional string[]): Instructions to adjust translation behavior
 - `source_hint` (optional string): Guidance for language detection
+- `glossaries` (optional string[]): Array of glossary IDs to enforce terminology (e.g., ['gls_xyz123'])
+- `no_trace` (optional boolean): Privacy flag - if true, request won't be traced/logged
+- `priority` (optional string): Translation priority - 'normal' or 'background'
+- `timeout_in_millis` (optional number): Custom timeout in milliseconds
 
 **Returns**: Translated text blocks maintaining the original structure
+</details>
+
+### Glossaries Tools
+
+<details>
+<summary><strong>list_glossaries</strong> - List all glossaries</summary>
+
+**Inputs**: None
+
+**Returns**: Array of glossaries with their details (id, name, createdAt, updatedAt, ownerId)
+</details>
+
+<details>
+<summary><strong>get_glossary</strong> - Get a specific glossary by ID</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+
+**Returns**: Glossary object or null if not found
 </details>
 
 ### Translation Memories Tools

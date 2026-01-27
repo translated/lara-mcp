@@ -12,8 +12,8 @@ importers:
         specifier: ^1.12.3
         version: 1.13.0
       '@translated/lara':
-        specifier: ^1.4.0
-        version: 1.5.5
+        specifier: ^1.7.3
+        version: 1.7.3
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -379,8 +379,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@translated/lara@1.5.5':
-    resolution: {integrity: sha512-xysQl0HSN87ug0749owQQfFNRw6J6E+BTSfrRny+Tf8IJPMcTiSe3WoTL/vosVWAygVzvlwhNlfptT9FTpVn3w==}
+  '@translated/lara@1.7.3':
+    resolution: {integrity: sha512-HpOg6MY7zirOlBMcrBYNigBZ+dCs77tnCN5nEVhUtv3XW7Lc7LfVA6OI2UdDyIlX07OJ7NbeINls7IjjaGss2A==}
     engines: {node: '>=12.*'}
 
   '@types/body-parser@1.19.6':
@@ -750,6 +750,10 @@ packages:
 
   form-data@4.0.3:
     resolution: {integrity: sha512-qsITQPfmvMOSAdeyZ+12I1c+CKSstAFAwu+97zrnWAbIr5u8wfsExUzCesVLC8NgHuRUqNN4Zy6UPWUTRGslcA==}
+    engines: {node: '>= 6'}
+
+  form-data@4.0.5:
+    resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
 
   formidable@3.5.4:
@@ -1604,9 +1608,9 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.44.0':
     optional: true
 
-  '@translated/lara@1.5.5':
+  '@translated/lara@1.7.3':
     dependencies:
-      form-data: 4.0.3
+      form-data: 4.0.5
 
   '@types/body-parser@1.19.6':
     dependencies:
@@ -2050,6 +2054,14 @@ snapshots:
       signal-exit: 4.1.0
 
   form-data@4.0.3:
+    dependencies:
+      asynckit: 0.4.0
+      combined-stream: 1.0.8
+      es-set-tostringtag: 2.1.0
+      hasown: 2.0.2
+      mime-types: 2.1.35
+
+  form-data@4.0.5:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
