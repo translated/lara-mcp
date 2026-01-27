@@ -1,5 +1,6 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
+import { logger } from "#logger";
 
 export const textBlockSchema = z.object({
   text: z.string(),
@@ -48,10 +49,16 @@ export const translateSchema = z.object({
       "A list of translation memory IDs for adapting the translation."
     ),
   glossaries: z
-    .array(z.string())
+    .array(
+      z.string()
+        .min(1)
+        .max(255)
+        .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format")
+    )
+    .max(10)
     .optional()
     .describe(
-      "Array of glossary IDs to apply during translation (e.g., ['gls_xyz123', 'gls_abc456']). Glossaries enforce specific terminology and terms."
+      "Array of glossary IDs to apply during translation (max 10). IDs must match format: gls_* (e.g., ['gls_xyz123', 'gls_abc456']). Glossaries enforce specific terminology and terms."
     ),
   no_trace: z
     .boolean()
@@ -67,10 +74,12 @@ export const translateSchema = z.object({
     ),
   timeout_in_millis: z
     .number()
+    .int()
     .positive()
+    .max(300000)
     .optional()
     .describe(
-      "Custom timeout for the translation request in milliseconds. Useful for very long texts. Default is SDK default timeout."
+      "Custom timeout for the translation request in milliseconds. Max: 300000ms (5 minutes). Useful for very long texts."
     ),
 });
 
@@ -97,13 +106,36 @@ export async function translateHandler(args: unknown, lara: Translator) {
     instructionsList.push(makeInstructions(context));
   }
 
-  const result = await lara.translate(text, source ?? null, target, {
+  // Audit log for privacy-sensitive requests
+  if (no_trace) {
+    logger.info({
+      action: 'translate',
+      privacySensitive: true,
+      timestamp: new Date().toISOString()
+    }, 'Privacy-sensitive translation requested (noTrace=true)');
+  }
+
+  // Build options object dynamically to avoid passing undefined values
+  const options: Record<string, unknown> = {
     instructions: instructionsList,
-    adaptTo: adapt_to,
-    glossaries: glossaries,
-    noTrace: no_trace,
-    priority: priority,
-    timeoutInMillis: timeout_in_millis
-  });
+  };
+
+  if (typeof adapt_to !== "undefined") {
+    options.adaptTo = adapt_to;
+  }
+  if (typeof glossaries !== "undefined") {
+    options.glossaries = glossaries;
+  }
+  if (typeof no_trace !== "undefined") {
+    options.noTrace = no_trace;
+  }
+  if (typeof priority !== "undefined") {
+    options.priority = priority;
+  }
+  if (typeof timeout_in_millis !== "undefined") {
+    options.timeoutInMillis = timeout_in_millis;
+  }
+
+  const result = await lara.translate(text, source ?? null, target, options);
   return result.translation;
 }

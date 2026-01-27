@@ -80,11 +80,20 @@ async function CallTool(
     throw new InvalidInputError(`Tool ${name} not found`);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      // Don't expose technical validation details
+      const fieldErrors = error.issues
+        .map(i => i.path.join('.'))
+        .join(', ');
       throw new InvalidInputError(
-        `Invalid input: ${JSON.stringify(error.issues)}`
+        `Invalid input in fields: ${fieldErrors}`
       );
     }
-    throw error;
+
+    // Log full error internally for debugging
+    logger.error({ error, toolName: name }, "Tool execution error");
+
+    // Return generic error to client
+    throw new InvalidInputError("An error occurred while processing your request");
   }
 }
 

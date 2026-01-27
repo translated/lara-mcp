@@ -204,6 +204,16 @@ Lara supports both the STDIO and streamable HTTP protocols. For a hassle-free se
 
 You'll find setup instructions for both protocols in the sections below.
 
+## ⚠️ Security Note
+
+**Important:** In HTTP mode, all connected clients share the same Lara API credentials configured via `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
+
+This server is designed for:
+- ✅ Single-user deployments
+- ✅ Trusted-environment deployments (e.g., internal tools)
+
+For multi-tenant scenarios, deploy separate MCP server instances per user with isolated credentials.
+
 ### HTTP Server 🌐
 <details>
 <summary><strong>❌ Clients NOT supporting <code>url</code> configuration (e.g., Claude, OpenAI)</strong></summary>

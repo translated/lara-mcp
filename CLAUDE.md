@@ -53,9 +53,9 @@ docker build -t lara-mcp .
 
 The server operates in two transport modes determined by the `TRANSPORT` environment variable:
 
-1. **STDIO Mode** (`src/index.ts:83-105`): Direct MCP server using stdio transport, requires `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
+1. **STDIO Mode** (`src/index.ts:56-75`): Direct MCP server using stdio transport, requires `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
 
-2. **HTTP Mode** (`src/index.ts:66-80`): REST API server with multiple endpoints:
+2. **HTTP Mode** (`src/index.ts:42-54`): REST API server with multiple endpoints:
    - `/v1` - MCP protocol endpoint using StreamableHTTPServerTransport
    - `/server-info` - Server metadata endpoint
    - `/healthz` - Health check endpoint

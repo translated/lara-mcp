@@ -80,6 +80,47 @@ describe('translateSchema', () => {
       timeout_in_millis: -1000
     })).toThrow();
   });
+
+  it('should reject Infinity timeout', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      timeout_in_millis: Infinity
+    })).toThrow();
+  });
+
+  it('should reject timeout over max limit', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      timeout_in_millis: 999999999
+    })).toThrow();
+  });
+
+  it('should reject float timeout values', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      timeout_in_millis: 1000.5
+    })).toThrow();
+  });
+
+  it('should reject too many glossaries', () => {
+    const tooMany = Array(100).fill('gls_abc123');
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      glossaries: tooMany
+    })).toThrow();
+  });
+
+  it('should reject invalid glossary ID format', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      glossaries: ['invalid-id']
+    })).toThrow();
+  });
 });
 
 describe('translateHandler', () => {
