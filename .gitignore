@@ -21,6 +21,9 @@ out/
 # Env
 .env
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 

@@ -206,13 +206,15 @@ You'll find setup instructions for both protocols in the sections below.
 
 ## ⚠️ Security Note
 
-**Important:** In HTTP mode, all connected clients share the same Lara API credentials configured via `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
+**Important:** When running your own HTTP server instance (not using the remote `https://mcp.laratranslate.com/v1`), all connected clients share the same Lara API credentials configured via `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
 
 This server is designed for:
 - ✅ Single-user deployments
 - ✅ Trusted-environment deployments (e.g., internal tools)
 
-For multi-tenant scenarios, deploy separate MCP server instances per user with isolated credentials.
+For multi-tenant scenarios, either:
+- Use the remote server at `https://mcp.laratranslate.com/v1` where each client provides their own credentials via headers
+- Deploy separate MCP server instances per user with isolated credentials
 
 ### HTTP Server 🌐
 <details>

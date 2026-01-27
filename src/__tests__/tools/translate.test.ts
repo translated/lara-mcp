@@ -147,7 +147,7 @@ describe('translateHandler', () => {
       args.text,
       null,
       args.target,
-      { instructions: [], adaptTo: undefined }
+      {}
     );
     expect(result).toEqual(mockTranslationResult.translation);
   });

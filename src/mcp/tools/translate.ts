@@ -116,10 +116,11 @@ export async function translateHandler(args: unknown, lara: Translator) {
   }
 
   // Build options object dynamically to avoid passing undefined values
-  const options: Record<string, unknown> = {
-    instructions: instructionsList,
-  };
+  const options: Record<string, unknown> = {};
 
+  if (instructionsList.length > 0) {
+    options.instructions = instructionsList;
+  }
   if (typeof adapt_to !== "undefined") {
     options.adaptTo = adapt_to;
   }
