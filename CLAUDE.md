@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Lara Translate MCP Server is a Model Context Protocol (MCP) server that provides translation capabilities through the Lara Translate API. The server supports both STDIO and HTTP transport modes, with OAuth 2.0 and API key authentication.
+Lara Translate MCP Server is a Model Context Protocol (MCP) server that provides translation capabilities through the Lara Translate API. The server supports both STDIO and HTTP transport modes.
 
 ## Development Commands
 
@@ -40,9 +40,6 @@ pnpm test:coverage
 
 ### Docker Development
 ```bash
-# Start development environment (includes Redis)
-docker-compose up
-
 # Build Docker image
 docker build -t lara-mcp .
 ```
@@ -55,41 +52,17 @@ The server operates in two transport modes determined by the `TRANSPORT` environ
 
 1. **STDIO Mode** (`src/index.ts:56-75`): Direct MCP server using stdio transport, requires `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
 
-2. **HTTP Mode** (`src/index.ts:42-54`): REST API server with multiple endpoints:
-   - `/v1` - MCP protocol endpoint using StreamableHTTPServerTransport
-   - `/server-info` - Server metadata endpoint
-   - `/healthz` - Health check endpoint
-   - OAuth endpoints: `/authorize`, `/token`, `/register`, `/.well-known/*`
+2. **HTTP Mode** (`src/index.ts:42-54`): REST API server with MCP protocol endpoint at `/v1`
 
 ### Core Components
 
 #### MCP Server (`src/mcp/server.ts`)
 
-The MCP server uses a **singleton caching pattern** with LRU eviction and TTL expiration:
-
-- Creates one `Translator` instance per unique client credential
-- Cache key format: `oauth:{token}` or `key:{accessKeyId}`
-- Configurable TTL (default: 30 days) and max cache size (default: 1000 entries)
-- Periodic cleanup runs every 15 minutes to remove expired entries
-- Thread-safe with mutex-protected cache operations
-
-The server factory function `getMcpServer(accessKeyId, accessKeySecret)` accepts:
+The server factory function `getMcpServer(accessKeyId, accessKeySecret)` creates an MCP server instance with:
 - `accessKeyId`: The Lara Translate API access key ID
 - `accessKeySecret`: The Lara Translate API access key secret
 
-#### Authentication
-
-**API Key Authentication** (`src/rest/rest-service.ts`):
-- Headers: `x-lara-access-key-id` and `x-lara-access-key-secret`
-
-**OAuth 2.0 Authentication** (`src/oauth/`):
-- Standards-compliant OAuth 2.0 authorization server with PKCE support
-- Client registration with dynamic registration support
-- Authorization code flow: `/authorize` → `/token`
-- Token storage in Redis with TTL-based expiration
-- Metadata endpoints for discovery: `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource`
-- Bearer token format: `Authorization: Bearer <token>`
-- On 401 errors, server instances are removed from cache to force re-authentication
+The server initializes a `Translator` instance from the `@translated/lara` SDK and configures MCP request handlers for tools and resources.
 
 #### Tools (`src/mcp/tools/`)
 
@@ -97,11 +70,13 @@ All MCP tools are organized in individual files under `src/mcp/tools/`:
 
 **Translation Tools:**
 - `translate.ts` - Main translation with context, instructions, memory support, and glossaries
-  - Advanced options: `glossaries` (array of glossary IDs), `no_trace` (privacy flag), `priority` (normal/background), `timeout_in_millis`
+  - Advanced options: `glossaries` (array of glossary IDs, max 10), `no_trace` (privacy flag), `priority` (normal/background), `timeout_in_millis` (max 300000ms)
+  - Validation includes format checks for glossary IDs (`gls_*` pattern) and timeout limits
 
 **Glossary Management Tools:**
 - `list_glossaries.ts` - List all glossaries
 - `get_glossary.ts` - Get glossary by ID (returns null if not found)
+  - Validates glossary ID format with regex `/^gls_[a-zA-Z0-9_-]+$/`
 
 **Memory Management Tools:**
 - `list_memories.ts` - List all translation memories
@@ -116,7 +91,9 @@ All MCP tools are organized in individual files under `src/mcp/tools/`:
 **Language Support:**
 - `list_languages.ts` - List supported languages
 
-Each tool exports a handler function and a Zod validation schema. Tool registration happens in `src/mcp/tools.ts` which maintains two handler maps: `handlers` (tools with arguments) and `listers` (tools without arguments).
+Each tool exports a handler function and a Zod validation schema. Tool registration happens in `src/mcp/tools.ts` which maintains two handler maps:
+- `handlers` - Tools with arguments (e.g., translate, create_memory)
+- `listers` - Tools without arguments (e.g., list_memories, list_languages)
 
 #### Resources (`src/mcp/resources.ts`)
 
@@ -132,20 +109,14 @@ The project uses path aliases (configured in `tsconfig.json` and `package.json` 
 - `#logger` → `src/logger.js`
 - `#rest/server` → `src/rest/server.js`
 - `#mcp/server` → `src/mcp/server.js`
-- `#rest/routes/server-info` → `src/rest/routes/server-info.js`
 
 ### Environment Variables
 
 Core configuration (`src/env.ts`):
 - `TRANSPORT` - Server mode: `stdio` or `http` (default: `stdio`)
 - `HOST` / `PORT` - HTTP server binding (default: `0.0.0.0:3000`)
-- `PUBLIC_HOST` - Public-facing URL for OAuth callbacks (required for OAuth)
-- `LARA_ACCESS_KEY_ID` / `LARA_ACCESS_KEY_SECRET` - API credentials (required for STDIO)
-- `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` - Redis connection (required for HTTP mode)
+- `LARA_ACCESS_KEY_ID` / `LARA_ACCESS_KEY_SECRET` - API credentials (required for STDIO mode)
 - `LOGGING_LEVEL` - Log level: `debug`, `info`, `warn`, `error` (default: `info`)
-- `CACHE_TTL_MS` - Server cache TTL in milliseconds (default: 30 days)
-- `MAX_CACHE_SIZE` - Maximum cached server instances (default: 1000)
-- `CACHE_CLEANUP_INTERVAL_MS` - Cleanup interval in milliseconds (default: 15 minutes)
 
 ### Error Handling
 
@@ -155,7 +126,11 @@ Custom exception classes (`src/exception.ts`):
 - `InvalidCredentialsError` - Authentication failure (code: -32600)
 - `MethodNotAllowedError` - HTTP method not allowed (code: -32601)
 
-Tool errors are logged with detailed context. Validation (Zod) errors are returned with specific field details, while other errors are returned as a generic "An error occurred while processing your request" message for security.
+Error handling in `src/mcp/tools.ts`:
+- Zod validation errors return specific field names (not full error details for security)
+- Existing `InvalidInputError` instances are preserved and re-thrown
+- Other unexpected errors are logged internally and returned as generic "An error occurred while processing your request" message
+- Privacy-sensitive translations (with `no_trace=true`) are logged for audit purposes
 
 ### Logging
 
@@ -164,17 +139,22 @@ The server uses Pino structured logging (`src/logger.ts`). Log level is controll
 ## Testing
 
 Tests are located in `src/__tests__/` and mirror the source structure:
-- `tools/` - Individual tool tests
-- `mcp/` - MCP server tests
-- `oauth/` - OAuth flow tests (routes, stores, authentication service)
-- `rest/` - REST server tests
-- `utils/mocks.ts` - Shared test utilities
+- `tools/` - Individual tool tests (71 total tests)
+- `server/` - REST server tests
+- `utils/mocks.ts` - Shared test utilities with Vitest mocks
 
 Tests use Vitest with coverage reporting (v8 provider).
 
+## Security Features
+
+- **Input validation**: All glossary IDs validated with regex, timeout capped at 300000ms, max 10 glossaries per request
+- **Error sanitization**: Zod errors filtered to show only field names, SDK errors hidden behind generic messages
+- **Audit logging**: Privacy-sensitive requests (no_trace=true) logged for compliance
+- **Credential protection**: Access key ID never logged in debug mode
+
 ## Important Notes
 
-- The server maintains a stateful cache of MCP server instances per client. Cache invalidation happens on token expiration, authentication errors, or periodic cleanup.
 - When adding new tools, update both the handler in `src/mcp/tools/{tool}.ts` and register it in `src/mcp/tools.ts`.
-- OAuth flow requires Redis to be running and `PUBLIC_HOST` to be configured with a publicly accessible URL.
 - All file imports must use the `.js` extension even though source files are `.ts` (ES module resolution requirement).
+- The `translate` tool builds options object dynamically - only includes non-empty arrays and defined values to avoid passing `undefined` to SDK.
+- Semicolons are consistently used throughout the codebase.
