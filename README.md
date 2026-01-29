@@ -82,8 +82,31 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `context` (optional string): Additional context to improve translation quality
 - `instructions` (optional string[]): Instructions to adjust translation behavior
 - `source_hint` (optional string): Guidance for language detection
+- `glossaries` (optional string[]): Array of glossary IDs to enforce terminology (e.g., ['gls_xyz123'])
+- `no_trace` (optional boolean): Privacy flag - if true, request won't be traced/logged
+- `priority` (optional string): Translation priority - 'normal' or 'background'
+- `timeout_in_millis` (optional number): Custom timeout in milliseconds
 
 **Returns**: Translated text blocks maintaining the original structure
+</details>
+
+### Glossaries Tools
+
+<details>
+<summary><strong>list_glossaries</strong> - List all glossaries</summary>
+
+**Inputs**: None
+
+**Returns**: Array of glossaries with their details (id, name, createdAt, updatedAt, ownerId)
+</details>
+
+<details>
+<summary><strong>get_glossary</strong> - Get a specific glossary by ID</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+
+**Returns**: Glossary object or null if not found
 </details>
 
 ### Translation Memories Tools
@@ -180,6 +203,18 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 Lara supports both the STDIO and streamable HTTP protocols. For a hassle-free setup, we recommend using the HTTP protocol. If you prefer to use STDIO, it must be installed locally on your machine.
 
 You'll find setup instructions for both protocols in the sections below.
+
+## ⚠️ Security Note
+
+**Important:** When running your own HTTP server instance (not using the remote `https://mcp.laratranslate.com/v1`), all connected clients share the same Lara API credentials configured via `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
+
+This server is designed for:
+- ✅ Single-user deployments
+- ✅ Trusted-environment deployments (e.g., internal tools)
+
+For multi-tenant scenarios, either:
+- Use the remote server at `https://mcp.laratranslate.com/v1` where each client provides their own credentials via headers
+- Deploy separate MCP server instances per user with isolated credentials
 
 ### HTTP Server 🌐
 <details>

@@ -15,7 +15,7 @@ export default function getMcpServer(
   accessKeyId: string,
   accessKeySecret: string
 ) {
-  logger.debug("Creating MCP server with credentials: " + accessKeyId);
+  logger.debug("Creating MCP server with authenticated credentials");
 
   const credentials = new Credentials(accessKeyId, accessKeySecret);
   const lara = new Translator(credentials);
