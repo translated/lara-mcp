@@ -23,7 +23,7 @@ export default function getMcpServer(
   const server = new Server(
     {
       name: "Lara Translate",
-      version: "0.0.12",
+      version: "0.0.15",
     },
     {
       capabilities: {
