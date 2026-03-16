@@ -81,6 +81,24 @@ export const translateSchema = z.object({
     .describe(
       "Custom timeout for the translation request in milliseconds. Max: 300000ms (5 minutes). Useful for very long texts."
     ),
+  style: z
+    .enum(["faithful", "fluid", "creative"])
+    .optional()
+    .describe(
+      "Controls how the translation balances accuracy against natural readability. 'faithful' (default) stays close to the source, 'fluid' prioritizes natural readability, 'creative' allows more freedom in the translation."
+    ),
+  reasoning: z
+    .boolean()
+    .optional()
+    .describe(
+      "Enables Lara Think multi-step linguistic analysis. Can increase processing time up to 10x but may improve translation quality for complex texts."
+    ),
+  content_type: z
+    .enum(["text/plain", "text/html", "application/xliff+xml"])
+    .optional()
+    .describe(
+      "Specifies the content type of the text. Autodetected if omitted."
+    ),
 });
 
 const makeInstructions = (text: string) =>
@@ -98,7 +116,10 @@ export async function translateHandler(args: unknown, lara: Translator) {
     glossaries,
     no_trace,
     priority,
-    timeout_in_millis
+    timeout_in_millis,
+    style,
+    reasoning,
+    content_type
   } = validatedArgs;
   let instructionsList = [...(instructions ?? [])];
 
@@ -135,6 +156,15 @@ export async function translateHandler(args: unknown, lara: Translator) {
   }
   if (typeof timeout_in_millis !== "undefined") {
     options.timeoutInMillis = timeout_in_millis;
+  }
+  if (typeof style !== "undefined") {
+    options.style = style;
+  }
+  if (typeof reasoning !== "undefined") {
+    options.reasoning = reasoning;
+  }
+  if (typeof content_type !== "undefined") {
+    options.contentType = content_type;
   }
 
   const result = await lara.translate(text, source ?? null, target, options);
