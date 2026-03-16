@@ -26,6 +26,9 @@ out/
 .claude/agents/*
 .claude/commands/*
 
+# Superset worktrees
+.superset/
+
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
