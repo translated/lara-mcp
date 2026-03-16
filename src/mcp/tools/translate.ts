@@ -85,7 +85,7 @@ export const translateSchema = z.object({
     .enum(["faithful", "fluid", "creative"])
     .optional()
     .describe(
-      "Controls how the translation balances accuracy against natural readability. 'faithful' (default) stays close to the source, 'fluid' prioritizes natural readability, 'creative' allows more freedom in the translation."
+      "Controls how the translation balances accuracy against natural readability. 'faithful' stays close to the source, 'fluid' prioritizes natural readability, 'creative' allows more freedom in the translation."
     ),
   reasoning: z
     .boolean()
