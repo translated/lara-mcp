@@ -31,6 +31,8 @@ import { importGlossaryCsv, importGlossaryCsvSchema } from "./tools/import_gloss
 import { checkGlossaryImportStatus, checkGlossaryImportStatusSchema } from "./tools/check_glossary_import_status.js";
 import { exportGlossary, exportGlossarySchema } from "./tools/export_glossary.js";
 import { getGlossaryCounts, getGlossaryCountsSchema } from "./tools/get_glossary_counts.js";
+import { addGlossaryEntry, addGlossaryEntrySchema } from "./tools/add_glossary_entry.js";
+import { deleteGlossaryEntry, deleteGlossaryEntrySchema } from "./tools/delete_glossary_entry.js";
 import { translateHandler, translateSchema } from "./tools/translate.js";
 import {
   updateMemory,
@@ -59,6 +61,8 @@ const handlers: Record<string, Handler> = {
   check_glossary_import_status: checkGlossaryImportStatus,
   export_glossary: exportGlossary,
   get_glossary_counts: getGlossaryCounts,
+  add_glossary_entry: addGlossaryEntry,
+  delete_glossary_entry: deleteGlossaryEntry,
 };
 
 const listers: Record<string, Lister> = {
@@ -240,6 +244,18 @@ async function ListTools() {
         description:
           "Retrieves the term and language counts for a glossary in your Lara Translate account.",
         inputSchema: z.toJSONSchema(getGlossaryCountsSchema),
+      },
+      {
+        name: "add_glossary_entry",
+        description:
+          "Adds or replaces an entry in a glossary in your Lara Translate account. Supports both monodirectional and multidirectional glossaries.",
+        inputSchema: z.toJSONSchema(addGlossaryEntrySchema),
+      },
+      {
+        name: "delete_glossary_entry",
+        description:
+          "Deletes an entry from a glossary in your Lara Translate account. Use term for monodirectional glossaries or guid for multidirectional glossaries.",
+        inputSchema: z.toJSONSchema(deleteGlossaryEntrySchema),
       },
     ],
   };
