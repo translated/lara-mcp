@@ -71,7 +71,7 @@ describe('CallTool error handling', () => {
 
   it('should preserve InvalidInputError as-is', async () => {
     mockTranslator.memories.addTranslation.mockImplementation(() => {
-      throw new InvalidInputError('Please provide both sentence_before and sentence_after');
+      throw new InvalidInputError('Custom validation error from handler');
     });
 
     const request = makeRequest('add_translation', {
@@ -82,13 +82,14 @@ describe('CallTool error handling', () => {
       translation: 'Ciao',
       tuid: 'tu_1',
       sentence_before: 'Hi',
+      sentence_after: 'Goodbye',
     });
 
     await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
       InvalidInputError
     );
     await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      'Please provide both sentence_before and sentence_after'
+      'Custom validation error from handler'
     );
   });
 
