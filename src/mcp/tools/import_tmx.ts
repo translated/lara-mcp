@@ -37,8 +37,7 @@ export async function importTmx(args: any, lara: Translator) {
     return await lara.memories.importTmx(id, tempFilePath);
   } finally {
     try {
-      fs.unlinkSync(tempFilePath);
-      fs.rmdirSync(tempDir);
+      fs.rmSync(tempDir, { recursive: true, force: true });
     } catch (_) { /* best-effort cleanup */ }
   }
 }

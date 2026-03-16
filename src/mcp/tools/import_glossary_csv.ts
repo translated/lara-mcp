@@ -43,8 +43,7 @@ export async function importGlossaryCsv(args: any, lara: Translator) {
     return await lara.glossaries.importCsv(id, tempFilePath, content_type, gzip);
   } finally {
     try {
-      fs.unlinkSync(tempFilePath);
-      fs.rmdirSync(tempDir);
+      fs.rmSync(tempDir, { recursive: true, force: true });
     } catch (_) { /* best-effort cleanup */ }
   }
 }
