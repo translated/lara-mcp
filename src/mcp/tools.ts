@@ -2,7 +2,7 @@ import {
   CallToolRequest,
   CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
-import { Translator } from "@translated/lara";
+import { LaraApiError, TimeoutError as LaraTimeoutError, Translator } from "@translated/lara";
 import * as z from "zod/v4";
 
 import {
@@ -94,18 +94,26 @@ async function CallTool(
     throw new InvalidInputError(`Tool ${name} not found`);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // Don't expose technical validation details
       const fieldErrors = error.issues
-        .map(i => i.path.join('.'))
-        .join(', ');
-      throw new InvalidInputError(
-        `Invalid input in fields: ${fieldErrors}`
-      );
+        .map(i => {
+          const field = i.path.join('.');
+          return `${field}: ${i.message}`;
+        })
+        .join('; ');
+      throw new InvalidInputError(`Invalid input: ${fieldErrors}`);
     }
 
     // Preserve existing InvalidInputError instances (and their messages)
     if (error instanceof InvalidInputError) {
       throw error;
+    }
+
+    if (error instanceof LaraApiError) {
+      throw new InvalidInputError(error.message);
+    }
+
+    if (error instanceof LaraTimeoutError) {
+      throw new InvalidInputError("The translation request timed out. Try again or increase the timeout.");
     }
 
     // Log full error internally for debugging

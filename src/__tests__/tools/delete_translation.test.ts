@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { deleteTranslation, deleteTranslationSchema } from '../../mcp/tools/delete_translation.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
+import { InvalidInputError } from '../../exception.js';
 
 // Setup mocks
 setupTranslatorMock();
@@ -120,6 +121,9 @@ describe('deleteTranslation', () => {
       // Missing sentence_after
     };
 
+    await expect(deleteTranslation(args, mockTranslator as any as Translator)).rejects.toThrow(
+      InvalidInputError
+    );
     await expect(deleteTranslation(args, mockTranslator as any as Translator)).rejects.toThrow(
       'Please provide both sentence_before and sentence_after'
     );

@@ -1,5 +1,6 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
+import { InvalidInputError } from "#exception";
 
 export const addTranslationSchema = z.object({
   id: z
@@ -61,7 +62,7 @@ export async function addTranslation(args: unknown, lara: Translator) {
     (sentence_before && !sentence_after) ||
     (!sentence_before && sentence_after)
   ) {
-    throw new Error("Please provide both sentence_before and sentence_after");
+    throw new InvalidInputError("Please provide both sentence_before and sentence_after");
   }
 
   return await lara.memories.addTranslation(
