@@ -35,13 +35,10 @@ describe('CallTool error handling', () => {
     mockTranslator.memories.delete.mockRejectedValue(apiError);
 
     const request = makeRequest('delete_memory', { id: 'mem_abc123' });
+    const promise = CallTool(request, mockTranslator as any as Translator);
 
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      InvalidInputError
-    );
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      'Memory not found'
-    );
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow('Memory not found');
   });
 
   it('should surface timeout error message', async () => {
@@ -49,24 +46,20 @@ describe('CallTool error handling', () => {
     mockTranslator.memories.delete.mockRejectedValue(timeoutError);
 
     const request = makeRequest('delete_memory', { id: 'mem_abc123' });
+    const promise = CallTool(request, mockTranslator as any as Translator);
 
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      InvalidInputError
-    );
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow(
       'The translation request timed out. Try again or increase the timeout.'
     );
   });
 
   it('should include field names and reasons in Zod validation errors', async () => {
     const request = makeRequest('delete_memory', { id: 123 });
+    const promise = CallTool(request, mockTranslator as any as Translator);
 
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      InvalidInputError
-    );
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      /Invalid input:.*id/
-    );
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow(/Invalid input:.*id/);
   });
 
   it('should preserve InvalidInputError as-is', async () => {
@@ -84,36 +77,27 @@ describe('CallTool error handling', () => {
       sentence_before: 'Hi',
       sentence_after: 'Goodbye',
     });
+    const promise = CallTool(request, mockTranslator as any as Translator);
 
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      InvalidInputError
-    );
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      'Custom validation error from handler'
-    );
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow('Custom validation error from handler');
   });
 
   it('should return generic message for unknown errors', async () => {
     mockTranslator.memories.delete.mockRejectedValue(new TypeError('Something unexpected'));
 
     const request = makeRequest('delete_memory', { id: 'mem_abc123' });
+    const promise = CallTool(request, mockTranslator as any as Translator);
 
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      InvalidInputError
-    );
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      'An error occurred while processing your request'
-    );
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow('An error occurred while processing your request');
   });
 
   it('should throw InvalidInputError for unknown tool names', async () => {
     const request = makeRequest('nonexistent_tool', {});
+    const promise = CallTool(request, mockTranslator as any as Translator);
 
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      InvalidInputError
-    );
-    await expect(CallTool(request, mockTranslator as any as Translator)).rejects.toThrow(
-      'Tool nonexistent_tool not found'
-    );
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow('Tool nonexistent_tool not found');
   });
 });

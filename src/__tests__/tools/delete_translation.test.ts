@@ -121,10 +121,9 @@ describe('deleteTranslation', () => {
       // Missing sentence_after
     };
 
-    await expect(deleteTranslation(args, mockTranslator as any as Translator)).rejects.toThrow(
-      InvalidInputError
-    );
-    await expect(deleteTranslation(args, mockTranslator as any as Translator)).rejects.toThrow(
+    const promise = deleteTranslation(args, mockTranslator as any as Translator);
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow(
       'Please provide both sentence_before and sentence_after'
     );
   });
