@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { InvalidInputError } from "#exception";
 
 export const importTmxSchema = z.object({
   id: z
@@ -22,27 +23,22 @@ export async function importTmx(args: any, lara: Translator) {
   const { id, tmx_content } = validatedArgs;
 
   // File size limit: 5MB
-  const MAX_TMX_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_TMX_SIZE = 5 * 1024 * 1024;
   if (Buffer.byteLength(tmx_content, 'utf8') > MAX_TMX_SIZE) {
-    throw new Error("TMX file too large. Maximum allowed size is 5MB.");
+    throw new InvalidInputError("TMX file too large. Maximum allowed size is 5MB.");
   }
 
-  const tempDir = path.join(os.tmpdir(), 'lara-tmx-imports');
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
-
-  const tempFilePath = path.join(tempDir, `tmx-${Date.now()}-${Math.random().toString(36).slice(2)}.tmx`);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lara-tmx-'));
+  const tempFilePath = path.join(tempDir, 'import.tmx');
 
   try {
-    fs.writeFileSync(tempFilePath, tmx_content);
+    fs.writeFileSync(tempFilePath, tmx_content, { mode: 0o600 });
 
     return await lara.memories.importTmx(id, tempFilePath);
-  } catch (err) {
-    throw err;
   } finally {
-    if (fs.existsSync(tempFilePath)) {
+    try {
       fs.unlinkSync(tempFilePath);
-    }
+      fs.rmdirSync(tempDir);
+    } catch (_) { /* best-effort cleanup */ }
   }
 }
