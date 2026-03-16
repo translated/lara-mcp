@@ -35,6 +35,13 @@ export function createMockTranslator() {
     glossaries: {
       list: vi.fn(),
       get: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      importCsv: vi.fn(),
+      getImportStatus: vi.fn(),
+      export: vi.fn(),
+      counts: vi.fn(),
     },
     client: {}
   };

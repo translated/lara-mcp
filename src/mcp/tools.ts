@@ -24,6 +24,13 @@ import { listLanguages, listLanguagesSchema } from "./tools/list_languages.js";
 import { listMemories, listMemoriesSchema } from "./tools/list_memories.js";
 import { listGlossaries, listGlossariesSchema } from "./tools/list_glossaries.js";
 import { getGlossary, getGlossarySchema } from "./tools/get_glossary.js";
+import { createGlossary, createGlossarySchema } from "./tools/create_glossary.js";
+import { updateGlossary, updateGlossarySchema } from "./tools/update_glossary.js";
+import { deleteGlossary, deleteGlossarySchema } from "./tools/delete_glossary.js";
+import { importGlossaryCsv, importGlossaryCsvSchema } from "./tools/import_glossary_csv.js";
+import { checkGlossaryImportStatus, checkGlossaryImportStatusSchema } from "./tools/check_glossary_import_status.js";
+import { exportGlossary, exportGlossarySchema } from "./tools/export_glossary.js";
+import { getGlossaryCounts, getGlossaryCountsSchema } from "./tools/get_glossary_counts.js";
 import { translateHandler, translateSchema } from "./tools/translate.js";
 import {
   updateMemory,
@@ -45,6 +52,13 @@ const handlers: Record<string, Handler> = {
   import_tmx: importTmx,
   check_import_status: checkImportStatus,
   get_glossary: getGlossary,
+  create_glossary: createGlossary,
+  update_glossary: updateGlossary,
+  delete_glossary: deleteGlossary,
+  import_glossary_csv: importGlossaryCsv,
+  check_glossary_import_status: checkGlossaryImportStatus,
+  export_glossary: exportGlossary,
+  get_glossary_counts: getGlossaryCounts,
 };
 
 const listers: Record<string, Lister> = {
@@ -176,6 +190,48 @@ async function ListTools() {
         description:
           "Retrieves a specific glossary by ID from your Lara Translate account. Returns null if the glossary is not found.",
         inputSchema: z.toJSONSchema(getGlossarySchema),
+      },
+      {
+        name: "create_glossary",
+        description:
+          "Create a glossary with a custom name in your Lara Translate account. Glossaries enforce specific terminology during translation.",
+        inputSchema: z.toJSONSchema(createGlossarySchema),
+      },
+      {
+        name: "update_glossary",
+        description:
+          "Updates the name of a glossary in your Lara Translate account.",
+        inputSchema: z.toJSONSchema(updateGlossarySchema),
+      },
+      {
+        name: "delete_glossary",
+        description:
+          "Deletes a glossary from your Lara Translate account.",
+        inputSchema: z.toJSONSchema(deleteGlossarySchema),
+      },
+      {
+        name: "import_glossary_csv",
+        description:
+          "Imports a CSV file into a glossary in your Lara Translate account. Supports unidirectional and multidirectional formats.",
+        inputSchema: z.toJSONSchema(importGlossaryCsvSchema),
+      },
+      {
+        name: "check_glossary_import_status",
+        description:
+          "Checks the status of a glossary CSV import job in your Lara Translate account.",
+        inputSchema: z.toJSONSchema(checkGlossaryImportStatusSchema),
+      },
+      {
+        name: "export_glossary",
+        description:
+          "Exports a glossary as CSV from your Lara Translate account. Supports unidirectional and multidirectional formats.",
+        inputSchema: z.toJSONSchema(exportGlossarySchema),
+      },
+      {
+        name: "get_glossary_counts",
+        description:
+          "Retrieves the term and language counts for a glossary in your Lara Translate account.",
+        inputSchema: z.toJSONSchema(getGlossaryCountsSchema),
       },
     ],
   };
