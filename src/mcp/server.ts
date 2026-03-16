@@ -29,7 +29,6 @@ export default function getMcpServer(
       capabilities: {
         tools: {},
         resources: {},
-        resourceTemplates: {},
       },
     }
   );
