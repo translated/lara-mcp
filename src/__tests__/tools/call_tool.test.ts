@@ -62,6 +62,15 @@ describe('CallTool error handling', () => {
     await expect(promise).rejects.toThrow(/Invalid input:.*id/);
   });
 
+  it('should use "arguments" label for root-level Zod errors', async () => {
+    // Passing a non-object triggers a root-level Zod error with empty path
+    const request = makeRequest('delete_memory', 'not-an-object' as any);
+    const promise = CallTool(request, mockTranslator as any as Translator);
+
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow(/Invalid input: arguments:/);
+  });
+
   it('should preserve InvalidInputError as-is', async () => {
     mockTranslator.memories.addTranslation.mockImplementation(() => {
       throw new InvalidInputError('Custom validation error from handler');

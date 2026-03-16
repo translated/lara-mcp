@@ -96,7 +96,7 @@ async function CallTool(
     if (error instanceof z.ZodError) {
       const fieldErrors = error.issues
         .map(i => {
-          const field = i.path.join('.');
+          const field = i.path.length > 0 ? i.path.join('.') : 'arguments';
           return `${field}: ${i.message}`;
         })
         .join('; ');
