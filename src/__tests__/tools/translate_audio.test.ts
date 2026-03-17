@@ -85,6 +85,22 @@ describe('translateAudioSchema', () => {
     };
     expect(() => translateAudioSchema.parse(input)).toThrow();
   });
+
+  it('should reject relative file_path', () => {
+    const input = {
+      file_path: 'relative/audio.mp3',
+      target: 'it-IT',
+    };
+    expect(() => translateAudioSchema.parse(input)).toThrow();
+  });
+
+  it('should reject file_path with ".." segments', () => {
+    const input = {
+      file_path: '/tmp/../etc/passwd',
+      target: 'it-IT',
+    };
+    expect(() => translateAudioSchema.parse(input)).toThrow();
+  });
 });
 
 describe('translateAudio', () => {

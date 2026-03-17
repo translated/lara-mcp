@@ -41,6 +41,20 @@ describe('downloadTranslatedAudioSchema', () => {
       id: 'audio_123',
     })).toThrow();
   });
+
+  it('should reject relative output_path', () => {
+    expect(() => downloadTranslatedAudioSchema.parse({
+      id: 'audio_123',
+      output_path: 'relative/translated.mp3',
+    })).toThrow();
+  });
+
+  it('should reject output_path with ".." segments', () => {
+    expect(() => downloadTranslatedAudioSchema.parse({
+      id: 'audio_123',
+      output_path: '/tmp/../etc/translated.mp3',
+    })).toThrow();
+  });
 });
 
 describe('downloadTranslatedAudio', () => {

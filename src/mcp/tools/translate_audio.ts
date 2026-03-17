@@ -8,6 +8,14 @@ import { InvalidInputError } from "#exception";
 export const translateAudioSchema = z.object({
   file_path: z
     .string()
+    .refine(
+      (p) => path.isAbsolute(p),
+      "file_path must be an absolute path",
+    )
+    .refine(
+      (p) => !/(^|[\\/])\.\.([\\/]|$)/.test(p),
+      'file_path must not contain ".." path segments',
+    )
     .describe(
       "The absolute path to the audio file to translate."
     ),
@@ -44,7 +52,7 @@ export const translateAudioSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      "Privacy flag. If set to true, the request will not be traced or logged."
+      "Privacy flag. If set to true, the request content will not be stored or traced by Lara."
     ),
   style: z
     .enum(["faithful", "fluid", "creative"])
@@ -73,14 +81,16 @@ export async function translateAudio(args: unknown, lara: Translator) {
     voice_gender,
   } = validatedArgs;
 
+  const normalizedFilePath = path.normalize(filePath);
+
   // Validate file exists and is readable
   try {
-    fs.accessSync(filePath, fs.constants.R_OK);
+    fs.accessSync(normalizedFilePath, fs.constants.R_OK);
   } catch {
-    throw new InvalidInputError(`File not found or not readable: ${filePath}`);
+    throw new InvalidInputError(`File not found or not readable: ${normalizedFilePath}`);
   }
 
-  const filename = path.basename(filePath);
+  const filename = path.basename(normalizedFilePath);
 
   // Audit log for privacy-sensitive requests
   if (no_trace) {
@@ -110,5 +120,5 @@ export async function translateAudio(args: unknown, lara: Translator) {
     options.voiceGender = voice_gender;
   }
 
-  return await lara.audio.upload(filePath, filename, source ?? null, target, options);
+  return await lara.audio.upload(normalizedFilePath, filename, source ?? null, target, options);
 }
