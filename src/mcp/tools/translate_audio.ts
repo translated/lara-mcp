@@ -1,23 +1,22 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { logger } from "#logger";
-import { InvalidInputError } from "#exception";
+import { buildDocumentOptions, decodeAndValidateBase64 } from "./upload_document.js";
 
 export const translateAudioSchema = z.object({
-  file_path: z
+  file_content: z
     .string()
-    .refine(
-      (p) => path.isAbsolute(p),
-      "file_path must be an absolute path",
-    )
-    .refine(
-      (p) => !/(^|[\\/])\.\.([\\/]|$)/.test(p),
-      'file_path must not contain ".." path segments',
-    )
     .describe(
-      "The absolute path to the audio file to translate."
+      "Base64-encoded audio file content."
+    ),
+  filename: z
+    .string()
+    .min(1)
+    .describe(
+      "Original filename with extension (e.g., 'recording.mp3'). Used for format detection."
     ),
   target: z
     .string()
@@ -70,30 +69,12 @@ export const translateAudioSchema = z.object({
 
 export async function translateAudio(args: unknown, lara: Translator) {
   const validatedArgs = translateAudioSchema.parse(args);
-  const {
-    file_path: filePath,
-    target,
-    source,
-    adapt_to,
-    glossaries,
-    no_trace,
-    style,
-    voice_gender,
-  } = validatedArgs;
+  const { file_content, filename, target, source, voice_gender } = validatedArgs;
 
-  const normalizedFilePath = path.normalize(filePath);
-
-  // Validate file exists and is readable
-  try {
-    fs.accessSync(normalizedFilePath, fs.constants.R_OK);
-  } catch {
-    throw new InvalidInputError(`File not found or not readable: ${normalizedFilePath}`);
-  }
-
-  const filename = path.basename(normalizedFilePath);
+  const fileBuffer = decodeAndValidateBase64(file_content, "Audio file");
 
   // Audit log for privacy-sensitive requests
-  if (no_trace) {
+  if (validatedArgs.no_trace) {
     logger.info({
       action: 'translate_audio',
       privacySensitive: true,
@@ -101,24 +82,20 @@ export async function translateAudio(args: unknown, lara: Translator) {
     }, 'Privacy-sensitive audio translation requested (noTrace=true)');
   }
 
-  // Build options object dynamically to avoid passing undefined values
-  const options: Record<string, unknown> = {};
-
-  if (typeof adapt_to !== "undefined") {
-    options.adaptTo = adapt_to;
-  }
-  if (typeof glossaries !== "undefined") {
-    options.glossaries = glossaries;
-  }
-  if (typeof no_trace !== "undefined") {
-    options.noTrace = no_trace;
-  }
-  if (typeof style !== "undefined") {
-    options.style = style;
-  }
+  const options = buildDocumentOptions(validatedArgs);
   if (typeof voice_gender !== "undefined") {
     options.voiceGender = voice_gender;
   }
 
-  return await lara.audio.upload(normalizedFilePath, filename, source ?? null, target, options);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lara-audio-"));
+  const tempFilePath = path.join(tempDir, "upload");
+
+  try {
+    fs.writeFileSync(tempFilePath, fileBuffer, { mode: 0o600 });
+    return await lara.audio.upload(tempFilePath, filename, source ?? null, target, options);
+  } finally {
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (_) { /* best-effort cleanup */ }
+  }
 }
