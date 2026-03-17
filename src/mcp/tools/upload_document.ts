@@ -127,10 +127,9 @@ export async function uploadDocument(args: unknown, lara: Translator) {
   const { file_content, filename, source, target } = validatedArgs;
 
   const fileBuffer = decodeAndValidateBase64(file_content);
-  const safeName = path.basename(filename);
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lara-doc-"));
-  const tempFilePath = path.join(tempDir, safeName);
+  const tempFilePath = path.join(tempDir, "upload");
 
   try {
     fs.writeFileSync(tempFilePath, fileBuffer, { mode: 0o600 });
