@@ -34,6 +34,10 @@ import { getGlossaryCounts, getGlossaryCountsSchema } from "./tools/get_glossary
 import { addGlossaryEntry, addGlossaryEntrySchema } from "./tools/add_glossary_entry.js";
 import { deleteGlossaryEntry, deleteGlossaryEntrySchema } from "./tools/delete_glossary_entry.js";
 import { translateHandler, translateSchema } from "./tools/translate.js";
+import { uploadDocument, uploadDocumentSchema } from "./tools/upload_document.js";
+import { checkDocumentStatus, checkDocumentStatusSchema } from "./tools/check_document_status.js";
+import { downloadDocument, downloadDocumentSchema } from "./tools/download_document.js";
+import { translateDocument, translateDocumentSchema } from "./tools/translate_document.js";
 import {
   updateMemory,
   updateMemorySchema,
@@ -63,6 +67,10 @@ const handlers: Record<string, Handler> = {
   get_glossary_counts: getGlossaryCounts,
   add_glossary_entry: addGlossaryEntry,
   delete_glossary_entry: deleteGlossaryEntry,
+  upload_document: uploadDocument,
+  check_document_status: checkDocumentStatus,
+  download_document: downloadDocument,
+  translate_document: translateDocument,
 };
 
 const listers: Record<string, Lister> = {
@@ -256,6 +264,30 @@ async function ListTools() {
         description:
           "Deletes an entry from a glossary in your Lara Translate account. Use term for monodirectional glossaries or guid for multidirectional glossaries.",
         inputSchema: z.toJSONSchema(deleteGlossaryEntrySchema),
+      },
+      {
+        name: "upload_document",
+        description:
+          "Uploads a document (DOCX, PDF, etc.) for translation in your Lara Translate account. Returns a document object with an ID that can be used to check status and download the result.",
+        inputSchema: z.toJSONSchema(uploadDocumentSchema),
+      },
+      {
+        name: "check_document_status",
+        description:
+          "Checks the translation status and progress of a previously uploaded document in your Lara Translate account.",
+        inputSchema: z.toJSONSchema(checkDocumentStatusSchema),
+      },
+      {
+        name: "download_document",
+        description:
+          "Downloads a translated document from your Lara Translate account. Returns the document as base64-encoded content.",
+        inputSchema: z.toJSONSchema(downloadDocumentSchema),
+      },
+      {
+        name: "translate_document",
+        description:
+          "All-in-one document translation: uploads a document, waits for translation to complete, and returns the translated document as base64-encoded content.",
+        inputSchema: z.toJSONSchema(translateDocumentSchema),
       },
     ],
   };
