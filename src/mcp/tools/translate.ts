@@ -64,7 +64,7 @@ export const translateSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      "Privacy flag. If set to true, the translation request will not be traced or logged. Use for sensitive content."
+      "Privacy flag. If set to true, the request content will not be stored or traced by Lara. Use for sensitive content."
     ),
   priority: z
     .enum(["normal", "background"])
