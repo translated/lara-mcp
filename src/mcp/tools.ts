@@ -37,6 +37,10 @@ import { translateHandler, translateSchema } from "./tools/translate.js";
 import { translateAudio, translateAudioSchema } from "./tools/translate_audio.js";
 import { checkAudioTranslationStatus, checkAudioTranslationStatusSchema } from "./tools/check_audio_translation_status.js";
 import { downloadTranslatedAudio, downloadTranslatedAudioSchema } from "./tools/download_translated_audio.js";
+import { uploadDocument, uploadDocumentSchema } from "./tools/upload_document.js";
+import { checkDocumentStatus, checkDocumentStatusSchema } from "./tools/check_document_status.js";
+import { downloadDocument, downloadDocumentSchema } from "./tools/download_document.js";
+import { translateDocument, translateDocumentSchema } from "./tools/translate_document.js";
 import {
   updateMemory,
   updateMemorySchema,
@@ -69,6 +73,10 @@ const handlers: Record<string, Handler> = {
   translate_audio: translateAudio,
   check_audio_translation_status: checkAudioTranslationStatus,
   download_translated_audio: downloadTranslatedAudio,
+  upload_document: uploadDocument,
+  check_document_status: checkDocumentStatus,
+  download_document: downloadDocument,
+  translate_document: translateDocument,
 };
 
 const listers: Record<string, Lister> = {
@@ -280,6 +288,30 @@ async function ListTools() {
         description:
           "Step 3 of 3 for audio translation. Downloads the translated audio file to disk. Only call this after check_audio_translation_status returns status 'translated'. Requires the job id from translate_audio and an output_path where the file will be saved.",
         inputSchema: z.toJSONSchema(downloadTranslatedAudioSchema),
+      },
+      {
+        name: "upload_document",
+        description:
+          "Uploads a document (DOCX, PDF, etc.) for translation in your Lara Translate account. Returns a document object with an ID that can be used to check status and download the result.",
+        inputSchema: z.toJSONSchema(uploadDocumentSchema),
+      },
+      {
+        name: "check_document_status",
+        description:
+          "Checks the translation status and progress of a previously uploaded document in your Lara Translate account.",
+        inputSchema: z.toJSONSchema(checkDocumentStatusSchema),
+      },
+      {
+        name: "download_document",
+        description:
+          "Downloads a translated document from your Lara Translate account. Returns the document as base64-encoded content.",
+        inputSchema: z.toJSONSchema(downloadDocumentSchema),
+      },
+      {
+        name: "translate_document",
+        description:
+          "All-in-one document translation: uploads a document, waits for translation to complete, and returns the translated document as base64-encoded content.",
+        inputSchema: z.toJSONSchema(translateDocumentSchema),
       },
     ],
   };
