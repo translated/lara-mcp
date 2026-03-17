@@ -45,6 +45,12 @@ export function createMockTranslator() {
       addOrReplaceEntry: vi.fn(),
       deleteEntry: vi.fn(),
     },
+    documents: {
+      upload: vi.fn(),
+      status: vi.fn(),
+      download: vi.fn(),
+      translate: vi.fn(),
+    },
     client: {}
   };
 }
