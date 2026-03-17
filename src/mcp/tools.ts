@@ -286,7 +286,7 @@ async function ListTools() {
       {
         name: "translate_audio",
         description:
-          "Step 1 of 3 for audio translation. Uploads an audio file and starts an asynchronous translation job. The job may take minutes to complete. After calling this tool, use check_audio_translation_status to poll until status is 'translated', then use download_translated_audio to save the result.",
+          "Step 1 of 3 for audio translation. Accepts base64-encoded audio and starts an asynchronous translation job. The job may take minutes to complete. After calling this tool, use check_audio_translation_status to poll until status is 'translated', then use download_translated_audio to get the result.",
         inputSchema: z.toJSONSchema(translateAudioSchema),
       },
       {
@@ -298,7 +298,7 @@ async function ListTools() {
       {
         name: "download_translated_audio",
         description:
-          "Step 3 of 3 for audio translation. Downloads the translated audio file to disk. Only call this after check_audio_translation_status returns status 'translated'. Requires the job id from translate_audio and an output_path where the file will be saved.",
+          "Step 3 of 3 for audio translation. Downloads the translated audio and returns it as base64-encoded content. Only call this after check_audio_translation_status returns status 'translated'. Requires the job id from translate_audio.",
         inputSchema: z.toJSONSchema(downloadTranslatedAudioSchema),
       },
       {

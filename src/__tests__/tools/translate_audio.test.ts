@@ -11,14 +11,19 @@ vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof fs>('fs');
   return {
     ...actual,
-    accessSync: vi.fn(),
+    mkdtempSync: vi.fn(() => '/tmp/lara-audio-abc123'),
+    writeFileSync: vi.fn(),
+    rmSync: vi.fn(),
   };
 });
+
+const VALID_BASE64 = Buffer.from('fake audio content').toString('base64');
 
 describe('translateAudioSchema', () => {
   it('should validate valid input with all fields', () => {
     const input = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
       source: 'en-EN',
       adapt_to: ['mem_123'],
@@ -33,26 +38,33 @@ describe('translateAudioSchema', () => {
 
   it('should validate valid input with only required fields', () => {
     const input = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
     };
 
     expect(() => translateAudioSchema.parse(input)).not.toThrow();
   });
 
-  it('should reject missing file_path', () => {
-    const input = { target: 'it-IT' };
+  it('should reject missing file_content', () => {
+    const input = { filename: 'audio.mp3', target: 'it-IT' };
+    expect(() => translateAudioSchema.parse(input)).toThrow();
+  });
+
+  it('should reject missing filename', () => {
+    const input = { file_content: VALID_BASE64, target: 'it-IT' };
     expect(() => translateAudioSchema.parse(input)).toThrow();
   });
 
   it('should reject missing target', () => {
-    const input = { file_path: '/tmp/audio.mp3' };
+    const input = { file_content: VALID_BASE64, filename: 'audio.mp3' };
     expect(() => translateAudioSchema.parse(input)).toThrow();
   });
 
   it('should reject invalid glossary ID format', () => {
     const input = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
       glossaries: ['invalid_id'],
     };
@@ -61,7 +73,8 @@ describe('translateAudioSchema', () => {
 
   it('should reject more than 10 glossaries', () => {
     const input = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
       glossaries: Array.from({ length: 11 }, (_, i) => `gls_id${i}`),
     };
@@ -70,7 +83,8 @@ describe('translateAudioSchema', () => {
 
   it('should reject invalid style value', () => {
     const input = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
       style: 'invalid',
     };
@@ -79,24 +93,18 @@ describe('translateAudioSchema', () => {
 
   it('should reject invalid voice_gender value', () => {
     const input = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
       voice_gender: 'other',
     };
     expect(() => translateAudioSchema.parse(input)).toThrow();
   });
 
-  it('should reject relative file_path', () => {
+  it('should reject empty filename', () => {
     const input = {
-      file_path: 'relative/audio.mp3',
-      target: 'it-IT',
-    };
-    expect(() => translateAudioSchema.parse(input)).toThrow();
-  });
-
-  it('should reject file_path with ".." segments', () => {
-    const input = {
-      file_path: '/tmp/../etc/passwd',
+      file_content: VALID_BASE64,
+      filename: '',
       target: 'it-IT',
     };
     expect(() => translateAudioSchema.parse(input)).toThrow();
@@ -108,7 +116,6 @@ describe('translateAudio', () => {
 
   beforeEach(() => {
     mockTranslator = getMockTranslator();
-    vi.mocked(fs.accessSync).mockImplementation(() => undefined);
   });
 
   it('should call lara.audio.upload with correct args', async () => {
@@ -121,7 +128,8 @@ describe('translateAudio', () => {
     mockTranslator.audio.upload.mockResolvedValue(mockResult);
 
     const args = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
       source: 'en-EN',
     };
@@ -129,7 +137,7 @@ describe('translateAudio', () => {
     const result = await translateAudio(args, mockTranslator as any as Translator);
 
     expect(mockTranslator.audio.upload).toHaveBeenCalledWith(
-      '/tmp/audio.mp3',
+      '/tmp/lara-audio-abc123/upload',
       'audio.mp3',
       'en-EN',
       'it-IT',
@@ -142,10 +150,10 @@ describe('translateAudio', () => {
     const mockResult = { id: 'audio_123', status: 'initialized', target: 'it-IT', filename: 'audio.mp3' };
     mockTranslator.audio.upload.mockResolvedValue(mockResult);
 
-    await translateAudio({ file_path: '/tmp/audio.mp3', target: 'it-IT' }, mockTranslator as any as Translator);
+    await translateAudio({ file_content: VALID_BASE64, filename: 'audio.mp3', target: 'it-IT' }, mockTranslator as any as Translator);
 
     expect(mockTranslator.audio.upload).toHaveBeenCalledWith(
-      '/tmp/audio.mp3',
+      '/tmp/lara-audio-abc123/upload',
       'audio.mp3',
       null,
       'it-IT',
@@ -157,7 +165,8 @@ describe('translateAudio', () => {
     mockTranslator.audio.upload.mockResolvedValue({ id: 'audio_123' });
 
     const args = {
-      file_path: '/tmp/audio.mp3',
+      file_content: VALID_BASE64,
+      filename: 'audio.mp3',
       target: 'it-IT',
       glossaries: ['gls_abc'],
       style: 'fluid',
@@ -169,7 +178,7 @@ describe('translateAudio', () => {
     await translateAudio(args, mockTranslator as any as Translator);
 
     expect(mockTranslator.audio.upload).toHaveBeenCalledWith(
-      '/tmp/audio.mp3',
+      '/tmp/lara-audio-abc123/upload',
       'audio.mp3',
       null,
       'it-IT',
@@ -183,13 +192,22 @@ describe('translateAudio', () => {
     );
   });
 
-  it('should throw on unreadable file', async () => {
-    vi.mocked(fs.accessSync).mockImplementation(() => {
-      throw new Error('ENOENT');
-    });
+  it('should write decoded content to temp file and clean up', async () => {
+    mockTranslator.audio.upload.mockResolvedValue({ id: 'audio_123' });
 
-    await expect(
-      translateAudio({ file_path: '/nonexistent/file.mp3', target: 'it-IT' }, mockTranslator as any as Translator)
-    ).rejects.toThrow('File not found or not readable');
+    await translateAudio(
+      { file_content: VALID_BASE64, filename: 'audio.mp3', target: 'it-IT' },
+      mockTranslator as any as Translator
+    );
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/tmp/lara-audio-abc123/upload',
+      expect.any(Buffer),
+      { mode: 0o600 }
+    );
+    expect(fs.rmSync).toHaveBeenCalledWith(
+      '/tmp/lara-audio-abc123',
+      { recursive: true, force: true }
+    );
   });
 });
