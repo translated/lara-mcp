@@ -37,6 +37,8 @@ import { translateHandler, translateSchema } from "./tools/translate.js";
 import { translateAudio, translateAudioSchema } from "./tools/translate_audio.js";
 import { checkAudioTranslationStatus, checkAudioTranslationStatusSchema } from "./tools/check_audio_translation_status.js";
 import { downloadTranslatedAudio, downloadTranslatedAudioSchema } from "./tools/download_translated_audio.js";
+import { translateImage, translateImageSchema } from "./tools/translate_image.js";
+import { translateImageText, translateImageTextSchema } from "./tools/translate_image_text.js";
 import { uploadDocument, uploadDocumentSchema } from "./tools/upload_document.js";
 import { checkDocumentStatus, checkDocumentStatusSchema } from "./tools/check_document_status.js";
 import { downloadDocument, downloadDocumentSchema } from "./tools/download_document.js";
@@ -77,6 +79,8 @@ const handlers: Record<string, Handler> = {
   check_document_status: checkDocumentStatus,
   download_document: downloadDocument,
   translate_document: translateDocument,
+  translate_image: translateImage,
+  translate_image_text: translateImageText,
 };
 
 const listers: Record<string, Lister> = {
@@ -312,6 +316,18 @@ async function ListTools() {
         description:
           "All-in-one document translation: uploads a document, waits for translation to complete, and returns the translated document as base64-encoded content. This is the simplest way to translate a document in a single call. Use this instead of the 3-step upload_document → check_document_status → download_document workflow unless you need to track progress or handle the steps separately.",
         inputSchema: z.toJSONSchema(translateDocumentSchema),
+      },
+      {
+        name: "translate_image",
+        description:
+          "All-in-one image translation: accepts a base64-encoded image, translates text within it, and returns the translated image as base64-encoded content in a single step. No separate upload, status polling, or download steps are needed. Source text in the image is replaced with the translation.",
+        inputSchema: z.toJSONSchema(translateImageSchema),
+      },
+      {
+        name: "translate_image_text",
+        description:
+          "All-in-one image text extraction and translation: accepts a base64-encoded image, extracts text from it, translates the text, and returns structured paragraphs with source text and translations in a single step. No separate upload, status polling, or download steps are needed. The original image is not modified.",
+        inputSchema: z.toJSONSchema(translateImageTextSchema),
       },
     ],
   };

@@ -104,13 +104,13 @@ export function buildDocumentOptions(args: {
   return options;
 }
 
-export function decodeAndValidateBase64(file_content: string): Buffer {
+export function decodeAndValidateBase64(file_content: string, entityName = "Document"): Buffer {
   if (file_content.length > MAX_BASE64_LENGTH) {
-    throw new InvalidInputError("Document too large. Maximum allowed size is 20MB.");
+    throw new InvalidInputError(`${entityName} too large. Maximum allowed size is 20MB.`);
   }
   const buffer = Buffer.from(file_content, "base64");
   if (buffer.length > MAX_FILE_SIZE) {
-    throw new InvalidInputError("Document too large. Maximum allowed size is 20MB.");
+    throw new InvalidInputError(`${entityName} too large. Maximum allowed size is 20MB.`);
   }
   return buffer;
 }
