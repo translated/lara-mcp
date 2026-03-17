@@ -57,6 +57,10 @@ export function createMockTranslator() {
       download: vi.fn(),
       translate: vi.fn(),
     },
+    images: {
+      translate: vi.fn(),
+      translateText: vi.fn(),
+    },
     client: {}
   };
 }
