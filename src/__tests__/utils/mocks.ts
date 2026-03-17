@@ -42,6 +42,8 @@ export function createMockTranslator() {
       getImportStatus: vi.fn(),
       export: vi.fn(),
       counts: vi.fn(),
+      addOrReplaceEntry: vi.fn(),
+      deleteEntry: vi.fn(),
     },
     client: {}
   };
