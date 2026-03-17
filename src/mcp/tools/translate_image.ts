@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { Readable } from "stream";
+import { InvalidInputError } from "#exception";
 import { buildDocumentOptions, decodeAndValidateBase64 } from "./upload_document.js";
 
 export const imageBaseSchema = z.object({
@@ -65,7 +66,7 @@ export function detectImageExtension(buffer: Buffer): string {
   if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
     return ".bmp";
   }
-  return ".png";
+  throw new InvalidInputError("Unsupported image format. Supported formats: PNG, JPEG, GIF, WebP, BMP.");
 }
 
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {

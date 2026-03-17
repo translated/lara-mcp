@@ -6,7 +6,7 @@ import { Translator } from '@translated/lara';
 
 setupTranslatorMock();
 
-const validBase64 = Buffer.from('fake image bytes').toString('base64');
+const validBase64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]).toString('base64');
 
 describe('translateImageSchema', () => {
   it('should validate valid input with required fields', () => {
@@ -86,9 +86,9 @@ describe('detectImageExtension', () => {
     expect(detectImageExtension(buf)).toBe('.bmp');
   });
 
-  it('should default to .png for unknown formats', () => {
+  it('should throw for unsupported formats', () => {
     const buf = Buffer.from([0x00, 0x00, 0x00, 0x00]);
-    expect(detectImageExtension(buf)).toBe('.png');
+    expect(() => detectImageExtension(buf)).toThrow('Unsupported image format');
   });
 });
 
