@@ -6,7 +6,7 @@ import * as path from "path";
 import { InvalidInputError } from "#exception";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_BASE64_LENGTH = Math.ceil(MAX_FILE_SIZE * 4 / 3);
+const MAX_BASE64_LENGTH = 4 * Math.ceil(MAX_FILE_SIZE / 3);
 
 export const uploadDocumentSchema = z.object({
   file_content: z
@@ -108,7 +108,11 @@ export function decodeAndValidateBase64(file_content: string): Buffer {
   if (file_content.length > MAX_BASE64_LENGTH) {
     throw new InvalidInputError("Document too large. Maximum allowed size is 20MB.");
   }
-  return Buffer.from(file_content, "base64");
+  const buffer = Buffer.from(file_content, "base64");
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new InvalidInputError("Document too large. Maximum allowed size is 20MB.");
+  }
+  return buffer;
 }
 
 export function resultToBase64(result: Buffer | Blob): Promise<string> | string {

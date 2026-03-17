@@ -79,7 +79,7 @@ describe('uploadDocument', () => {
   it('should call lara.documents.upload with correct parameters', async () => {
     const args = {
       file_content: validBase64,
-      filename: 'report.docx',
+      filename: 'doc.docx',
       source: 'en-EN',
       target: 'it-IT',
     };
@@ -89,7 +89,7 @@ describe('uploadDocument', () => {
     expect(mockTranslator.documents.upload).toHaveBeenCalledOnce();
     const [filePath, filename, source, target, options] = mockTranslator.documents.upload.mock.calls[0];
     expect(typeof filePath).toBe('string');
-    expect(filename).toBe('report.docx');
+    expect(filename).toBe('doc.docx');
     expect(source).toBe('en-EN');
     expect(target).toBe('it-IT');
     expect(result).toEqual({ id: 'doc_123', status: 'initialized', filename: 'doc.docx', target: 'it-IT' });
