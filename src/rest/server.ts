@@ -25,8 +25,8 @@ export class RestServer {
 
     this.express = express();
 
-    // -- Json parser
-    this.express.use(express.json());
+    // -- Json parser (30MB accommodates 20MB file limit after base64 encoding ~27MB + JSON overhead)
+    this.express.use(express.json({ limit: "30mb" }));
 
     // -- Security
     this.express.use(cors);

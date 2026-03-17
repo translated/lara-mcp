@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { Readable } from "stream";
+import { InvalidInputError } from "#exception";
 import { buildDocumentOptions, decodeAndValidateBase64 } from "./upload_document.js";
 
 export const imageBaseSchema = z.object({
@@ -48,6 +49,26 @@ export const translateImageSchema = imageBaseSchema.extend({
     .describe("Method for removing source text from the image. 'overlay' covers text with a solid background, 'inpainting' attempts to reconstruct the background."),
 });
 
+export function detectImageExtension(buffer: Buffer): string {
+  if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return ".png";
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return ".jpg";
+  }
+  if (buffer.length >= 4 && buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
+    return ".gif";
+  }
+  if (buffer.length >= 12 && buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return ".webp";
+  }
+  if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
+    return ".bmp";
+  }
+  throw new InvalidInputError("Unsupported image format. Supported formats: PNG, JPEG, GIF, WebP, BMP.");
+}
+
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) {
@@ -62,8 +83,9 @@ export async function translateImage(args: unknown, lara: Translator) {
 
   const fileBuffer = decodeAndValidateBase64(file_content, "Image");
 
+  const ext = detectImageExtension(fileBuffer);
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lara-img-"));
-  const tempFilePath = path.join(tempDir, "upload");
+  const tempFilePath = path.join(tempDir, `upload${ext}`);
 
   try {
     fs.writeFileSync(tempFilePath, fileBuffer, { mode: 0o600 });

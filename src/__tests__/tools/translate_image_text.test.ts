@@ -5,7 +5,7 @@ import { Translator } from '@translated/lara';
 
 setupTranslatorMock();
 
-const validBase64 = Buffer.from('fake image bytes').toString('base64');
+const validBase64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]).toString('base64');
 
 describe('translateImageTextSchema', () => {
   it('should validate valid input with required fields', () => {
@@ -52,6 +52,30 @@ describe('translateImageText', () => {
   beforeEach(() => {
     mockTranslator = getMockTranslator();
     mockTranslator.images.translateText = vi.fn().mockResolvedValue(mockResult);
+  });
+
+  it('should create temp file with correct extension for PNG', async () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const args = {
+      file_content: pngBytes.toString('base64'),
+      target: 'it-IT',
+    };
+
+    await translateImageText(args, mockTranslator as any as Translator);
+    const [filePath] = mockTranslator.images.translateText.mock.calls[0];
+    expect(filePath).toMatch(/\.png$/);
+  });
+
+  it('should create temp file with correct extension for JPEG', async () => {
+    const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    const args = {
+      file_content: jpegBytes.toString('base64'),
+      target: 'it-IT',
+    };
+
+    await translateImageText(args, mockTranslator as any as Translator);
+    const [filePath] = mockTranslator.images.translateText.mock.calls[0];
+    expect(filePath).toMatch(/\.jpg$/);
   });
 
   it('should call lara.images.translateText with correct parameters', async () => {
