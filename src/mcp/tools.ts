@@ -33,6 +33,7 @@ import { exportGlossary, exportGlossarySchema } from "./tools/export_glossary.js
 import { getGlossaryCounts, getGlossaryCountsSchema } from "./tools/get_glossary_counts.js";
 import { addGlossaryEntry, addGlossaryEntrySchema } from "./tools/add_glossary_entry.js";
 import { deleteGlossaryEntry, deleteGlossaryEntrySchema } from "./tools/delete_glossary_entry.js";
+import { detectLanguage, detectLanguageSchema } from "./tools/detect_language.js";
 import { translateHandler, translateSchema } from "./tools/translate.js";
 import { translateAudio, translateAudioSchema } from "./tools/translate_audio.js";
 import { checkAudioTranslationStatus, checkAudioTranslationStatusSchema } from "./tools/check_audio_translation_status.js";
@@ -54,6 +55,7 @@ type Handler = (args: any, lara: Translator) => Promise<any>;
 type Lister = (lara: Translator) => Promise<any>;
 
 const handlers: Record<string, Handler> = {
+  detect_language: detectLanguage,
   translate: translateHandler,
   create_memory: createMemory,
   delete_memory: deleteMemory,
@@ -149,6 +151,12 @@ async function CallTool(
 async function ListTools() {
   return {
     tools: [
+      {
+        name: "detect_language",
+        description:
+          "Detects the language of the provided text. Returns the detected language, content type, and a list of predictions with confidence scores. Accepts a single string or an array of strings (up to 128 elements).",
+        inputSchema: z.toJSONSchema(detectLanguageSchema),
+      },
       {
         name: "translate",
         description:
