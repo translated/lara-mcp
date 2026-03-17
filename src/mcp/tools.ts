@@ -178,13 +178,13 @@ async function ListTools() {
       {
         name: "import_tmx",
         description:
-          "Imports a TMX file into a translation memory. This is an async operation that returns an import job object. Poll with check_import_status using the returned job ID until the import is complete.",
+          "Imports a TMX file into a translation memory. This is an async operation that returns an import job object containing an import_id. Poll with check_import_status using the returned import_id until the import is complete.",
         inputSchema: z.toJSONSchema(importTmxSchema),
       },
       {
         name: "check_import_status",
         description:
-          "Checks the status of a TMX import job started by import_tmx. Poll this tool with the job ID until the import is complete. The response includes a progress field to track completion.",
+          "Checks the status of a TMX import job started by import_tmx. Poll this tool with the import_id returned from import_tmx until the import is complete. The response includes a progress field to track completion.",
         inputSchema: z.toJSONSchema(checkImportStatusSchema),
       },
       {
@@ -232,13 +232,13 @@ async function ListTools() {
       {
         name: "import_glossary_csv",
         description:
-          "Imports a CSV file into a glossary. Supports unidirectional and multidirectional formats. This is an async operation that returns an import job object. Poll with check_glossary_import_status using the returned job ID until the import is complete.",
+          "Imports a CSV file into a glossary. Supports unidirectional and multidirectional formats. This is an async operation that returns an import job object containing an import_id. Poll with check_glossary_import_status using the returned import_id until the import is complete.",
         inputSchema: z.toJSONSchema(importGlossaryCsvSchema),
       },
       {
         name: "check_glossary_import_status",
         description:
-          "Checks the status of a glossary CSV import job started by import_glossary_csv. Poll this tool with the job ID until the import is complete.",
+          "Checks the status of a glossary CSV import job started by import_glossary_csv. Poll this tool with the import_id returned from import_glossary_csv until the import is complete.",
         inputSchema: z.toJSONSchema(checkGlossaryImportStatusSchema),
       },
       {
