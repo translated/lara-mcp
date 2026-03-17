@@ -14,6 +14,7 @@ vi.mock('fs', async () => {
     ...actual,
     accessSync: vi.fn(),
     createWriteStream: vi.fn(),
+    renameSync: vi.fn(),
     unlinkSync: vi.fn(),
   };
 });
@@ -61,14 +62,16 @@ describe('downloadTranslatedAudio', () => {
   let mockTranslator: MockTranslator;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     mockTranslator = getMockTranslator();
     vi.mocked(fs.accessSync).mockImplementation(() => undefined);
+    vi.mocked(fs.renameSync).mockImplementation(() => undefined);
 
     const { pipeline } = await import('stream/promises');
     vi.mocked(pipeline).mockResolvedValue(undefined);
   });
 
-  it('should download and save audio file', async () => {
+  it('should download and save audio file via temp file', async () => {
     const mockStream = new PassThrough();
     mockTranslator.audio.download.mockResolvedValue(mockStream);
 
@@ -81,6 +84,12 @@ describe('downloadTranslatedAudio', () => {
     );
 
     expect(mockTranslator.audio.download).toHaveBeenCalledWith('audio_123');
+    // Should write to a temp file, then rename
+    expect(fs.createWriteStream).toHaveBeenCalledWith(expect.stringMatching(/^\/tmp\/\.lara-download-[a-f0-9]+\.tmp$/));
+    expect(fs.renameSync).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/tmp\/\.lara-download-[a-f0-9]+\.tmp$/),
+      '/tmp/translated.mp3'
+    );
     expect(result).toEqual({
       output_path: '/tmp/translated.mp3',
       message: 'Translated audio saved successfully.',
@@ -100,7 +109,7 @@ describe('downloadTranslatedAudio', () => {
     ).rejects.toThrow('Output directory not found or not writable');
   });
 
-  it('should clean up partial file on pipeline error', async () => {
+  it('should clean up temp file on pipeline error without deleting target', async () => {
     const mockStream = new PassThrough();
     mockTranslator.audio.download.mockResolvedValue(mockStream);
 
@@ -117,6 +126,9 @@ describe('downloadTranslatedAudio', () => {
       )
     ).rejects.toThrow('Stream error');
 
-    expect(fs.unlinkSync).toHaveBeenCalledWith('/tmp/translated.mp3');
+    // Should clean up the temp file, not the target path
+    expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringMatching(/^\/tmp\/\.lara-download-[a-f0-9]+\.tmp$/));
+    expect(fs.unlinkSync).not.toHaveBeenCalledWith('/tmp/translated.mp3');
+    expect(fs.renameSync).not.toHaveBeenCalled();
   });
 });
