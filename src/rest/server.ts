@@ -26,7 +26,7 @@ export class RestServer {
     this.express = express();
 
     // -- Json parser
-    this.express.use(express.json());
+    this.express.use(express.json({ limit: "30mb" }));
 
     // -- Security
     this.express.use(cors);

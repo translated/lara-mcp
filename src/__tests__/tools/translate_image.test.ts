@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Readable } from 'stream';
-import { translateImage, translateImageSchema, streamToBuffer } from '../../mcp/tools/translate_image.js';
+import { translateImage, translateImageSchema, streamToBuffer, detectImageExtension } from '../../mcp/tools/translate_image.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
 
@@ -60,6 +60,38 @@ describe('translateImageSchema', () => {
   });
 });
 
+describe('detectImageExtension', () => {
+  it('should detect PNG from magic bytes', () => {
+    const buf = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(detectImageExtension(buf)).toBe('.png');
+  });
+
+  it('should detect JPEG from magic bytes', () => {
+    const buf = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    expect(detectImageExtension(buf)).toBe('.jpg');
+  });
+
+  it('should detect GIF from magic bytes', () => {
+    const buf = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
+    expect(detectImageExtension(buf)).toBe('.gif');
+  });
+
+  it('should detect WebP from magic bytes', () => {
+    const buf = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]);
+    expect(detectImageExtension(buf)).toBe('.webp');
+  });
+
+  it('should detect BMP from magic bytes', () => {
+    const buf = Buffer.from([0x42, 0x4d, 0x00, 0x00]);
+    expect(detectImageExtension(buf)).toBe('.bmp');
+  });
+
+  it('should default to .png for unknown formats', () => {
+    const buf = Buffer.from([0x00, 0x00, 0x00, 0x00]);
+    expect(detectImageExtension(buf)).toBe('.png');
+  });
+});
+
 describe('streamToBuffer', () => {
   it('should collect a readable stream into a buffer', async () => {
     const data = 'hello stream';
@@ -78,6 +110,30 @@ describe('translateImage', () => {
     mockTranslator.images.translate = vi.fn().mockResolvedValue(
       Readable.from(Buffer.from(translatedBytes))
     );
+  });
+
+  it('should create temp file with correct extension for PNG', async () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const args = {
+      file_content: pngBytes.toString('base64'),
+      target: 'it-IT',
+    };
+
+    await translateImage(args, mockTranslator as any as Translator);
+    const [filePath] = mockTranslator.images.translate.mock.calls[0];
+    expect(filePath).toMatch(/\.png$/);
+  });
+
+  it('should create temp file with correct extension for JPEG', async () => {
+    const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    const args = {
+      file_content: jpegBytes.toString('base64'),
+      target: 'it-IT',
+    };
+
+    await translateImage(args, mockTranslator as any as Translator);
+    const [filePath] = mockTranslator.images.translate.mock.calls[0];
+    expect(filePath).toMatch(/\.jpg$/);
   });
 
   it('should call lara.images.translate with correct parameters', async () => {
