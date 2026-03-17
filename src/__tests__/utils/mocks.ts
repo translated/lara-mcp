@@ -11,6 +11,7 @@ export type MockTranslator = ReturnType<typeof createMockTranslator>;
  */
 export function createMockTranslator() {
   return {
+    detect: vi.fn(),
     translate: vi.fn(),
     getLanguages: vi.fn(),
     createMemory: vi.fn(),
