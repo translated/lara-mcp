@@ -184,13 +184,13 @@ async function ListTools() {
       {
         name: "import_tmx",
         description:
-          "Imports a TMX file into a translation memory in your Lara Translate account.",
+          "Imports a TMX file into a translation memory. This is an async operation that returns an import job object containing an import_id. Poll with check_import_status using the returned import_id until the import is complete.",
         inputSchema: z.toJSONSchema(importTmxSchema),
       },
       {
         name: "check_import_status",
         description:
-          "Checks the status of a TMX file import job in your Lara Translate account.",
+          "Checks the status of a TMX import job started by import_tmx. Poll this tool with the import_id returned from import_tmx until the import is complete. The response includes a progress field to track completion.",
         inputSchema: z.toJSONSchema(checkImportStatusSchema),
       },
       {
@@ -238,13 +238,13 @@ async function ListTools() {
       {
         name: "import_glossary_csv",
         description:
-          "Imports a CSV file into a glossary in your Lara Translate account. Supports unidirectional and multidirectional formats.",
+          "Imports a CSV file into a glossary. Supports unidirectional and multidirectional formats. This is an async operation that returns an import job object containing an import_id. Poll with check_glossary_import_status using the returned import_id until the import is complete.",
         inputSchema: z.toJSONSchema(importGlossaryCsvSchema),
       },
       {
         name: "check_glossary_import_status",
         description:
-          "Checks the status of a glossary CSV import job in your Lara Translate account.",
+          "Checks the status of a glossary CSV import job started by import_glossary_csv. Poll this tool with the import_id returned from import_glossary_csv until the import is complete.",
         inputSchema: z.toJSONSchema(checkGlossaryImportStatusSchema),
       },
       {
@@ -292,25 +292,25 @@ async function ListTools() {
       {
         name: "upload_document",
         description:
-          "Uploads a document (DOCX, PDF, etc.) for translation in your Lara Translate account. Returns a document object with an ID that can be used to check status and download the result.",
+          'Step 1 of 3 for async document translation. Uploads a document (DOCX, PDF, etc.) and starts translation. Returns a document object with an ID. After uploading, poll with check_document_status until status is "translated", then call download_document to get the result. For a simpler single-call alternative, use translate_document instead.',
         inputSchema: z.toJSONSchema(uploadDocumentSchema),
       },
       {
         name: "check_document_status",
         description:
-          "Checks the translation status and progress of a previously uploaded document in your Lara Translate account.",
+          'Step 2 of 3 for async document translation. Polls the translation status of a document previously submitted via upload_document. Possible statuses: "initialized", "analyzing", "translating", "translated", "error". When status is "translated", proceed to download_document. If status is "error", the response includes an error message.',
         inputSchema: z.toJSONSchema(checkDocumentStatusSchema),
       },
       {
         name: "download_document",
         description:
-          "Downloads a translated document from your Lara Translate account. Returns the document as base64-encoded content.",
+          'Step 3 of 3 for async document translation. Downloads the translated document as base64-encoded content. Only call this after check_document_status returns status "translated". The document must have been previously uploaded via upload_document.',
         inputSchema: z.toJSONSchema(downloadDocumentSchema),
       },
       {
         name: "translate_document",
         description:
-          "All-in-one document translation: uploads a document, waits for translation to complete, and returns the translated document as base64-encoded content.",
+          "All-in-one document translation: uploads a document, waits for translation to complete, and returns the translated document as base64-encoded content. This is the simplest way to translate a document in a single call. Use this instead of the 3-step upload_document → check_document_status → download_document workflow unless you need to track progress or handle the steps separately.",
         inputSchema: z.toJSONSchema(translateDocumentSchema),
       },
     ],
