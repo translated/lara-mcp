@@ -23,6 +23,11 @@ out/
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude/agents/*
+.claude/commands/*
+
+# Superset worktrees
+.superset/
 
 # mpeltonen/sbt-idea plugin
 .idea_modules/

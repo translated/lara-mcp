@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { addTranslation, addTranslationSchema } from '../../mcp/tools/add_translation.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
+import { InvalidInputError } from '../../exception.js';
 
 // Setup mocks
 setupTranslatorMock();
@@ -120,7 +121,9 @@ describe('addTranslation', () => {
       // Missing sentence_after
     };
 
-    await expect(addTranslation(args, mockTranslator as any as Translator)).rejects.toThrow(
+    const promise = addTranslation(args, mockTranslator as any as Translator);
+    await expect(promise).rejects.toThrow(InvalidInputError);
+    await expect(promise).rejects.toThrow(
       'Please provide both sentence_before and sentence_after'
     );
   });
