@@ -35,15 +35,6 @@ import { addGlossaryEntry, addGlossaryEntrySchema } from "./tools/add_glossary_e
 import { deleteGlossaryEntry, deleteGlossaryEntrySchema } from "./tools/delete_glossary_entry.js";
 import { detectLanguage, detectLanguageSchema } from "./tools/detect_language.js";
 import { translateHandler, translateSchema } from "./tools/translate.js";
-import { translateAudio, translateAudioSchema } from "./tools/translate_audio.js";
-import { checkAudioTranslationStatus, checkAudioTranslationStatusSchema } from "./tools/check_audio_translation_status.js";
-import { downloadTranslatedAudio, downloadTranslatedAudioSchema } from "./tools/download_translated_audio.js";
-import { translateImage, translateImageSchema } from "./tools/translate_image.js";
-import { translateImageText, translateImageTextSchema } from "./tools/translate_image_text.js";
-import { uploadDocument, uploadDocumentSchema } from "./tools/upload_document.js";
-import { checkDocumentStatus, checkDocumentStatusSchema } from "./tools/check_document_status.js";
-import { downloadDocument, downloadDocumentSchema } from "./tools/download_document.js";
-import { translateDocument, translateDocumentSchema } from "./tools/translate_document.js";
 import {
   updateMemory,
   updateMemorySchema,
@@ -74,15 +65,6 @@ const handlers: Record<string, Handler> = {
   get_glossary_counts: getGlossaryCounts,
   add_glossary_entry: addGlossaryEntry,
   delete_glossary_entry: deleteGlossaryEntry,
-  translate_audio: translateAudio,
-  check_audio_translation_status: checkAudioTranslationStatus,
-  download_translated_audio: downloadTranslatedAudio,
-  upload_document: uploadDocument,
-  check_document_status: checkDocumentStatus,
-  download_document: downloadDocument,
-  translate_document: translateDocument,
-  translate_image: translateImage,
-  translate_image_text: translateImageText,
 };
 
 const listers: Record<string, Lister> = {
@@ -282,60 +264,6 @@ async function ListTools() {
         description:
           "Deletes an entry from a glossary in your Lara Translate account. Use term for monodirectional glossaries or guid for multidirectional glossaries.",
         inputSchema: z.toJSONSchema(deleteGlossaryEntrySchema),
-      },
-      {
-        name: "translate_audio",
-        description:
-          "Step 1 of 3 for audio translation. Accepts base64-encoded audio and starts an asynchronous translation job. The job may take minutes to complete. After calling this tool, use check_audio_translation_status to poll until status is 'translated', then use download_translated_audio to get the result.",
-        inputSchema: z.toJSONSchema(translateAudioSchema),
-      },
-      {
-        name: "check_audio_translation_status",
-        description:
-          "Step 2 of 3 for audio translation. Polls the status of an audio translation job started with translate_audio. Keep polling until status is 'translated' (success) or 'error' (failure). Possible statuses: initialized, analyzing, paused, ready, translating, translated, error.",
-        inputSchema: z.toJSONSchema(checkAudioTranslationStatusSchema),
-      },
-      {
-        name: "download_translated_audio",
-        description:
-          "Step 3 of 3 for audio translation. Downloads the translated audio and returns it as base64-encoded content. Only call this after check_audio_translation_status returns status 'translated'. Requires the job id from translate_audio.",
-        inputSchema: z.toJSONSchema(downloadTranslatedAudioSchema),
-      },
-      {
-        name: "upload_document",
-        description:
-          'Step 1 of 3 for async document translation. Uploads a document (DOCX, PDF, etc.) and starts translation. Returns a document object with an ID. After uploading, poll with check_document_status until status is "translated", then call download_document to get the result. For a simpler single-call alternative, use translate_document instead.',
-        inputSchema: z.toJSONSchema(uploadDocumentSchema),
-      },
-      {
-        name: "check_document_status",
-        description:
-          'Step 2 of 3 for async document translation. Polls the translation status of a document previously submitted via upload_document. Possible statuses: "initialized", "analyzing", "translating", "translated", "error". When status is "translated", proceed to download_document. If status is "error", the response includes an error message.',
-        inputSchema: z.toJSONSchema(checkDocumentStatusSchema),
-      },
-      {
-        name: "download_document",
-        description:
-          'Step 3 of 3 for async document translation. Downloads the translated document as base64-encoded content. Only call this after check_document_status returns status "translated". The document must have been previously uploaded via upload_document.',
-        inputSchema: z.toJSONSchema(downloadDocumentSchema),
-      },
-      {
-        name: "translate_document",
-        description:
-          "All-in-one document translation: uploads a document, waits for translation to complete, and returns the translated document as base64-encoded content. This is the simplest way to translate a document in a single call. Use this instead of the 3-step upload_document → check_document_status → download_document workflow unless you need to track progress or handle the steps separately.",
-        inputSchema: z.toJSONSchema(translateDocumentSchema),
-      },
-      {
-        name: "translate_image",
-        description:
-          "All-in-one image translation: accepts a base64-encoded image, translates text within it, and returns the translated image as base64-encoded content in a single step. No separate upload, status polling, or download steps are needed. Source text in the image is replaced with the translation.",
-        inputSchema: z.toJSONSchema(translateImageSchema),
-      },
-      {
-        name: "translate_image_text",
-        description:
-          "All-in-one image text extraction and translation: accepts a base64-encoded image, extracts text from it, translates the text, and returns structured paragraphs with source text and translations in a single step. No separate upload, status polling, or download steps are needed. The original image is not modified.",
-        inputSchema: z.toJSONSchema(translateImageTextSchema),
       },
     ],
   };
