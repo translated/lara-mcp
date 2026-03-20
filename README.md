@@ -1,6 +1,6 @@
 # Lara Translate MCP Server
 
-A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection, context-aware translations and translation memories.
+A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection, context-aware translations, translation memories, and glossary management.
 
 [![License](https://img.shields.io/github/license/translated/lara-mcp.svg)](https://github.com/translated/lara-mcp/blob/main/LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/translatednet/lara-mcp.svg)](https://hub.docker.com/r/translatednet/lara-mcp)
@@ -85,9 +85,32 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `glossaries` (optional string[]): Array of glossary IDs to enforce terminology (e.g., ['gls_xyz123'])
 - `no_trace` (optional boolean): Privacy flag - if true, request won't be traced/logged
 - `priority` (optional string): Translation priority - 'normal' or 'background'
-- `timeout_in_millis` (optional number): Custom timeout in milliseconds
+- `timeout_in_millis` (optional number): Custom timeout in milliseconds (max 300000)
+- `adapt_to` (optional string[]): Translation memory IDs for adapting the translation
+- `style` (optional string): Translation style - 'faithful', 'fluid', or 'creative'
+- `reasoning` (optional boolean): Enables Lara Think multi-step linguistic analysis
+- `content_type` (optional string): Content type - 'text/plain', 'text/html', or 'application/xliff+xml'
 
 **Returns**: Translated text blocks maintaining the original structure
+</details>
+
+<details>
+<summary><strong>detect_language</strong> - Detect the language of a text</summary>
+
+**Inputs**:
+- `text` (string | string[]): Text or array of texts to detect (max 128 elements)
+- `hint` (optional string): Hint for language detection
+- `passlist` (optional string[]): Array of language codes to restrict detection to
+
+**Returns**: Detected language, content type, and predictions with confidence scores
+</details>
+
+<details>
+<summary><strong>list_languages</strong> - List supported languages</summary>
+
+**Inputs**: None
+
+**Returns**: Array of supported languages
 </details>
 
 ### Glossaries Tools
@@ -107,6 +130,103 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 - `id` (string): The glossary ID (e.g., 'gls_xyz123')
 
 **Returns**: Glossary object or null if not found
+</details>
+
+<details>
+<summary><strong>create_glossary</strong> - Create a new glossary</summary>
+
+**Inputs**:
+- `name` (string): Name of the glossary (max 250 characters)
+
+**Returns**: Created glossary data
+</details>
+
+<details>
+<summary><strong>update_glossary</strong> - Update a glossary</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+- `name` (string): New name for the glossary (max 250 characters)
+
+**Returns**: Updated glossary data
+</details>
+
+<details>
+<summary><strong>delete_glossary</strong> - Delete a glossary</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+
+**Returns**: Deleted glossary data
+</details>
+
+<details>
+<summary><strong>get_glossary_counts</strong> - Get term and language counts for a glossary</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+
+**Returns**: Term and language counts
+</details>
+
+<details>
+<summary><strong>add_glossary_entry</strong> - Add an entry to a glossary</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+- `terms` (array): Array of terms, each with:
+    - `language` (string): Language code
+    - `value` (string): Term value
+- `guid` (optional string): Unique identifier for the entry
+
+**Returns**: Created glossary entry data
+</details>
+
+<details>
+<summary><strong>delete_glossary_entry</strong> - Delete an entry from a glossary</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+- `term` (optional object): Term to delete, with:
+    - `language` (string): Language code
+    - `value` (string): Term value
+- `guid` (optional string): Unique identifier of the entry to delete
+
+> At least one of `term` or `guid` must be provided.
+
+**Returns**: Deletion confirmation
+</details>
+
+<details>
+<summary><strong>import_glossary_csv</strong> - Import a CSV file into a glossary</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+- `csv_content` (string): The CSV file content (max 5MB)
+- `content_type` (optional string): CSV format - 'csv/table-uni' (default) or 'csv/table-multi'
+- `gzip` (optional boolean): Indicates if the content is gzip compressed
+
+**Returns**: Import job details with import ID
+</details>
+
+<details>
+<summary><strong>check_glossary_import_status</strong> - Check the status of a glossary CSV import</summary>
+
+**Inputs**:
+- `id` (string): The import job ID
+
+**Returns**: Import job status with progress information
+</details>
+
+<details>
+<summary><strong>export_glossary</strong> - Export a glossary as CSV</summary>
+
+**Inputs**:
+- `id` (string): The glossary ID (e.g., 'gls_xyz123')
+- `content_type` (string): Export format - 'csv/table-uni' or 'csv/table-multi'
+- `source` (optional string): Source language code (required when content_type is 'csv/table-uni')
+
+**Returns**: Exported glossary CSV content
 </details>
 
 ### Translation Memories Tools
