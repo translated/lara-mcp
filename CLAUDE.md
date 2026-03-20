@@ -77,6 +77,20 @@ All MCP tools are organized in individual files under `src/mcp/tools/`:
 - `list_glossaries.ts` - List all glossaries
 - `get_glossary.ts` - Get glossary by ID (returns null if not found)
   - Validates glossary ID format with regex `/^gls_[a-zA-Z0-9_-]+$/`
+- `create_glossary.ts` - Create a new glossary with a name (max 250 chars)
+- `update_glossary.ts` - Update glossary name by ID
+- `delete_glossary.ts` - Delete a glossary by ID
+- `import_glossary_csv.ts` - Import CSV into a glossary
+  - Supports `csv/table-uni` (default) and `csv/table-multi` content types
+  - Optional gzip compression flag
+  - 5MB size limit on CSV content
+  - Uses temp-file pattern (write to temp, call SDK, cleanup in finally)
+- `check_glossary_import_status.ts` - Check glossary CSV import job status
+  - Takes import job ID (not glossary ID, so no gls_ regex validation)
+- `export_glossary.ts` - Export glossary as CSV
+  - Required `content_type` enum (`csv/table-uni` or `csv/table-multi`)
+  - Optional `source` language (required for `csv/table-uni` per API docs)
+- `get_glossary_counts.ts` - Get term and language counts for a glossary
 
 **Memory Management Tools:**
 - `list_memories.ts` - List all translation memories

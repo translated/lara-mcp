@@ -64,4 +64,13 @@ describe('importTmx input validation', () => {
 
     await importTmx(args, mockTranslator as any as Translator);
   });
-}); 
+
+  it('should throw InvalidInputError for TMX content exceeding 5MB', async () => {
+    const largeContent = 'a'.repeat(6 * 1024 * 1024);
+
+    await expect(importTmx({
+      id: 'mem_xyz123',
+      tmx_content: largeContent,
+    }, mockTranslator as any as Translator)).rejects.toThrow('TMX file too large');
+  });
+});

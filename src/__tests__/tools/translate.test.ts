@@ -121,6 +121,58 @@ describe('translateSchema', () => {
       glossaries: ['invalid-id']
     })).toThrow();
   });
+
+  it('should accept valid style values', () => {
+    for (const style of ['faithful', 'fluid', 'creative']) {
+      expect(() => translateSchema.parse({
+        text: [{ text: 'hello', translatable: true }],
+        target: 'it-IT',
+        style
+      })).not.toThrow();
+    }
+  });
+
+  it('should reject invalid style value', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      style: 'invalid'
+    })).toThrow();
+  });
+
+  it('should accept reasoning boolean', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      reasoning: true
+    })).not.toThrow();
+  });
+
+  it('should reject non-boolean reasoning', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      reasoning: 'yes'
+    })).toThrow();
+  });
+
+  it('should accept valid content_type values', () => {
+    for (const content_type of ['text/plain', 'text/html', 'application/xliff+xml']) {
+      expect(() => translateSchema.parse({
+        text: [{ text: 'hello', translatable: true }],
+        target: 'it-IT',
+        content_type
+      })).not.toThrow();
+    }
+  });
+
+  it('should reject invalid content_type value', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      content_type: 'application/json'
+    })).toThrow();
+  });
 });
 
 describe('translateHandler', () => {
@@ -251,6 +303,94 @@ describe('translateHandler', () => {
       expect.objectContaining({
         priority: 'background',
         timeoutInMillis: 60000
+      })
+    );
+  });
+
+  it('should pass style option to SDK', async () => {
+    mockTranslator.translate.mockResolvedValue({
+      translation: [{ text: 'ciao', translatable: true }]
+    });
+
+    await translateHandler({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      style: 'creative'
+    }, mockTranslator as any as Translator);
+
+    expect(mockTranslator.translate).toHaveBeenCalledWith(
+      expect.anything(),
+      null,
+      'it-IT',
+      expect.objectContaining({
+        style: 'creative'
+      })
+    );
+  });
+
+  it('should pass reasoning option to SDK', async () => {
+    mockTranslator.translate.mockResolvedValue({
+      translation: [{ text: 'ciao', translatable: true }]
+    });
+
+    await translateHandler({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      reasoning: true
+    }, mockTranslator as any as Translator);
+
+    expect(mockTranslator.translate).toHaveBeenCalledWith(
+      expect.anything(),
+      null,
+      'it-IT',
+      expect.objectContaining({
+        reasoning: true
+      })
+    );
+  });
+
+  it('should pass content_type as contentType to SDK', async () => {
+    mockTranslator.translate.mockResolvedValue({
+      translation: [{ text: 'ciao', translatable: true }]
+    });
+
+    await translateHandler({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      content_type: 'text/html'
+    }, mockTranslator as any as Translator);
+
+    expect(mockTranslator.translate).toHaveBeenCalledWith(
+      expect.anything(),
+      null,
+      'it-IT',
+      expect.objectContaining({
+        contentType: 'text/html'
+      })
+    );
+  });
+
+  it('should pass style, reasoning, and content_type together', async () => {
+    mockTranslator.translate.mockResolvedValue({
+      translation: [{ text: 'ciao', translatable: true }]
+    });
+
+    await translateHandler({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      style: 'fluid',
+      reasoning: true,
+      content_type: 'application/xliff+xml'
+    }, mockTranslator as any as Translator);
+
+    expect(mockTranslator.translate).toHaveBeenCalledWith(
+      expect.anything(),
+      null,
+      'it-IT',
+      expect.objectContaining({
+        style: 'fluid',
+        reasoning: true,
+        contentType: 'application/xliff+xml'
       })
     );
   });
