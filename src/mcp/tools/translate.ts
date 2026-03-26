@@ -2,6 +2,8 @@ import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import { logger } from "#logger";
 
+const MAX_INSTRUCTION_WORDS = 20;
+
 export const textBlockSchema = z.object({
   text: z.string(),
   translatable: z.boolean(),
@@ -31,10 +33,22 @@ export const translateSchema = z.object({
       "Additional context string to improve translation quality (e.g., 'This is a legal document' or 'Im talking with a doctor'). This helps the translation system better understand the domain."
     ),
   instructions: z
-    .array(z.string())
+    .array(
+      z.string()
+        .refine(
+          (s) => s.trim().split(/\s+/).length <= MAX_INSTRUCTION_WORDS,
+          { message: `Each instruction must be no more than ${MAX_INSTRUCTION_WORDS} words` }
+        )
+    )
     .optional()
     .describe(
-      "A list of instructions to adjust the network’s behavior regarding the output (e.g., 'Use a formal tone')."
+      `Optional list of short localization directives to adjust translation output. ` +
+      `Each instruction MUST be no more than ${MAX_INSTRUCTION_WORDS} words. ` +
+      `These are NOT free-form LLM prompts — they are expert localization directives about formality, tone, or domain-specific terminology. ` +
+      `Only provide instructions when the content specifically requires them; omitting instructions for general content preserves higher translation quality. ` +
+      `Do NOT combine contradictory instructions (e.g., formal and informal tone together). ` +
+      `Examples: ‘Translate formally’, ‘Use a creative and concise tone’, ‘Make translation gender-neutral’, ` +
+      `’Mask any price with the [price] placeholder’, ‘Use quotation marks (« ») for quotations’.`
     ),
   source_hint: z
     .string()

@@ -142,7 +142,8 @@ async function ListTools() {
       {
         name: "translate",
         description:
-          "Translate text between languages with support for language detection, context-aware translations and translation memories using Lara Translate.",
+          "Translate text between languages using Lara Translate. Supports language detection, context-aware translations, translation memories, and glossaries. " +
+          "The optional 'instructions' parameter accepts short localization directives (e.g., 'Translate formally') — only provide them when the content specifically requires tone, formality, or terminology adjustments.",
         inputSchema: z.toJSONSchema(translateSchema),
       },
       {

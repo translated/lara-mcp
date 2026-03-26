@@ -122,6 +122,57 @@ describe('translateSchema', () => {
     })).toThrow();
   });
 
+  it('should accept instructions with fewer than 20 words each', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      instructions: ['Translate formally', 'Use a creative and concise tone']
+    })).not.toThrow();
+  });
+
+  it('should accept an instruction with exactly 20 words', () => {
+    const twentyWords = Array(20).fill('word').join(' ');
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      instructions: [twentyWords]
+    })).not.toThrow();
+  });
+
+  it('should reject an instruction with more than 20 words', () => {
+    const twentyOneWords = Array(21).fill('word').join(' ');
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      instructions: [twentyOneWords]
+    })).toThrow(/no more than 20 words/);
+  });
+
+  it('should reject when any instruction exceeds the word limit', () => {
+    const longInstruction = Array(25).fill('word').join(' ');
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      instructions: ['Translate formally', longInstruction]
+    })).toThrow(/no more than 20 words/);
+  });
+
+  it('should accept an empty instructions array', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      instructions: []
+    })).not.toThrow();
+  });
+
+  it('should handle instructions with extra whitespace correctly', () => {
+    expect(() => translateSchema.parse({
+      text: [{ text: 'hello', translatable: true }],
+      target: 'it-IT',
+      instructions: ['  Translate   formally  ']
+    })).not.toThrow();
+  });
+
   it('should accept valid style values', () => {
     for (const style of ['faithful', 'fluid', 'creative']) {
       expect(() => translateSchema.parse({
