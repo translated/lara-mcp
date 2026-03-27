@@ -47,8 +47,8 @@ export const translateSchema = z.object({
       `These are NOT free-form LLM prompts — they are expert localization directives about formality, tone, or domain-specific terminology. ` +
       `Only provide instructions when the content specifically requires them; omitting instructions for general content preserves higher translation quality. ` +
       `Do NOT combine contradictory instructions (e.g., formal and informal tone together). ` +
-      `Examples: ‘Translate formally’, ‘Use a creative and concise tone’, ‘Make translation gender-neutral’, ` +
-      `’Mask any price with the [price] placeholder’, ‘Use quotation marks (« ») for quotations’.`
+      `Examples: 'Translate formally', 'Use a creative and concise tone', 'Make translation gender-neutral', ` +
+      `'Mask any price with the [price] placeholder', 'Use quotation marks (« ») for quotations'.`
     ),
   source_hint: z
     .string()
