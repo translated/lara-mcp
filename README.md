@@ -577,3 +577,8 @@ Your MCP client will begin generating a response. If Lara Translate MCP is prope
 
 - For issues with Lara Translate API: Visit [Lara Translate API and Integrations Support](https://support.laratranslate.com)
 - For issues with this MCP Server: Open an issue on [GitHub](https://github.com/translated/lara-mcp/issues)
+
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/translated-lara-mcp).
+
