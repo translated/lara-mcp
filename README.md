@@ -379,15 +379,17 @@ Your client should invoke Lara Translate and return the translation.
 
 ## 🔐 Authentication
 
-### OAuth 2.0 (default)
+### OAuth 2.0 (default, hosted endpoint)
 
 This is the method used in the [Quick Start](#-quick-start) above. You provide only the server URL in your client config — no API keys needed. Your client handles the OAuth flow automatically: it opens your browser, you log in with your Lara Translate credentials, and you're connected.
 
+OAuth 2.0 is provided by the hosted service at `https://mcp-v2.laratranslate.com/v1`. The OAuth authorization server is not part of this repository — the code in `src/` only handles MCP tool calls authenticated via access-key headers (see [Access Key](#access-key) below). If you self-host, OAuth is not available out of the box.
+
 For per-client OAuth setup instructions, see the **[Client Setup Guide](docs/client-setup.md)**.
 
-For self-hosted OAuth server setup (Redis, endpoints, full flow), see the [OAuth 2.0 documentation](docs/oauth.md).
+For a reference description of the OAuth 2.0 flow, endpoints, and requirements of the hosted service, see the [OAuth 2.0 reference](docs/oauth.md).
 
-### Access Key (alternative)
+### Access Key
 
 If you prefer to authenticate with API keys instead of browser login, you can pass your credentials directly in the client config. Get your **Access Key ID** and **Secret** from [Lara Translate](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials).
 
@@ -399,15 +401,18 @@ Most users can connect to the hosted endpoint (`https://mcp-v2.laratranslate.com
 
 ### ⚠️ Security Note
 
-**Important:** When running your own HTTP server instance (not using the remote `https://mcp-v2.laratranslate.com/v1`), all connected clients share the same Lara API credentials configured via `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
+**Important:** The self-hosted server uses different credential models depending on the transport:
+
+- **STDIO mode** reads the Lara credentials from the `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables configured on the process. All requests share those credentials.
+- **HTTP mode** requires each incoming request to carry its own `x-lara-access-key-id` / `x-lara-access-key-secret` headers; the server does not fall back to environment variables.
 
 This server is designed for:
-- ✅ Single-user deployments
-- ✅ Trusted-environment deployments (e.g., internal tools)
+- ✅ Single-user STDIO deployments
+- ✅ Trusted-environment HTTP deployments (e.g., internal tools) where clients are expected to send their own credentials
 
 For multi-tenant scenarios, either:
-- Use the remote server at `https://mcp-v2.laratranslate.com/v1` where each client provides their own credentials via headers
-- Deploy separate MCP server instances per user with isolated credentials
+- Use the hosted server at `https://mcp-v2.laratranslate.com/v1` where each client authenticates via OAuth or its own access-key headers
+- Deploy separate STDIO instances per user with isolated credentials
 
 ### HTTP Server 🌐
 

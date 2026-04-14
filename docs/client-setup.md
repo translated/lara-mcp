@@ -23,9 +23,6 @@ Connect Lara Translate to your favorite AI client. The recommended method uses *
 3. Enter the name: `Lara`
 4. Enter the URL: `https://mcp-v2.laratranslate.com/v1`
 5. Click **Add**
-
-![Add Custom Connector](https://downloads.intercomcdn.com/i/o/lupk8zyo/1731190757/b6b02b1879bb55fb9ab32f222b06/8d09370d-1c7a-489c-b62b-b3484aaaef31?expires%3D1765471500%26signature%3D0d8212f6938008d55dec82fdc3e20b64c07b93ebec368ab74cba77e7980d099a%26req%3DdSckF8h3nYZaXvMW1HO4zYLxKhd694%2BiiJlgl7fGiwR%2F%2BSImZUUlz6Dw2QdV%0AKllJvjnsbArbYSudYjw%3D%0A)
-
 6. Click **Connect** next to the connector. Your browser will open the Lara Translate login page.
 7. Log in with your Lara Translate credentials. You'll be redirected back to Claude Desktop automatically.
 

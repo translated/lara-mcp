@@ -1,8 +1,10 @@
-# OAuth 2.0 Authentication (Self-Hosted)
+# OAuth 2.0 Reference
 
-> This document is for self-hosted deployments of the Lara MCP Server. If you're using the hosted endpoint (`https://mcp-v2.laratranslate.com/v1`), see the [OAuth section in the README](../README.md#oauth-20-default) for simpler setup instructions.
+> This document describes the OAuth 2.0 authorization server that fronts the hosted endpoint at `https://mcp-v2.laratranslate.com/v1`. It is a reference for MCP client authors and for anyone planning to reproduce the flow in a custom deployment — **the OAuth authorization server code is not shipped in this repository** (`src/` only implements MCP tool handling and access-key authentication).
+>
+> If you only need to connect an MCP client to the hosted endpoint, follow the [Quick Start](../README.md#-quick-start) or the [Client Setup Guide](client-setup.md). You do not need to read this document.
 
-This document describes the OAuth 2.0 authentication flow implemented in the Lara MCP Server. The server implements a standards-compliant OAuth 2.0 authorization server that enables secure authentication for MCP clients.
+This document describes the OAuth 2.0 authentication flow used by the hosted Lara MCP service. The service exposes a standards-compliant OAuth 2.0 authorization server that enables secure authentication for MCP clients.
 
 ## Table of Contents
 
@@ -27,16 +29,13 @@ The OAuth implementation provides a secure way for MCP clients to authenticate a
 
 ## Prerequisites
 
-- A publicly accessible MCP server instance (required for OAuth callbacks)
-- Redis server (for storing authorization codes and tokens)
-- The following environment variables:
+To stand up a deployment equivalent to the hosted service you need:
 
-```bash
-PUBLIC_HOST=https://your-mcp-server.com  # Your server's public URL
-REDIS_HOST=localhost                      # Redis host (default: localhost)
-REDIS_PORT=6379                           # Redis port (default: 6379)
-REDIS_PASSWORD=your-redis-password        # Redis password
-```
+- A publicly accessible MCP server instance, because OAuth redirect/callback URLs must resolve back to the deployment.
+- A way to configure the deployment's public base URL (used to build callback URLs).
+- A store for short-lived authorization codes and issued tokens. The hosted service uses Redis; any equivalent key/value store with TTL support would work.
+
+> **Note:** The configuration keys, environment variables, and infrastructure described here are deployment-specific. They are **not** part of this repository's `src/env.ts` — the code in this repo does not run the OAuth server. Treat the variables referenced below (`PUBLIC_HOST`, `REDIS_HOST`, etc.) as example names used by the hosted deployment.
 
 ## OAuth Flow Diagram
 
@@ -242,7 +241,6 @@ Returns authorization server metadata per RFC 8414.
   "token_endpoint": "https://mcp.example.com/token",
   "registration_endpoint": "https://mcp.example.com/register",
   "token_endpoint_auth_methods_supported": ["none"],
-  "scopes_supported": ["scrape"],
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code"],
   "code_challenge_methods_supported": ["S256"]
