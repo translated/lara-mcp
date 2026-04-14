@@ -1,6 +1,6 @@
 # Lara Translate MCP Server
 
-A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate) API, enabling powerful translation capabilities with support for language detection, context-aware translations, translation memories, and glossary management.
+A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate.com/translate), enabling professional translation capabilities with support for language detection, context-aware translations, translation memories, and glossaries.
 
 [![License](https://img.shields.io/github/license/translated/lara-mcp.svg)](https://github.com/translated/lara-mcp/blob/main/LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/translatednet/lara-mcp.svg)](https://hub.docker.com/r/translatednet/lara-mcp)
@@ -8,12 +8,11 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 
 ## 📚 Table of Contents
 - 📖 [Introduction](#-introduction)
+- 🚀 [Quick Start](#-quick-start)
 - 🛠 [Available Tools](#-available-tools)
-- 🚀 [Getting Started](#-getting-started)
-  - 📋 [HTTP Server](#http-server-)
-  - 🔌 [STDIO Server](#stdio-server-%EF%B8%8F)
-- 🧪 [Verify Installation](#-verify-installation)
-- 💻 [Popular Clients that supports MCPs](#-popular-clients-that-supports-mcps)
+- 🔐 [Authentication](#-authentication)
+- 🏠 [Self-Hosting](#-self-hosting)
+- 💻 [Popular Clients that support MCPs](#-popular-clients-that-support-mcps)
 - 🆘 [Support](#-support)
 
 ## 📖 Introduction
@@ -65,6 +64,65 @@ By offloading complex translation tasks to specialized T-LMs, Lara reduces compu
 #### Cost-Efficient Translation at Scale
 Lara also lowers the cost of using models like GPT-4 in non-English workflows. Since tokenization (and pricing) is optimized for English, using Lara allows translation to take place before hitting the LLM, meaning that only the translated English content is processed. This improves cost efficiency and supports competitive scalability for global enterprises.
 </details>
+
+## 🚀 Quick Start
+
+Pick your client below — no API keys needed, just log in through your browser.
+
+### Claude Desktop
+
+1. Go to **Settings** > **Connectors**
+2. Click **Add Custom Connector**
+3. Enter the name: `Lara`
+4. Enter the URL: `https://mcp-v2.laratranslate.com/v1`
+5. Click **Add**, then click **Connect**
+6. Log in with your Lara Translate credentials in the browser
+
+Done — Lara Translate is now available in your conversations.
+
+### Cursor
+
+Open your config file (`~/.cursor/mcp.json` on macOS/Linux, `%APPDATA%\Cursor\mcp.json` on Windows) and paste:
+
+```json
+{
+  "mcpServers": {
+    "lara-translate": {
+      "url": "https://mcp-v2.laratranslate.com/v1"
+    }
+  }
+}
+```
+
+Save and restart Cursor. The first time you use a Lara tool, your browser will open to authenticate.
+
+### Claude Code
+
+Run this command in your terminal:
+
+```bash
+claude mcp add lara-translate --transport http --url https://mcp-v2.laratranslate.com/v1
+```
+
+The first time you use a Lara tool, your browser will open to authenticate.
+
+### Other Clients
+
+For step-by-step OAuth setup on **VS Code (GitHub Copilot)**, **Windsurf**, **Cline**, **Continue**, and more, see the **[Client Setup Guide](docs/client-setup.md)**.
+
+If your client isn't listed, the general approach is to add the server URL (`https://mcp-v2.laratranslate.com/v1`) to your MCP config — the client will handle OAuth authentication automatically.
+
+> For a complete list of MCP-compatible clients, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
+
+### Verify It Works
+
+After setup, test with a simple prompt:
+
+```text
+Translate with Lara "Hello world" to Spanish
+```
+
+Your client should invoke Lara Translate and return the translation.
 
 ## 🛠 Available Tools
 
@@ -319,26 +377,42 @@ Lara also lowers the cost of using models like GPT-4 in non-English workflows. S
 **Returns**: Import details
 </details>
 
-## 🚀 Getting Started
-Lara supports both the STDIO and streamable HTTP protocols. For a hassle-free setup, we recommend using the HTTP protocol. If you prefer to use STDIO, it must be installed locally on your machine.
+## 🔐 Authentication
 
-You'll find setup instructions for both protocols in the sections below.
+### OAuth 2.0 (default)
 
-## ⚠️ Security Note
+This is the method used in the [Quick Start](#-quick-start) above. You provide only the server URL in your client config — no API keys needed. Your client handles the OAuth flow automatically: it opens your browser, you log in with your Lara Translate credentials, and you're connected.
 
-**Important:** When running your own HTTP server instance (not using the remote `https://mcp.laratranslate.com/v1`), all connected clients share the same Lara API credentials configured via `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
+For per-client OAuth setup instructions, see the **[Client Setup Guide](docs/client-setup.md)**.
+
+For self-hosted OAuth server setup (Redis, endpoints, full flow), see the [OAuth 2.0 documentation](docs/oauth.md).
+
+### Access Key (alternative)
+
+If you prefer to authenticate with API keys instead of browser login, you can pass your credentials directly in the client config. Get your **Access Key ID** and **Secret** from [Lara Translate](https://developers.laratranslate.com/docs/getting-started#step-3---configure-your-credentials).
+
+See the [Access Key section in the Client Setup Guide](docs/client-setup.md#alternative-access-key-authentication) for config examples.
+
+## 🏠 Self-Hosting
+
+Most users can connect to the hosted endpoint (`https://mcp-v2.laratranslate.com/v1`) using the [Quick Start](#-quick-start) instructions above. The options below are for running the server yourself.
+
+### ⚠️ Security Note
+
+**Important:** When running your own HTTP server instance (not using the remote `https://mcp-v2.laratranslate.com/v1`), all connected clients share the same Lara API credentials configured via `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
 
 This server is designed for:
 - ✅ Single-user deployments
 - ✅ Trusted-environment deployments (e.g., internal tools)
 
 For multi-tenant scenarios, either:
-- Use the remote server at `https://mcp.laratranslate.com/v1` where each client provides their own credentials via headers
+- Use the remote server at `https://mcp-v2.laratranslate.com/v1` where each client provides their own credentials via headers
 - Deploy separate MCP server instances per user with isolated credentials
 
 ### HTTP Server 🌐
+
 <details>
-<summary><strong>❌ Clients NOT supporting <code>url</code> configuration (e.g., Claude, OpenAI)</strong></summary>
+<summary><strong>❌ Clients NOT supporting <code>url</code> configuration (e.g., Claude Desktop, OpenAI)</strong></summary>
 
 This installation guide is intended for clients that do NOT support the url-based configuration. This option requires Node.js to be installed on your system.
 
@@ -355,7 +429,7 @@ This installation guide is intended for clients that do NOT support the url-base
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp.laratranslate.com/v1",
+        "https://mcp-v2.laratranslate.com/v1",
         "--header",
         "x-lara-access-key-id: ${X_LARA_ACCESS_KEY_ID}",
         "--header",
@@ -392,7 +466,7 @@ Some examples of supported clients include Cursor, Continue, OpenDevin, and Aide
 {
   "mcpServers": {
     "lara": {
-      "url": "https://mcp.laratranslate.com/v1",
+      "url": "https://mcp-v2.laratranslate.com/v1",
       "headers": {
         "x-lara-access-key-id": "<YOUR_ACCESS_KEY_ID>",
         "x-lara-access-key-secret": "<YOUR_ACCESS_KEY_SECRET>"
@@ -411,6 +485,7 @@ Some examples of supported clients include Cursor, Continue, OpenDevin, and Aide
 ---
 
 ### STDIO Server 🖥️
+
 <details>
 <summary><strong>Using NPX</strong></summary>
 
@@ -548,19 +623,7 @@ docker build -t lara-mcp .
 4. Replace `<YOUR_ACCESS_KEY_ID>` and `<YOUR_ACCESS_KEY_SECRET>` with your actual credentials.
 </details>
 
-## 🧪 Verify Installation
-
-After restarting your MCP client, you should see Lara Translate MCP in the list of available MCPs.
-> The method for viewing installed MCPs varies by client. Please consult your MCP client's documentation.
-
-To verify that Lara Translate MCP is working correctly, try translating with a simple prompt:
-```text
-Translate with Lara "Hello world" to Spanish
-```
-
-Your MCP client will begin generating a response. If Lara Translate MCP is properly installed and configured, your client will either request approval for the action or display a notification that Lara Translate is being used.
-
-## 💻 Popular Clients that supports MCPs 
+## 💻 Popular Clients that support MCPs
 
 > For a complete list of MCP clients and their feature support, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
 
