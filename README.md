@@ -6,7 +6,18 @@ A Model Context Protocol (MCP) Server for [Lara Translate](https://laratranslate
 [![Docker Pulls](https://img.shields.io/docker/pulls/translatednet/lara-mcp.svg)](https://hub.docker.com/r/translatednet/lara-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/@translated/lara-mcp.svg)](https://www.npmjs.com/package/@translated/lara-mcp)
 
+## 🌟 Highlights
+
+- 🌐 **Professional-grade translation** powered by Lara's domain-specific Translation Language Models, trained on billions of professionally translated segments — stronger on non-English languages than general-purpose LLMs.
+- 🔐 **OAuth login, zero config** — paste one URL into your MCP client, log in through your browser, and start translating. No API keys to manage.
+- 🤝 **Works with major MCP clients** — Claude Desktop, Cursor, Claude Code, VS Code (GitHub Copilot), Windsurf, Cline, Continue, and more.
+- 📚 **Translation memories & glossaries** — create, update, import TMX/CSV, and enforce terminology on every translation.
+- 🧠 **Context-aware translations** — pass instructions, style (`faithful` / `fluid` / `creative`), per-request context, and multi-step linguistic reasoning.
+- 🔒 **Privacy-first** — opt-out tracing (`no_trace`), audit logging, and input validation out of the box.
+- 🏠 **Hosted or self-hosted** — connect to the managed endpoint at `mcp-v2.laratranslate.com/v1`, or run it yourself via npm, Docker, or from source.
+
 ## 📚 Table of Contents
+- 🌟 [Highlights](#-highlights)
 - 📖 [Introduction](#-introduction)
 - 🚀 [Quick Start](#-quick-start)
 - 🛠 [Available Tools](#-available-tools)
