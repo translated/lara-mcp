@@ -6,6 +6,12 @@
 /.github/
 /ops/
 
+# Claude Code plugin (distributed via the Anthropic marketplace, not npm)
+/plugin/
+
+# User-facing docs (lives on GitHub, not in the npm tarball)
+/docs/
+
 # Docker
 Dockerfile
 .dockerignore
