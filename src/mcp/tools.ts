@@ -205,7 +205,7 @@ const toolDefinitions = [
   {
     name: "delete_translation",
     description:
-      "Deletes a translation from a translation memory from your Lara Translate account.",
+      "Deletes a translation from a translation memory in your Lara Translate account.",
     inputSchema: z.toJSONSchema(deleteTranslationSchema),
     annotations: {
       title: "Delete translation unit from memory",

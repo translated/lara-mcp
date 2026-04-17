@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 
 // Stub the logger before importing `mcp/tools.js`: the real logger pulls in
-// `src/env.ts`, which strictly parses `PUBLIC_HOST` at module load.
+// `src/env.ts`, which parses `process.env` at module load — side effects
+// we don't need for this pure shape-of-ListTools() assertion.
 vi.mock("#logger", () => ({
   logger: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
