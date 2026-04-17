@@ -130,144 +130,258 @@ async function CallTool(
   }
 }
 
+// Anthropic Software Directory policy requires every tool to advertise title,
+// readOnlyHint, and destructiveHint so clients can render labels and warn
+// before destructive calls.
+// https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy
+const toolDefinitions = [
+  {
+    name: "detect_language",
+    description:
+      "Detects the language of the provided text. Returns the detected language, content type, and a list of predictions with confidence scores. Accepts a single string or an array of strings (up to 128 elements).",
+    inputSchema: z.toJSONSchema(detectLanguageSchema),
+    annotations: {
+      title: "Detect language",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "translate",
+    description:
+      "Translate text between languages using Lara Translate. Supports language detection, context-aware translations, translation memories, and glossaries. " +
+      "The optional 'instructions' parameter accepts short localization directives (e.g., 'Translate formally') — only provide them when the content specifically requires tone, formality, or terminology adjustments.",
+    inputSchema: z.toJSONSchema(translateSchema),
+    annotations: {
+      title: "Translate text",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "create_memory",
+    description:
+      "Create a translation memory with a custom name in your Lara Translate account. Translation memories store pairs of source and target text segments (translation units) for reuse in future translations.",
+    inputSchema: z.toJSONSchema(createMemorySchema),
+    annotations: {
+      title: "Create translation memory",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "delete_memory",
+    description:
+      "Deletes a translation memory from your Lara Translate account.",
+    inputSchema: z.toJSONSchema(deleteMemorySchema),
+    annotations: {
+      title: "Delete translation memory",
+      readOnlyHint: false,
+      destructiveHint: true,
+    },
+  },
+  {
+    name: "update_memory",
+    description:
+      "Updates a translation memory in your Lara Translate account.",
+    inputSchema: z.toJSONSchema(updateMemorySchema),
+    annotations: {
+      title: "Rename translation memory",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "add_translation",
+    description:
+      "Adds a translation to a translation memory in your Lara Translate account.",
+    inputSchema: z.toJSONSchema(addTranslationSchema),
+    annotations: {
+      title: "Add translation unit to memory",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "delete_translation",
+    description:
+      "Deletes a translation from a translation memory from your Lara Translate account.",
+    inputSchema: z.toJSONSchema(deleteTranslationSchema),
+    annotations: {
+      title: "Delete translation unit from memory",
+      readOnlyHint: false,
+      destructiveHint: true,
+    },
+  },
+  {
+    name: "import_tmx",
+    description:
+      "Imports a TMX file into a translation memory. This is an async operation that returns an import job object containing an import_id. Poll with check_import_status using the returned import_id until the import is complete.",
+    inputSchema: z.toJSONSchema(importTmxSchema),
+    annotations: {
+      title: "Import TMX file",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "check_import_status",
+    description:
+      "Checks the status of a TMX import job started by import_tmx. Poll this tool with the import_id returned from import_tmx until the import is complete. The response includes a progress field to track completion.",
+    inputSchema: z.toJSONSchema(checkImportStatusSchema),
+    annotations: {
+      title: "Check TMX import status",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "list_memories",
+    description:
+      "Lists all translation memories in your Lara Translate account.",
+    inputSchema: z.toJSONSchema(listMemoriesSchema),
+    annotations: {
+      title: "List translation memories",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "list_languages",
+    description:
+      "Lists all supported languages in your Lara Translate account.",
+    inputSchema: z.toJSONSchema(listLanguagesSchema),
+    annotations: {
+      title: "List supported languages",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "list_glossaries",
+    description:
+      "Lists all glossaries in your Lara Translate account. Glossaries are collections of terms with their translations that enforce specific terminology during translation.",
+    inputSchema: z.toJSONSchema(listGlossariesSchema),
+    annotations: {
+      title: "List glossaries",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "get_glossary",
+    description:
+      "Retrieves a specific glossary by ID from your Lara Translate account. Returns null if the glossary is not found.",
+    inputSchema: z.toJSONSchema(getGlossarySchema),
+    annotations: {
+      title: "Get glossary",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "create_glossary",
+    description:
+      "Create a glossary with a custom name in your Lara Translate account. Glossaries enforce specific terminology during translation.",
+    inputSchema: z.toJSONSchema(createGlossarySchema),
+    annotations: {
+      title: "Create glossary",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "update_glossary",
+    description:
+      "Updates the name of a glossary in your Lara Translate account.",
+    inputSchema: z.toJSONSchema(updateGlossarySchema),
+    annotations: {
+      title: "Rename glossary",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "delete_glossary",
+    description:
+      "Deletes a glossary from your Lara Translate account.",
+    inputSchema: z.toJSONSchema(deleteGlossarySchema),
+    annotations: {
+      title: "Delete glossary",
+      readOnlyHint: false,
+      destructiveHint: true,
+    },
+  },
+  {
+    name: "import_glossary_csv",
+    description:
+      "Imports a CSV file into a glossary. Supports unidirectional and multidirectional formats. This is an async operation that returns an import job object containing an import_id. Poll with check_glossary_import_status using the returned import_id until the import is complete.",
+    inputSchema: z.toJSONSchema(importGlossaryCsvSchema),
+    annotations: {
+      title: "Import glossary CSV",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "check_glossary_import_status",
+    description:
+      "Checks the status of a glossary CSV import job started by import_glossary_csv. Poll this tool with the import_id returned from import_glossary_csv until the import is complete.",
+    inputSchema: z.toJSONSchema(checkGlossaryImportStatusSchema),
+    annotations: {
+      title: "Check glossary import status",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "export_glossary",
+    description:
+      "Exports a glossary as CSV from your Lara Translate account. Supports unidirectional and multidirectional formats.",
+    inputSchema: z.toJSONSchema(exportGlossarySchema),
+    annotations: {
+      title: "Export glossary as CSV",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "get_glossary_counts",
+    description:
+      "Retrieves the term and language counts for a glossary in your Lara Translate account.",
+    inputSchema: z.toJSONSchema(getGlossaryCountsSchema),
+    annotations: {
+      title: "Get glossary entry count",
+      readOnlyHint: true,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "add_glossary_entry",
+    description:
+      "Adds or replaces an entry in a glossary in your Lara Translate account. Supports both monodirectional and multidirectional glossaries.",
+    inputSchema: z.toJSONSchema(addGlossaryEntrySchema),
+    annotations: {
+      title: "Add or replace glossary entry",
+      readOnlyHint: false,
+      destructiveHint: false,
+    },
+  },
+  {
+    name: "delete_glossary_entry",
+    description:
+      "Deletes an entry from a glossary in your Lara Translate account. Use term for monodirectional glossaries or guid for multidirectional glossaries.",
+    inputSchema: z.toJSONSchema(deleteGlossaryEntrySchema),
+    annotations: {
+      title: "Delete glossary entry",
+      readOnlyHint: false,
+      destructiveHint: true,
+    },
+  },
+];
+
 async function ListTools() {
-  return {
-    tools: [
-      {
-        name: "detect_language",
-        description:
-          "Detects the language of the provided text. Returns the detected language, content type, and a list of predictions with confidence scores. Accepts a single string or an array of strings (up to 128 elements).",
-        inputSchema: z.toJSONSchema(detectLanguageSchema),
-      },
-      {
-        name: "translate",
-        description:
-          "Translate text between languages using Lara Translate. Supports language detection, context-aware translations, translation memories, and glossaries. " +
-          "The optional 'instructions' parameter accepts short localization directives (e.g., 'Translate formally') — only provide them when the content specifically requires tone, formality, or terminology adjustments.",
-        inputSchema: z.toJSONSchema(translateSchema),
-      },
-      {
-        name: "create_memory",
-        description:
-          "Create a translation memory with a custom name in your Lara Translate account. Translation memories store pairs of source and target text segments (translation units) for reuse in future translations.",
-        inputSchema: z.toJSONSchema(createMemorySchema),
-      },
-      {
-        name: "delete_memory",
-        description:
-          "Deletes a translation memory from your Lara Translate account.",
-        inputSchema: z.toJSONSchema(deleteMemorySchema),
-      },
-      {
-        name: "update_memory",
-        description:
-          "Updates a translation memory in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(updateMemorySchema),
-      },
-      {
-        name: "add_translation",
-        description:
-          "Adds a translation to a translation memory in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(addTranslationSchema),
-      },
-      {
-        name: "delete_translation",
-        description:
-          "Deletes a translation from a translation memory from your Lara Translate account.",
-        inputSchema: z.toJSONSchema(deleteTranslationSchema),
-      },
-      {
-        name: "import_tmx",
-        description:
-          "Imports a TMX file into a translation memory. This is an async operation that returns an import job object containing an import_id. Poll with check_import_status using the returned import_id until the import is complete.",
-        inputSchema: z.toJSONSchema(importTmxSchema),
-      },
-      {
-        name: "check_import_status",
-        description:
-          "Checks the status of a TMX import job started by import_tmx. Poll this tool with the import_id returned from import_tmx until the import is complete. The response includes a progress field to track completion.",
-        inputSchema: z.toJSONSchema(checkImportStatusSchema),
-      },
-      {
-        name: "list_memories",
-        description:
-          "Lists all translation memories in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(listMemoriesSchema),
-      },
-      {
-        name: "list_languages",
-        description:
-          "Lists all supported languages in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(listLanguagesSchema),
-      },
-      {
-        name: "list_glossaries",
-        description:
-          "Lists all glossaries in your Lara Translate account. Glossaries are collections of terms with their translations that enforce specific terminology during translation.",
-        inputSchema: z.toJSONSchema(listGlossariesSchema),
-      },
-      {
-        name: "get_glossary",
-        description:
-          "Retrieves a specific glossary by ID from your Lara Translate account. Returns null if the glossary is not found.",
-        inputSchema: z.toJSONSchema(getGlossarySchema),
-      },
-      {
-        name: "create_glossary",
-        description:
-          "Create a glossary with a custom name in your Lara Translate account. Glossaries enforce specific terminology during translation.",
-        inputSchema: z.toJSONSchema(createGlossarySchema),
-      },
-      {
-        name: "update_glossary",
-        description:
-          "Updates the name of a glossary in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(updateGlossarySchema),
-      },
-      {
-        name: "delete_glossary",
-        description:
-          "Deletes a glossary from your Lara Translate account.",
-        inputSchema: z.toJSONSchema(deleteGlossarySchema),
-      },
-      {
-        name: "import_glossary_csv",
-        description:
-          "Imports a CSV file into a glossary. Supports unidirectional and multidirectional formats. This is an async operation that returns an import job object containing an import_id. Poll with check_glossary_import_status using the returned import_id until the import is complete.",
-        inputSchema: z.toJSONSchema(importGlossaryCsvSchema),
-      },
-      {
-        name: "check_glossary_import_status",
-        description:
-          "Checks the status of a glossary CSV import job started by import_glossary_csv. Poll this tool with the import_id returned from import_glossary_csv until the import is complete.",
-        inputSchema: z.toJSONSchema(checkGlossaryImportStatusSchema),
-      },
-      {
-        name: "export_glossary",
-        description:
-          "Exports a glossary as CSV from your Lara Translate account. Supports unidirectional and multidirectional formats.",
-        inputSchema: z.toJSONSchema(exportGlossarySchema),
-      },
-      {
-        name: "get_glossary_counts",
-        description:
-          "Retrieves the term and language counts for a glossary in your Lara Translate account.",
-        inputSchema: z.toJSONSchema(getGlossaryCountsSchema),
-      },
-      {
-        name: "add_glossary_entry",
-        description:
-          "Adds or replaces an entry in a glossary in your Lara Translate account. Supports both monodirectional and multidirectional glossaries.",
-        inputSchema: z.toJSONSchema(addGlossaryEntrySchema),
-      },
-      {
-        name: "delete_glossary_entry",
-        description:
-          "Deletes an entry from a glossary in your Lara Translate account. Use term for monodirectional glossaries or guid for multidirectional glossaries.",
-        inputSchema: z.toJSONSchema(deleteGlossaryEntrySchema),
-      },
-    ],
-  };
+  return { tools: toolDefinitions };
 }
 
 export { CallTool, ListTools };
