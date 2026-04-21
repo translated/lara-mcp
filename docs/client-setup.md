@@ -34,6 +34,10 @@ That's it — Lara Translate is now available in your conversations.
 
 ## Cursor
 
+The recommended install is via the Cursor plugin marketplace: open the plugin browser, search for **Lara Translate**, and click **Install**. The first tool call opens your browser to authenticate.
+
+Alternatively, configure the MCP server manually:
+
 1. Open the MCP config file:
    - **macOS**: `~/.cursor/mcp.json`
    - **Windows**: `%APPDATA%\Cursor\mcp.json`

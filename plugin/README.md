@@ -16,7 +16,7 @@ Search for **Lara Translate** and install.
 
 ### Cursor
 
-From inside Cursor, open the plugin browser and search for **Lara Translate**, or install directly from this repository folder.
+From inside Cursor, open the plugin browser and search for **Lara Translate**.
 
 ---
 
