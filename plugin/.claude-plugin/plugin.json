@@ -1,6 +1,6 @@
 {
   "name": "lara-translate",
-  "version": "1.1.0",
+  "version": "1.0.1",
   "description": "AI-powered translation via Lara Translate — connects Claude Code to translation memories, glossaries, and 200+ language pairs.",
   "author": {
     "name": "Translated",
