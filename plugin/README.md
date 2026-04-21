@@ -1,8 +1,10 @@
-# Lara Translate — Claude Code plugin
+# Lara Translate — plugin
 
-Official Claude Code plugin for [Lara Translate](https://laratranslate.com). Gives Claude access to Lara's translation engine, translation memories, and glossaries via the hosted MCP endpoint at `https://mcp-v2.laratranslate.com/v1`.
+Official plugin for [Lara Translate](https://laratranslate.com), compatible with both **Claude Code** and **Cursor**. Gives your AI assistant access to Lara's translation engine, translation memories, and glossaries via the hosted MCP endpoint at `https://mcp-v2.laratranslate.com/v1`.
 
 ## Install
+
+### Claude Code
 
 From inside Claude Code, open the plugin browser:
 
@@ -10,11 +12,19 @@ From inside Claude Code, open the plugin browser:
 /plugin
 ```
 
-Search for **Lara Translate** and install. The first tool call triggers a browser-based OAuth login against Lara. No API keys or local processes required.
+Search for **Lara Translate** and install.
+
+### Cursor
+
+From inside Cursor, open the plugin browser and search for **Lara Translate**, or install directly from this repository folder.
+
+---
+
+The first tool call in either client triggers a browser-based OAuth login against Lara. No API keys or local processes required.
 
 ## Usage
 
-Ask Claude to translate something, extend a translation memory, or look up a glossary term. Available tools include translation, language detection, translation memory management, and glossary operations — Claude selects the right one based on your request.
+Ask your assistant to translate something, extend a translation memory, or look up a glossary term. Available tools include translation, language detection, translation memory management, and glossary operations — the assistant selects the right one based on your request.
 
 ## Advanced setup
 
