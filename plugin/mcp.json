@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "lara-translate": {
-      "type": "http",
-      "url": "https://mcp-v2.laratranslate.com/v1"
-    }
-  }
-}
