@@ -1,7 +1,7 @@
 {
   "name": "lara-translate",
+  "description": "AI-powered translation via Lara Translate — connects Cursor to translation memories, glossaries, and 200+ language pairs.",
   "version": "1.0.1",
-  "description": "AI-powered translation via Lara Translate — connects Claude Code to translation memories, glossaries, and 200+ language pairs.",
   "author": {
     "name": "Translated",
     "email": "support@laratranslate.com",
@@ -10,5 +10,11 @@
   "homepage": "https://laratranslate.com",
   "repository": "https://github.com/translated/lara-mcp",
   "license": "MIT",
-  "keywords": ["translation", "localization", "i18n", "lara", "mcp"]
+  "keywords": [
+    "translation",
+    "localization",
+    "i18n",
+    "lara",
+    "mcp"
+  ]
 }
