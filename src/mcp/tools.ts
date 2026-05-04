@@ -73,6 +73,74 @@ const listers: Record<string, Lister> = {
   list_glossaries: listGlossaries,
 };
 
+function toStructuredContent(result: unknown): Record<string, unknown> {
+  if (Array.isArray(result)) return { items: result };
+  if (result !== null && typeof result === "object") return result as Record<string, unknown>;
+  return { value: result };
+}
+
+function invocationMeta(invoking: string, invoked: string) {
+  return {
+    "openai/toolInvocation/invoking": invoking,
+    "openai/toolInvocation/invoked": invoked,
+  };
+}
+
+function narrate(name: string, args: any, result: any): string {
+  switch (name) {
+    case "translate":
+      return Array.isArray(result)
+        ? `Translated ${result.length} segments${args?.target ? " to " + args.target : ""}`
+        : `Translated text${args?.target ? " to " + args.target : ""}`;
+    case "detect_language":
+      return Array.isArray(result)
+        ? `Detected language for ${result.length} inputs`
+        : `Detected language: ${result?.language ?? "unknown"}`;
+    case "list_languages":
+      return `Retrieved ${Array.isArray(result) ? result.length : 0} supported languages`;
+    case "list_memories":
+      return `Found ${Array.isArray(result) ? result.length : 0} translation memories`;
+    case "create_memory":
+      return `Created translation memory "${result?.name ?? args?.name ?? ""}"`;
+    case "update_memory":
+      return `Renamed translation memory to "${result?.name ?? args?.name ?? ""}"`;
+    case "delete_memory":
+      return `Deleted translation memory ${result?.id ?? args?.id ?? ""}`;
+    case "add_translation":
+      return "Added translation unit to memory";
+    case "delete_translation":
+      return "Deleted translation unit from memory";
+    case "import_tmx":
+      return `Queued TMX import${result?.id ? " (job " + result.id + ")" : ""}`;
+    case "check_import_status":
+      return `TMX import status: ${result?.status ?? "unknown"}`;
+    case "list_glossaries":
+      return `Found ${Array.isArray(result) ? result.length : 0} glossaries`;
+    case "get_glossary":
+      return `Retrieved glossary "${result?.name ?? args?.id ?? ""}"`;
+    case "create_glossary":
+      return `Created glossary "${result?.name ?? args?.name ?? ""}"`;
+    case "update_glossary":
+      return `Renamed glossary to "${result?.name ?? args?.name ?? ""}"`;
+    case "delete_glossary":
+      return `Deleted glossary ${result?.id ?? args?.id ?? ""}`;
+    case "add_glossary_entry":
+      return "Added entry to glossary";
+    case "delete_glossary_entry":
+      return "Deleted entry from glossary";
+    case "import_glossary_csv":
+      return `Queued glossary CSV import${result?.id ? " (job " + result.id + ")" : ""}`;
+    case "check_glossary_import_status":
+      return `Glossary import status: ${result?.status ?? "unknown"}`;
+    case "export_glossary":
+      return "Exported glossary as CSV";
+    case "get_glossary_counts":
+      return `Glossary entry count: ${result?.unidirectional ?? result?.multidirectional ?? "retrieved"}`;
+    default:
+      return `${name} completed`;
+  }
+}
+
 async function CallTool(
   request: CallToolRequest,
   lara: Translator
@@ -82,22 +150,20 @@ async function CallTool(
   logger.debug({ toolName: name }, "Tool called");
 
   try {
+    let result: unknown;
     if (name in handlers) {
-      const result = await handlers[name as keyof typeof handlers](args, lara);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
+      result = await handlers[name as keyof typeof handlers](args, lara);
+    } else if (name in listers) {
+      result = await listers[name as keyof typeof listers](lara);
+    } else {
+      logger.warn(`Requested a tool with name ${name}, but it was not found`);
+      throw new InvalidInputError(`Tool ${name} not found`);
     }
 
-    if (name in listers) {
-      const result = await listers[name as keyof typeof listers](lara);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-      };
-    }
-
-    logger.warn(`Requested a tool with name ${name}, but it was not found`);
-    throw new InvalidInputError(`Tool ${name} not found`);
+    return {
+      structuredContent: toStructuredContent(result),
+      content: [{ type: "text", text: narrate(name, args, result) }],
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       const fieldErrors = error.issues
@@ -144,7 +210,9 @@ const toolDefinitions = [
       title: "Detect language",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: true,
     },
+    _meta: invocationMeta("Detecting language…", "Language detected"),
   },
   {
     name: "translate",
@@ -156,7 +224,9 @@ const toolDefinitions = [
       title: "Translate text",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: true,
     },
+    _meta: invocationMeta("Translating…", "Translation ready"),
   },
   {
     name: "create_memory",
@@ -167,6 +237,7 @@ const toolDefinitions = [
       title: "Create translation memory",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -178,6 +249,7 @@ const toolDefinitions = [
       title: "Delete translation memory",
       readOnlyHint: false,
       destructiveHint: true,
+      openWorldHint: false,
     },
   },
   {
@@ -189,6 +261,7 @@ const toolDefinitions = [
       title: "Rename translation memory",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -200,6 +273,7 @@ const toolDefinitions = [
       title: "Add translation unit to memory",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -211,6 +285,7 @@ const toolDefinitions = [
       title: "Delete translation unit from memory",
       readOnlyHint: false,
       destructiveHint: true,
+      openWorldHint: false,
     },
   },
   {
@@ -222,7 +297,9 @@ const toolDefinitions = [
       title: "Import TMX file",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
+    _meta: invocationMeta("Queuing TMX import…", "TMX import queued"),
   },
   {
     name: "check_import_status",
@@ -233,7 +310,9 @@ const toolDefinitions = [
       title: "Check TMX import status",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
+    _meta: invocationMeta("Checking import status…", "Status retrieved"),
   },
   {
     name: "list_memories",
@@ -244,6 +323,7 @@ const toolDefinitions = [
       title: "List translation memories",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -255,6 +335,7 @@ const toolDefinitions = [
       title: "List supported languages",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -266,6 +347,7 @@ const toolDefinitions = [
       title: "List glossaries",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -277,6 +359,7 @@ const toolDefinitions = [
       title: "Get glossary",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -288,6 +371,7 @@ const toolDefinitions = [
       title: "Create glossary",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -299,6 +383,7 @@ const toolDefinitions = [
       title: "Rename glossary",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -310,6 +395,7 @@ const toolDefinitions = [
       title: "Delete glossary",
       readOnlyHint: false,
       destructiveHint: true,
+      openWorldHint: false,
     },
   },
   {
@@ -321,7 +407,9 @@ const toolDefinitions = [
       title: "Import glossary CSV",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
+    _meta: invocationMeta("Queuing glossary import…", "Glossary import queued"),
   },
   {
     name: "check_glossary_import_status",
@@ -332,7 +420,9 @@ const toolDefinitions = [
       title: "Check glossary import status",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
+    _meta: invocationMeta("Checking glossary import status…", "Status retrieved"),
   },
   {
     name: "export_glossary",
@@ -343,7 +433,9 @@ const toolDefinitions = [
       title: "Export glossary as CSV",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
+    _meta: invocationMeta("Exporting glossary…", "Glossary exported"),
   },
   {
     name: "get_glossary_counts",
@@ -354,6 +446,7 @@ const toolDefinitions = [
       title: "Get glossary entry count",
       readOnlyHint: true,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -365,6 +458,7 @@ const toolDefinitions = [
       title: "Add or replace glossary entry",
       readOnlyHint: false,
       destructiveHint: false,
+      openWorldHint: false,
     },
   },
   {
@@ -376,6 +470,7 @@ const toolDefinitions = [
       title: "Delete glossary entry",
       readOnlyHint: false,
       destructiveHint: true,
+      openWorldHint: false,
     },
   },
 ];

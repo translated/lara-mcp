@@ -138,7 +138,6 @@ Custom exception classes (`src/exception.ts`):
 - `ServerException` - Base exception with error code
 - `InvalidInputError` - Invalid request parameters (code: -32600)
 - `InvalidCredentialsError` - Authentication failure (code: -32600)
-- `MethodNotAllowedError` - HTTP method not allowed (code: -32601)
 
 Error handling in `src/mcp/tools.ts`:
 - Zod validation errors return specific field names (not full error details for security)

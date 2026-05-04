@@ -5,7 +5,6 @@ import getMcpServer from "#mcp/server";
 import {
   InvalidCredentialsError,
   InvalidInputError,
-  MethodNotAllowedError,
   ServerException,
 } from "#exception";
 import { logger } from "#logger";
@@ -48,16 +47,16 @@ function mcpRouter(restServer: RestServer): express.Router {
     }
   });
 
+  // The MCP Streamable HTTP server→client SSE stream (GET) and session
+  // termination (DELETE) are optional capabilities this server does not
+  // implement. The spec requires 405 so clients fall back gracefully; any
+  // other status (notably 400) is treated as a hard protocol error.
   router.get("/", (_req, res) => {
-    logger.debug("Received GET request on /v1, sending MethodNotAllowedError");
-    restServer.sendJsonRpc(res, new MethodNotAllowedError());
+    res.status(405).set("Allow", "POST").end();
   });
 
   router.delete("/", (_req, res) => {
-    logger.debug(
-      "Received DELETE request on /v1, sending MethodNotAllowedError"
-    );
-    restServer.sendJsonRpc(res, new MethodNotAllowedError());
+    res.status(405).set("Allow", "POST").end();
   });
 
   return router;

@@ -84,21 +84,19 @@ describe("RestServer", () => {
     expect(res.status).toBe(200);
   });
 
-  it("GET /v1 should return MethodNotAllowedError", async () => {
+  it("GET /v1 should return 405 with Allow header and empty body", async () => {
     const res = await request(app).get("/v1").set(defaultHeaders);
 
-    expect(res.status).toBe(400);
-    expect(res.body).toHaveProperty("error");
-    expect(res.body.error).toHaveProperty("code");
-    expect(res.body.error).toHaveProperty("message");
+    expect(res.status).toBe(405);
+    expect(res.headers.allow).toBe("POST");
+    expect(res.text).toBe("");
   });
 
-    it("DELETE /v1 should return MethodNotAllowedError", async () => {
+  it("DELETE /v1 should return 405 with Allow header and empty body", async () => {
     const res = await request(app).delete("/v1").set(defaultHeaders);
 
-    expect(res.status).toBe(400);
-    expect(res.body).toHaveProperty("error");
-    expect(res.body.error).toHaveProperty("code");
-    expect(res.body.error).toHaveProperty("message");
+    expect(res.status).toBe(405);
+    expect(res.headers.allow).toBe("POST");
+    expect(res.text).toBe("");
   });
 });
