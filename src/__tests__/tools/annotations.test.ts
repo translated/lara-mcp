@@ -33,6 +33,7 @@ describe("Tool annotations", () => {
       expect(ann!.title!.length).toBeGreaterThan(0);
       expect(ann!.readOnlyHint, `tool "${tool.name}" annotations.readOnlyHint`).toBeTypeOf("boolean");
       expect(ann!.destructiveHint, `tool "${tool.name}" annotations.destructiveHint`).toBeTypeOf("boolean");
+      expect(ann!.openWorldHint, `tool "${tool.name}" annotations.openWorldHint`).toBeTypeOf("boolean");
     }
   });
 });

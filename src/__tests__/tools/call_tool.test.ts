@@ -92,6 +92,45 @@ describe('CallTool error handling', () => {
     await expect(promise).rejects.toThrow('Custom validation error from handler');
   });
 
+  it('should return structuredContent and narration for handler tools', async () => {
+    mockTranslator.translate.mockResolvedValue({
+      translation: 'Ciao',
+      sourceLanguage: 'en-US',
+    });
+
+    const request = makeRequest('translate', {
+      text: [{ text: 'Hello', translatable: true }],
+      target: 'it-IT',
+    });
+
+    const result = await CallTool(request, mockTranslator as any as Translator);
+
+    expect(result).toHaveProperty('structuredContent');
+    expect(result.structuredContent).toEqual({ value: 'Ciao' });
+    expect(Array.isArray(result.content)).toBe(true);
+    expect(result.content![0]).toHaveProperty('type', 'text');
+    expect((result.content![0] as any).text).toContain('it-IT');
+  });
+
+  it('should wrap array results under items in structuredContent for lister tools', async () => {
+    mockTranslator.memories.list.mockResolvedValue([
+      { id: 'mem_1', name: 'First' },
+      { id: 'mem_2', name: 'Second' },
+    ]);
+
+    const request = makeRequest('list_memories', {});
+
+    const result = await CallTool(request, mockTranslator as any as Translator);
+
+    expect(result.structuredContent).toEqual({
+      items: [
+        { id: 'mem_1', name: 'First' },
+        { id: 'mem_2', name: 'Second' },
+      ],
+    });
+    expect((result.content![0] as any).text).toContain('2');
+  });
+
   it('should return generic message for unknown errors', async () => {
     mockTranslator.memories.delete.mockRejectedValue(new TypeError('Something unexpected'));
 
