@@ -25,6 +25,6 @@ pnpm run build
 
 # Publish to npm
 echo "Publishing to npm..."
-pnpm publish --no-git-checks --access public
+pnpm publish --no-git-checks --access public --provenance
 
 echo "Package published successfully!" 
