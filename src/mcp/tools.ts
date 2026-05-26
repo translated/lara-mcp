@@ -8,36 +8,112 @@ import * as z from "zod/v4";
 import {
   addTranslation,
   addTranslationSchema,
+  addTranslationOutputSchema,
 } from "./tools/add_translation.js";
 import {
   checkImportStatus,
   checkImportStatusSchema,
+  checkImportStatusOutputSchema,
 } from "./tools/check_import_status.js";
-import { createMemory, createMemorySchema } from "./tools/create_memory.js";
-import { deleteMemory, deleteMemorySchema } from "./tools/delete_memory.js";
+import {
+  createMemory,
+  createMemorySchema,
+  createMemoryOutputSchema,
+} from "./tools/create_memory.js";
+import {
+  deleteMemory,
+  deleteMemorySchema,
+  deleteMemoryOutputSchema,
+} from "./tools/delete_memory.js";
 import {
   deleteTranslation,
   deleteTranslationSchema,
+  deleteTranslationOutputSchema,
 } from "./tools/delete_translation.js";
-import { importTmx, importTmxSchema } from "./tools/import_tmx.js";
-import { listLanguages, listLanguagesSchema } from "./tools/list_languages.js";
-import { listMemories, listMemoriesSchema } from "./tools/list_memories.js";
-import { listGlossaries, listGlossariesSchema } from "./tools/list_glossaries.js";
-import { getGlossary, getGlossarySchema } from "./tools/get_glossary.js";
-import { createGlossary, createGlossarySchema } from "./tools/create_glossary.js";
-import { updateGlossary, updateGlossarySchema } from "./tools/update_glossary.js";
-import { deleteGlossary, deleteGlossarySchema } from "./tools/delete_glossary.js";
-import { importGlossaryCsv, importGlossaryCsvSchema } from "./tools/import_glossary_csv.js";
-import { checkGlossaryImportStatus, checkGlossaryImportStatusSchema } from "./tools/check_glossary_import_status.js";
-import { exportGlossary, exportGlossarySchema } from "./tools/export_glossary.js";
-import { getGlossaryCounts, getGlossaryCountsSchema } from "./tools/get_glossary_counts.js";
-import { addGlossaryEntry, addGlossaryEntrySchema } from "./tools/add_glossary_entry.js";
-import { deleteGlossaryEntry, deleteGlossaryEntrySchema } from "./tools/delete_glossary_entry.js";
-import { detectLanguage, detectLanguageSchema } from "./tools/detect_language.js";
-import { translateHandler, translateSchema } from "./tools/translate.js";
+import {
+  importTmx,
+  importTmxSchema,
+  importTmxOutputSchema,
+} from "./tools/import_tmx.js";
+import {
+  listLanguages,
+  listLanguagesSchema,
+  listLanguagesOutputSchema,
+} from "./tools/list_languages.js";
+import {
+  listMemories,
+  listMemoriesSchema,
+  listMemoriesOutputSchema,
+} from "./tools/list_memories.js";
+import {
+  listGlossaries,
+  listGlossariesSchema,
+  listGlossariesOutputSchema,
+} from "./tools/list_glossaries.js";
+import {
+  getGlossary,
+  getGlossarySchema,
+  getGlossaryOutputSchema,
+} from "./tools/get_glossary.js";
+import {
+  createGlossary,
+  createGlossarySchema,
+  createGlossaryOutputSchema,
+} from "./tools/create_glossary.js";
+import {
+  updateGlossary,
+  updateGlossarySchema,
+  updateGlossaryOutputSchema,
+} from "./tools/update_glossary.js";
+import {
+  deleteGlossary,
+  deleteGlossarySchema,
+  deleteGlossaryOutputSchema,
+} from "./tools/delete_glossary.js";
+import {
+  importGlossaryCsv,
+  importGlossaryCsvSchema,
+  importGlossaryCsvOutputSchema,
+} from "./tools/import_glossary_csv.js";
+import {
+  checkGlossaryImportStatus,
+  checkGlossaryImportStatusSchema,
+  checkGlossaryImportStatusOutputSchema,
+} from "./tools/check_glossary_import_status.js";
+import {
+  exportGlossary,
+  exportGlossarySchema,
+  exportGlossaryOutputSchema,
+} from "./tools/export_glossary.js";
+import {
+  getGlossaryCounts,
+  getGlossaryCountsSchema,
+  getGlossaryCountsOutputSchema,
+} from "./tools/get_glossary_counts.js";
+import {
+  addGlossaryEntry,
+  addGlossaryEntrySchema,
+  addGlossaryEntryOutputSchema,
+} from "./tools/add_glossary_entry.js";
+import {
+  deleteGlossaryEntry,
+  deleteGlossaryEntrySchema,
+  deleteGlossaryEntryOutputSchema,
+} from "./tools/delete_glossary_entry.js";
+import {
+  detectLanguage,
+  detectLanguageSchema,
+  detectLanguageOutputSchema,
+} from "./tools/detect_language.js";
+import {
+  translateHandler,
+  translateSchema,
+  translateOutputSchema,
+} from "./tools/translate.js";
 import {
   updateMemory,
   updateMemorySchema,
+  updateMemoryOutputSchema,
 } from "./tools/update_memory.tool.js";
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
@@ -75,8 +151,12 @@ const listers: Record<string, Lister> = {
 
 function toStructuredContent(result: unknown): Record<string, unknown> {
   if (Array.isArray(result)) return { items: result };
-  if (result !== null && typeof result === "object") return result as Record<string, unknown>;
-  return { value: result };
+  if (result !== null && result !== undefined && typeof result === "object") {
+    return result as Record<string, unknown>;
+  }
+  // Normalize undefined to null so the wire payload always carries the key
+  // explicitly (JSON.stringify drops keys whose value is undefined).
+  return { value: result ?? null };
 }
 
 function invocationMeta(invoking: string, invoked: string) {
@@ -117,7 +197,7 @@ function narrate(name: string, args: any, result: any): string {
     case "list_glossaries":
       return `Found ${Array.isArray(result) ? result.length : 0} glossaries`;
     case "get_glossary":
-      return `Retrieved glossary "${result?.name ?? args?.id ?? ""}"`;
+      return `Retrieved glossary "${result?.glossary?.name ?? args?.id ?? ""}"`;
     case "create_glossary":
       return `Created glossary "${result?.name ?? args?.name ?? ""}"`;
     case "update_glossary":
@@ -160,9 +240,17 @@ async function CallTool(
       throw new InvalidInputError(`Tool ${name} not found`);
     }
 
+    const structuredContent = toStructuredContent(result);
     return {
-      structuredContent: toStructuredContent(result),
-      content: [{ type: "text", text: narrate(name, args, result) }],
+      structuredContent,
+      // MCP spec: when outputSchema is declared, the server SHOULD also return
+      // the serialized JSON in a TextContent block for legacy clients that
+      // don't read structuredContent. The narration stays as the first block
+      // so display-oriented clients keep their short summary.
+      content: [
+        { type: "text", text: narrate(name, args, result) },
+        { type: "text", text: JSON.stringify(structuredContent) },
+      ],
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -206,6 +294,7 @@ const toolDefinitions = [
     description:
       "Detects the language of the provided text. Returns the detected language, content type, and a list of predictions with confidence scores. Accepts a single string or an array of strings (up to 128 elements).",
     inputSchema: z.toJSONSchema(detectLanguageSchema),
+    outputSchema: z.toJSONSchema(detectLanguageOutputSchema),
     annotations: {
       title: "Detect language",
       readOnlyHint: true,
@@ -220,6 +309,7 @@ const toolDefinitions = [
       "Translate text between languages using Lara Translate. Supports language detection, context-aware translations, translation memories, and glossaries. " +
       "The optional 'instructions' parameter accepts short localization directives (e.g., 'Translate formally') — only provide them when the content specifically requires tone, formality, or terminology adjustments.",
     inputSchema: z.toJSONSchema(translateSchema),
+    outputSchema: z.toJSONSchema(translateOutputSchema),
     annotations: {
       title: "Translate text",
       readOnlyHint: true,
@@ -233,6 +323,7 @@ const toolDefinitions = [
     description:
       "Create a translation memory with a custom name in your Lara Translate account. Translation memories store pairs of source and target text segments (translation units) for reuse in future translations.",
     inputSchema: z.toJSONSchema(createMemorySchema),
+    outputSchema: z.toJSONSchema(createMemoryOutputSchema),
     annotations: {
       title: "Create translation memory",
       readOnlyHint: false,
@@ -245,6 +336,7 @@ const toolDefinitions = [
     description:
       "Deletes a translation memory from your Lara Translate account.",
     inputSchema: z.toJSONSchema(deleteMemorySchema),
+    outputSchema: z.toJSONSchema(deleteMemoryOutputSchema),
     annotations: {
       title: "Delete translation memory",
       readOnlyHint: false,
@@ -257,6 +349,7 @@ const toolDefinitions = [
     description:
       "Updates a translation memory in your Lara Translate account.",
     inputSchema: z.toJSONSchema(updateMemorySchema),
+    outputSchema: z.toJSONSchema(updateMemoryOutputSchema),
     annotations: {
       title: "Rename translation memory",
       readOnlyHint: false,
@@ -269,6 +362,7 @@ const toolDefinitions = [
     description:
       "Adds a translation to a translation memory in your Lara Translate account.",
     inputSchema: z.toJSONSchema(addTranslationSchema),
+    outputSchema: z.toJSONSchema(addTranslationOutputSchema),
     annotations: {
       title: "Add translation unit to memory",
       readOnlyHint: false,
@@ -281,6 +375,7 @@ const toolDefinitions = [
     description:
       "Deletes a translation from a translation memory in your Lara Translate account.",
     inputSchema: z.toJSONSchema(deleteTranslationSchema),
+    outputSchema: z.toJSONSchema(deleteTranslationOutputSchema),
     annotations: {
       title: "Delete translation unit from memory",
       readOnlyHint: false,
@@ -293,6 +388,7 @@ const toolDefinitions = [
     description:
       "Imports a TMX file into a translation memory. This is an async operation that returns an import job object containing an import_id. Poll with check_import_status using the returned import_id until the import is complete.",
     inputSchema: z.toJSONSchema(importTmxSchema),
+    outputSchema: z.toJSONSchema(importTmxOutputSchema),
     annotations: {
       title: "Import TMX file",
       readOnlyHint: false,
@@ -306,6 +402,7 @@ const toolDefinitions = [
     description:
       "Checks the status of a TMX import job started by import_tmx. Poll this tool with the import_id returned from import_tmx until the import is complete. The response includes a progress field to track completion.",
     inputSchema: z.toJSONSchema(checkImportStatusSchema),
+    outputSchema: z.toJSONSchema(checkImportStatusOutputSchema),
     annotations: {
       title: "Check TMX import status",
       readOnlyHint: true,
@@ -319,6 +416,7 @@ const toolDefinitions = [
     description:
       "Lists all translation memories in your Lara Translate account.",
     inputSchema: z.toJSONSchema(listMemoriesSchema),
+    outputSchema: z.toJSONSchema(listMemoriesOutputSchema),
     annotations: {
       title: "List translation memories",
       readOnlyHint: true,
@@ -331,6 +429,7 @@ const toolDefinitions = [
     description:
       "Lists all supported languages in your Lara Translate account.",
     inputSchema: z.toJSONSchema(listLanguagesSchema),
+    outputSchema: z.toJSONSchema(listLanguagesOutputSchema),
     annotations: {
       title: "List supported languages",
       readOnlyHint: true,
@@ -343,6 +442,7 @@ const toolDefinitions = [
     description:
       "Lists all glossaries in your Lara Translate account. Glossaries are collections of terms with their translations that enforce specific terminology during translation.",
     inputSchema: z.toJSONSchema(listGlossariesSchema),
+    outputSchema: z.toJSONSchema(listGlossariesOutputSchema),
     annotations: {
       title: "List glossaries",
       readOnlyHint: true,
@@ -355,6 +455,7 @@ const toolDefinitions = [
     description:
       "Retrieves a specific glossary by ID from your Lara Translate account. Returns null if the glossary is not found.",
     inputSchema: z.toJSONSchema(getGlossarySchema),
+    outputSchema: z.toJSONSchema(getGlossaryOutputSchema),
     annotations: {
       title: "Get glossary",
       readOnlyHint: true,
@@ -367,6 +468,7 @@ const toolDefinitions = [
     description:
       "Create a glossary with a custom name in your Lara Translate account. Glossaries enforce specific terminology during translation.",
     inputSchema: z.toJSONSchema(createGlossarySchema),
+    outputSchema: z.toJSONSchema(createGlossaryOutputSchema),
     annotations: {
       title: "Create glossary",
       readOnlyHint: false,
@@ -379,6 +481,7 @@ const toolDefinitions = [
     description:
       "Updates the name of a glossary in your Lara Translate account.",
     inputSchema: z.toJSONSchema(updateGlossarySchema),
+    outputSchema: z.toJSONSchema(updateGlossaryOutputSchema),
     annotations: {
       title: "Rename glossary",
       readOnlyHint: false,
@@ -391,6 +494,7 @@ const toolDefinitions = [
     description:
       "Deletes a glossary from your Lara Translate account.",
     inputSchema: z.toJSONSchema(deleteGlossarySchema),
+    outputSchema: z.toJSONSchema(deleteGlossaryOutputSchema),
     annotations: {
       title: "Delete glossary",
       readOnlyHint: false,
@@ -403,6 +507,7 @@ const toolDefinitions = [
     description:
       "Imports a CSV file into a glossary. Supports unidirectional and multidirectional formats. This is an async operation that returns an import job object containing an import_id. Poll with check_glossary_import_status using the returned import_id until the import is complete.",
     inputSchema: z.toJSONSchema(importGlossaryCsvSchema),
+    outputSchema: z.toJSONSchema(importGlossaryCsvOutputSchema),
     annotations: {
       title: "Import glossary CSV",
       readOnlyHint: false,
@@ -416,6 +521,7 @@ const toolDefinitions = [
     description:
       "Checks the status of a glossary CSV import job started by import_glossary_csv. Poll this tool with the import_id returned from import_glossary_csv until the import is complete.",
     inputSchema: z.toJSONSchema(checkGlossaryImportStatusSchema),
+    outputSchema: z.toJSONSchema(checkGlossaryImportStatusOutputSchema),
     annotations: {
       title: "Check glossary import status",
       readOnlyHint: true,
@@ -429,6 +535,7 @@ const toolDefinitions = [
     description:
       "Exports a glossary as CSV from your Lara Translate account. Supports unidirectional and multidirectional formats.",
     inputSchema: z.toJSONSchema(exportGlossarySchema),
+    outputSchema: z.toJSONSchema(exportGlossaryOutputSchema),
     annotations: {
       title: "Export glossary as CSV",
       readOnlyHint: true,
@@ -442,6 +549,7 @@ const toolDefinitions = [
     description:
       "Retrieves the term and language counts for a glossary in your Lara Translate account.",
     inputSchema: z.toJSONSchema(getGlossaryCountsSchema),
+    outputSchema: z.toJSONSchema(getGlossaryCountsOutputSchema),
     annotations: {
       title: "Get glossary entry count",
       readOnlyHint: true,
@@ -454,6 +562,7 @@ const toolDefinitions = [
     description:
       "Adds or replaces an entry in a glossary in your Lara Translate account. Supports both monodirectional and multidirectional glossaries.",
     inputSchema: z.toJSONSchema(addGlossaryEntrySchema),
+    outputSchema: z.toJSONSchema(addGlossaryEntryOutputSchema),
     annotations: {
       title: "Add or replace glossary entry",
       readOnlyHint: false,
@@ -466,6 +575,7 @@ const toolDefinitions = [
     description:
       "Deletes an entry from a glossary in your Lara Translate account. Use term for monodirectional glossaries or guid for multidirectional glossaries.",
     inputSchema: z.toJSONSchema(deleteGlossaryEntrySchema),
+    outputSchema: z.toJSONSchema(deleteGlossaryEntryOutputSchema),
     annotations: {
       title: "Delete glossary entry",
       readOnlyHint: false,

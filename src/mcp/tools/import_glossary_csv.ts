@@ -4,6 +4,9 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { InvalidInputError } from "#exception";
+import { glossaryImportSchema } from "./_schemas.js";
+
+export const importGlossaryCsvOutputSchema = glossaryImportSchema;
 
 export const importGlossaryCsvSchema = z.object({
   id: z.string()

@@ -50,14 +50,14 @@ describe('getGlossary', () => {
     const result = await getGlossary({ id: 'gls_xyz123' }, mockTranslator as any as Translator);
 
     expect(mockTranslator.glossaries.get).toHaveBeenCalledWith('gls_xyz123');
-    expect(result).toEqual(mockGlossary);
+    expect(result).toEqual({ glossary: mockGlossary });
   });
 
-  it('should return null for non-existent glossary', async () => {
+  it('should return { glossary: null } for non-existent glossary', async () => {
     mockTranslator.glossaries.get.mockResolvedValue(null);
 
     const result = await getGlossary({ id: 'gls_nonexistent' }, mockTranslator as any as Translator);
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ glossary: null });
   });
 });
