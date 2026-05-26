@@ -1,5 +1,8 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
+import { glossaryCountsSchema } from "./_schemas.js";
+
+export const getGlossaryCountsOutputSchema = glossaryCountsSchema;
 
 export const getGlossaryCountsSchema = z.object({
   id: z.string()

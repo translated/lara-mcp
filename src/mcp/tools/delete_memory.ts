@@ -1,5 +1,8 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
+import { memorySchema } from "./_schemas.js";
+
+export const deleteMemoryOutputSchema = memorySchema;
 
 export const deleteMemorySchema = z.object({
   id: z

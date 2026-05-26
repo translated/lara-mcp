@@ -1,6 +1,9 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import { InvalidInputError } from "#exception";
+import { glossaryImportSchema } from "./_schemas.js";
+
+export const deleteGlossaryEntryOutputSchema = glossaryImportSchema;
 
 export const deleteGlossaryEntrySchema = z.object({
   id: z.string()

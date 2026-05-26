@@ -1,5 +1,8 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
+import { detectResultSchema } from "./_schemas.js";
+
+export const detectLanguageOutputSchema = detectResultSchema;
 
 export const detectLanguageSchema = z.object({
   text: z

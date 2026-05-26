@@ -1,6 +1,9 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import { InvalidInputError } from "#exception";
+import { memoryImportSchema } from "./_schemas.js";
+
+export const deleteTranslationOutputSchema = memoryImportSchema;
 
 export const deleteTranslationSchema = z.object({
   id: z

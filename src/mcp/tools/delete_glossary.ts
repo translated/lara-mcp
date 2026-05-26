@@ -1,5 +1,8 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
+import { glossarySchema } from "./_schemas.js";
+
+export const deleteGlossaryOutputSchema = glossarySchema;
 
 export const deleteGlossarySchema = z.object({
   id: z.string()

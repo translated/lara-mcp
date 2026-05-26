@@ -1,5 +1,8 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
+import { memorySchema } from "./_schemas.js";
+
+export const createMemoryOutputSchema = memorySchema;
 
 export const createMemorySchema = z.object({
   name: z
