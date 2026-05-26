@@ -1,5 +1,12 @@
 import { z } from "zod/v4";
 import { Translator } from "@translated/lara";
+import { glossarySchema } from "./_schemas.js";
+
+export const getGlossaryOutputSchema = z.object({
+  glossary: glossarySchema
+    .nullable()
+    .describe("The requested glossary, or null when no glossary has that id"),
+});
 
 export const getGlossarySchema = z.object({
   id: z.string()
@@ -13,5 +20,6 @@ export async function getGlossary(args: unknown, lara: Translator) {
   const validatedArgs = getGlossarySchema.parse(args);
   const { id } = validatedArgs;
 
-  return await lara.glossaries.get(id);
+  const glossary = await lara.glossaries.get(id);
+  return { glossary: glossary ?? null };
 }

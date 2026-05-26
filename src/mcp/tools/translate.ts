@@ -1,12 +1,18 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import { logger } from "#logger";
+import { textBlockSchema } from "./_schemas.js";
+
+export { textBlockSchema };
 
 const MAX_INSTRUCTION_WORDS = 20;
 
-export const textBlockSchema = z.object({
-  text: z.string(),
-  translatable: z.boolean(),
+export const translateOutputSchema = z.object({
+  items: z
+    .array(textBlockSchema)
+    .describe(
+      "Translated text blocks, in the same order and structure as the input. Blocks marked translatable: false are preserved verbatim."
+    ),
 });
 
 export const translateSchema = z.object({

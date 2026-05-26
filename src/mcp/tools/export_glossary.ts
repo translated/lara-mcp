@@ -1,6 +1,12 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 
+export const exportGlossaryOutputSchema = z.object({
+  value: z
+    .string()
+    .describe("The exported glossary content serialised as CSV"),
+});
+
 export const exportGlossarySchema = z.object({
   id: z.string()
     .min(1)
