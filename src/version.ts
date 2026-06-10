@@ -11,8 +11,10 @@ function loadPackageVersion(): string {
   try {
     const pkg = JSON.parse(
       readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8")
-    ) as { version: string };
-    return pkg.version;
+    ) as { version?: unknown };
+    return typeof pkg.version === "string" && pkg.version.length > 0
+      ? pkg.version
+      : "unknown";
   } catch {
     return "unknown";
   }

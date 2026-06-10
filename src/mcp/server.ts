@@ -26,10 +26,16 @@ export default function getMcpServer(
   // here covers translate, glossaries, memories, languages, imports, etc. The
   // client is protected/internal in the SDK types, hence the narrow cast.
   const laraClient = (lara as unknown as {
-    client: { setExtraHeader(name: string, value: string): void };
+    client?: { setExtraHeader?: (name: string, value: string) => void };
   }).client;
-  laraClient.setExtraHeader("X-Lara-Client", "MCP");
-  laraClient.setExtraHeader("X-Lara-Client-Version", PACKAGE_VERSION);
+  if (typeof laraClient?.setExtraHeader === "function") {
+    laraClient.setExtraHeader("X-Lara-Client", "MCP");
+    laraClient.setExtraHeader("X-Lara-Client-Version", PACKAGE_VERSION);
+  } else {
+    logger.warn(
+      "Lara SDK client does not expose setExtraHeader; X-Lara-Client headers not set"
+    );
+  }
 
   const server = new Server(
     {
