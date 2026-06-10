@@ -46,7 +46,9 @@ export function createMockTranslator() {
       addOrReplaceEntry: vi.fn(),
       deleteEntry: vi.fn(),
     },
-    client: {}
+    client: {
+      setExtraHeader: vi.fn(),
+    }
   };
 }
 

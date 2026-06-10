@@ -10,6 +10,7 @@ import {
 import { CallTool, ListTools } from "./tools.js";
 import { ListResources, ListResourceTemplates, ReadResource } from "./resources.js";
 import { logger } from "#logger";
+import { PACKAGE_VERSION } from "../version.js";
 
 export default function getMcpServer(
   accessKeyId: string,
@@ -20,10 +21,26 @@ export default function getMcpServer(
   const credentials = new Credentials(accessKeyId, accessKeySecret);
   const lara = new Translator(credentials);
 
+  // Identify MCP-originated traffic to Lara on every SDK request. extraHeaders
+  // are spread into all requests by the SDK transport, so setting them once
+  // here covers translate, glossaries, memories, languages, imports, etc. The
+  // client is protected/internal in the SDK types, hence the narrow cast.
+  const laraClient = (lara as unknown as {
+    client?: { setExtraHeader?: (name: string, value: string) => void };
+  }).client;
+  if (typeof laraClient?.setExtraHeader === "function") {
+    laraClient.setExtraHeader("X-Lara-Client", "MCP");
+    laraClient.setExtraHeader("X-Lara-Client-Version", PACKAGE_VERSION);
+  } else {
+    logger.warn(
+      "Lara SDK client does not expose setExtraHeader; X-Lara-Client headers not set"
+    );
+  }
+
   const server = new Server(
     {
       name: "Lara Translate",
-      version: "0.0.15",
+      version: PACKAGE_VERSION,
     },
     {
       capabilities: {
