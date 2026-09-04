@@ -237,9 +237,14 @@ Then add to your MCP config:
 ## Usage Metrics
 
 The server reports anonymous usage events to Lara so we can see how the
-integration is doing: an `install` the first time it runs, `auth_success` /
-`auth_fail` when your credentials are accepted or rejected, and a
-`call_success` / `call_error` per tool call.
+integration is doing: an `install` the first time it runs, an `auth_success`
+the first time your credentials are accepted, and a `call_success` /
+`call_error` per tool call.
+
+Events are reported against your Lara account, which is only known once your
+credentials have been accepted. Credentials Lara rejects outright therefore
+produce **no events at all** — including no `auth_fail`, which is only sent
+when a key that already worked stops being accepted.
 
 **What is sent:** your Lara account id (`acc_...`), the tool name, the source
 and target language tags, how many characters were translated, how long the

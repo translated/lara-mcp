@@ -466,6 +466,71 @@ describe("delivery", () => {
     expect(bodyOf(callsTo(fetchMock, INGEST_URL)[0]).events).toHaveLength(1);
   });
 
+  it("keeps the envelope authoritative over whatever a caller passes", async () => {
+    metrics.logEvent({
+      ...event(),
+      // Not reachable through the public type, but the envelope must win regardless.
+      ...({ channel: "slack", sessionId: "spoofed", eventId: "spoofed" } as any),
+    });
+    await metrics.flushNow();
+
+    const [sent] = bodyOf(callsTo(fetchMock, INGEST_URL)[0]).events;
+    expect(sent.channel).toBe("mcp");
+    expect(sent.sessionId).not.toBe("spoofed");
+    expect(sent.eventId).not.toBe("spoofed");
+  });
+
+  it("stays within the cap when a failed batch goes back on the queue", async () => {
+    // The overshoot only happens if events arrive while a batch is in flight: the batch is out of
+    // the queue, so new events refill it to the cap, and handing the batch back pushes it over.
+    let releaseSend: () => void;
+    const sendInFlight = new Promise<void>((resolve) => (releaseSend = resolve));
+
+    fetchMock.mockImplementation(async (...args: any[]) => {
+      const url = args[0] as string;
+      if (url === TOKEN_URL) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ status: "success", token: "ingest-token", expiresIn: 3600 }),
+        } as unknown as Response;
+      }
+      await sendInFlight;
+      return { ok: false, status: 503 } as unknown as Response;
+    });
+
+    for (let i = 0; i < 10_000; i++) metrics.logEvent(event());
+    const flushed = metrics.flushNow();
+
+    // The first batch is out of the queue and the request is hanging: refill the gap it left.
+    await vi.advanceTimersByTimeAsync(0);
+    for (let i = 0; i < 500; i++) metrics.logEvent(event());
+
+    releaseSend!();
+    await flushed;
+
+    // Nothing more is logged after this, so only the requeue path can hold the bound.
+    fetchMock.mockImplementation(async (...args: any[]) => {
+      const url = args[0] as string;
+      if (url === TOKEN_URL) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ status: "success", token: "ingest-token", expiresIn: 3600 }),
+        } as unknown as Response;
+      }
+      return { ok: true, status: 202 } as unknown as Response;
+    });
+    fetchMock.mockClear();
+    await metrics.flushNow();
+
+    const delivered = callsTo(fetchMock, INGEST_URL).reduce(
+      (total, call) => total + bodyOf(call).events.length,
+      0
+    );
+    expect(delivered).toBe(10_000);
+  });
+
   it("caps the backlog and splits it into batches", async () => {
     for (let i = 0; i < 10_050; i++) metrics.logEvent(event());
     await metrics.flushNow();

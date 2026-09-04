@@ -271,6 +271,11 @@ const queue: QueuedEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
 let flushing: Promise<void> | undefined;
 
+/** Drops the oldest events once the backlog is past its bound. */
+function trimQueue(): void {
+  if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
+}
+
 /**
  * Fire-and-forget event report. Never awaited, never throws: if the monitoring backend is down
  * the MCP keeps translating as though nothing happened.
@@ -281,10 +286,12 @@ let flushing: Promise<void> | undefined;
 export function logEvent(event: MetricsEvent): void {
   if (!metricsEnabled()) return;
 
-  // Stamped on the way in, not at flush time: the timestamp is when the thing happened, and a
-  // delivery retry has to carry the same eventId to be recognizable as a duplicate.
-  queue.push({ ...ENVELOPE, eventId: randomUUID(), timestamp: new Date().toISOString(), ...event });
-  if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
+  // The envelope is stamped last so it always wins: channel and sessionId are facts about this
+  // process, never something a caller supplies. Both are stamped on the way in rather than at
+  // flush time — the timestamp is when the thing happened, and a delivery retry has to carry the
+  // same eventId to be recognizable as a duplicate.
+  queue.push({ ...event, ...ENVELOPE, eventId: randomUUID(), timestamp: new Date().toISOString() });
+  trimQueue();
 
   if (!flushTimer) {
     flushTimer = setTimeout(() => {
@@ -315,8 +322,10 @@ async function drainQueue(): Promise<void> {
       // front and rides the next flush. A batch the backend answered with a verdict is a different
       // thing and is dropped in sendBatch. MAX_QUEUE is what bounds a backend that stays down.
       logger.debug({ error, events: batch.length }, "Metrics batch delivery failed, requeued");
-      // Overshoots MAX_QUEUE by at most one batch, which the next logEvent trims.
       queue.unshift(...batch);
+      // Bounded here rather than left to the next logEvent: a server that goes idle while the
+      // backend is down would otherwise sit above the cap indefinitely.
+      trimQueue();
       return;
     }
   }
