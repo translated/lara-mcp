@@ -7,6 +7,7 @@ import mcpRouter from "./rest/routes/mcp.js";
 import serverInfoRouter from "./rest/routes/server-info.js";
 import { RestServer } from "./rest/server.js";
 import { logger } from "./logger.js";
+import { flushNow } from "./metrics.js";
 import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
 
 // -- Start server
@@ -24,17 +25,26 @@ switch (env.TRANSPORT) {
     throw new Error("Invalid transport: " + env.TRANSPORT + ". Must be either 'stdio' or 'http'");
 }
 
-process.on("SIGINT", () => signalHandler(server));
-process.on("SIGTERM", () => signalHandler(server));
-process.on("SIGQUIT", () => signalHandler(server));
+process.on("SIGINT", () => void signalHandler(server));
+process.on("SIGTERM", () => void signalHandler(server));
+process.on("SIGQUIT", () => void signalHandler(server));
 
 // -- Signal handler
-function signalHandler(server: RestServer | McpServer) {
+async function signalHandler(server: RestServer | McpServer) {
   if (server instanceof RestServer) {
     server.stop();
   } else {
     server.close();
   }
+
+  // Deliver the queued metrics before the process goes: batched events are held
+  // in memory behind an unref'd timer, so without this the last batch dies with
+  // it. Capped, because draining a long backlog would eat a shutdown budget the
+  // supervisor ends with a SIGKILL anyway.
+  await Promise.race([
+    flushNow(),
+    new Promise((resolve) => setTimeout(resolve, 2000)),
+  ]);
 
   process.exit(0);
 }

@@ -10,6 +10,8 @@ import {
 import { CallTool, ListTools } from "./tools.js";
 import { ListResources, ListResourceTemplates, ReadResource } from "./resources.js";
 import { logger } from "#logger";
+import { getLaraClient } from "../lara-client.js";
+import { createMetricsContext } from "../metrics.js";
 import { PACKAGE_VERSION } from "../version.js";
 
 export default function getMcpServer(
@@ -24,10 +26,8 @@ export default function getMcpServer(
   // Identify MCP-originated traffic to Lara on every SDK request. extraHeaders
   // are spread into all requests by the SDK transport, so setting them once
   // here covers translate, glossaries, memories, languages, imports, etc. The
-  // client is protected/internal in the SDK types, hence the narrow cast.
-  const laraClient = (lara as unknown as {
-    client?: { setExtraHeader?: (name: string, value: string) => void };
-  }).client;
+  // client is protected/internal in the SDK types, hence the guarded accessor.
+  const laraClient = getLaraClient(lara);
   if (typeof laraClient?.setExtraHeader === "function") {
     laraClient.setExtraHeader("X-Lara-Client", "MCP");
     laraClient.setExtraHeader("X-Lara-Client-Version", PACKAGE_VERSION);
@@ -52,9 +52,13 @@ export default function getMcpServer(
   logger.debug("MCP server created! Setting request handlers...");
 
   // -- Tools
+  // Funnel telemetry for this session. Undefined when metrics are off or opted
+  // out of, which makes every report inside CallTool a no-op.
+  const metrics = createMetricsContext(lara);
+
   server.setRequestHandler(ListToolsRequestSchema, ListTools);
   server.setRequestHandler(CallToolRequestSchema, (request) =>
-    CallTool(request, lara)
+    CallTool(request, lara, metrics)
   );
 
   // -- Resources

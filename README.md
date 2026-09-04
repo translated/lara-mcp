@@ -234,6 +234,50 @@ Then add to your MCP config:
 
 ---
 
+## Usage Metrics
+
+The server reports anonymous usage events to Lara so we can see how the
+integration is doing: an `install` the first time it runs, `auth_success` /
+`auth_fail` when your credentials are accepted or rejected, and a
+`call_success` / `call_error` per tool call.
+
+**What is sent:** your Lara account id (`acc_...`), the tool name, the source
+and target language tags, how many characters were translated, how long the
+call took, and the server version.
+
+**What is never sent:** the text you translate, your access key, your access
+key secret, and anything else that identifies you or your content.
+
+An installation id (a random UUID, tied to nothing) is generated on first run
+and kept at `~/.lara/installation-id` — set `LARA_HOME` to move it. It exists
+so repeated runs of the same install count as one.
+
+### Opting out
+
+Set `DO_NOT_TRACK` to `1`, `true` or `yes` and nothing is measured, queued,
+written to disk or sent:
+
+```json
+{
+  "mcpServers": {
+    "lara-translate": {
+      "command": "npx",
+      "args": ["-y", "@translated/lara-mcp@latest"],
+      "env": {
+        "LARA_ACCESS_KEY_ID": "<YOUR_ACCESS_KEY_ID>",
+        "LARA_ACCESS_KEY_SECRET": "<YOUR_ACCESS_KEY_SECRET>",
+        "DO_NOT_TRACK": "1"
+      }
+    }
+  }
+}
+```
+
+Metrics never block, slow down or fail a translation: events are batched, sent
+in the background, and a monitoring backend that is down is ignored.
+
+---
+
 ## Support
 
 - For issues with Lara Translate API: visit [Lara Translate Support](https://support.laratranslate.com)
