@@ -117,6 +117,11 @@ import {
 } from "./tools/update_memory.tool.js";
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
+import {
+  type MetricsContext,
+  reportCallError,
+  reportCallSuccess,
+} from "../metrics.js";
 
 type Handler = (args: any, lara: Translator) => Promise<any>;
 type Lister = (lara: Translator) => Promise<any>;
@@ -223,9 +228,11 @@ function narrate(name: string, args: any, result: any): string {
 
 async function CallTool(
   request: CallToolRequest,
-  lara: Translator
+  lara: Translator,
+  metrics?: MetricsContext
 ): Promise<CallToolResult> {
   const { name, arguments: args } = request.params;
+  const startedAt = Date.now();
 
   logger.debug({ toolName: name }, "Tool called");
 
@@ -240,6 +247,11 @@ async function CallTool(
       throw new InvalidInputError(`Tool ${name} not found`);
     }
 
+    // Reported from inside the try, not from a wrapper around this function:
+    // the catch below rewrites the SDK's errors, so only here is the original
+    // still in hand. Fire-and-forget — it never delays or alters the result.
+    reportCallSuccess(metrics, name, args, startedAt);
+
     const structuredContent = toStructuredContent(result);
     return {
       structuredContent,
@@ -253,6 +265,8 @@ async function CallTool(
       ],
     };
   } catch (error) {
+    reportCallError(metrics, name, args, startedAt, error);
+
     if (error instanceof z.ZodError) {
       const fieldErrors = error.issues
         .map(i => {
