@@ -1,16 +1,11 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { Server } from "@modelcontextprotocol/server";
 import { Credentials, Translator } from "@translated/lara";
-import {
-  CallToolRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ListToolsRequestSchema,
-  ReadResourceRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
 import { CallTool, ListTools } from "./tools.js";
 import { ListResources, ListResourceTemplates, ReadResource } from "./resources.js";
 import { logger } from "#logger";
 import { PACKAGE_VERSION } from "../version.js";
+
+const PUBLIC_1H = { ttlMs: 60 * 60 * 1000, cacheScope: "public" } as const;
 
 export default function getMcpServer(
   accessKeyId: string,
@@ -47,20 +42,31 @@ export default function getMcpServer(
         tools: {},
         resources: {},
       },
+      // 2026-07-28 cacheable results (ignored on 2025-era responses). Tool and
+      // resource catalogs and server capabilities are static and identical for
+      // every account; resource contents are account data, so they must never
+      // be shared or reused.
+      cacheHints: {
+        "tools/list": PUBLIC_1H,
+        "resources/list": PUBLIC_1H,
+        "resources/templates/list": PUBLIC_1H,
+        "server/discover": PUBLIC_1H,
+        "resources/read": { ttlMs: 0, cacheScope: "private" },
+      },
     }
   );
   logger.debug("MCP server created! Setting request handlers...");
 
   // -- Tools
-  server.setRequestHandler(ListToolsRequestSchema, ListTools);
-  server.setRequestHandler(CallToolRequestSchema, (request) =>
+  server.setRequestHandler('tools/list', ListTools);
+  server.setRequestHandler('tools/call', (request) =>
     CallTool(request, lara)
   );
 
   // -- Resources
-  server.setRequestHandler(ListResourceTemplatesRequestSchema, ListResourceTemplates);
-  server.setRequestHandler(ListResourcesRequestSchema, ListResources);
-  server.setRequestHandler(ReadResourceRequestSchema, (request) =>
+  server.setRequestHandler('resources/templates/list', ListResourceTemplates);
+  server.setRequestHandler('resources/list', ListResources);
+  server.setRequestHandler('resources/read', (request) =>
     ReadResource(request, lara)
   );
 

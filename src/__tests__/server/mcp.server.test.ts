@@ -10,7 +10,7 @@ vi.mock("@translated/lara", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@translated/lara")>();
   return {
     ...actual,
-    Translator: vi.fn(() => {
+    Translator: vi.fn(function () {
       const instance = { client: { setExtraHeader: vi.fn() } };
       instances.push(instance);
       return instance;

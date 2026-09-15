@@ -1,56 +1,47 @@
 import express from "express";
 import { RestServer } from "#rest/server";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { createMcpHandler } from "@modelcontextprotocol/server";
+import { toNodeHandler } from "@modelcontextprotocol/node";
 import getMcpServer from "#mcp/server";
-import {
-  InvalidCredentialsError,
-  InvalidInputError,
-  ServerException,
-} from "#exception";
+import { InvalidCredentialsError } from "#exception";
 import { logger } from "#logger";
+
+const ACCESS_KEY_ID_HEADER = "x-lara-access-key-id";
+const ACCESS_KEY_SECRET_HEADER = "x-lara-access-key-secret";
 
 function mcpRouter(restServer: RestServer): express.Router {
   const router = express.Router();
 
-  router.post("/", async (req, res) => {
-    const xLaraAccessKeyId = req.headers["x-lara-access-key-id"] as string | undefined;
-    const xLaraAccessKeySecret = req.headers["x-lara-access-key-secret"] as string | undefined;
+  // One handler serves both protocol eras: 2026-07-28 (stateless, per-request
+  // envelope) and 2025-era clients through the SDK's stateless fallback. A
+  // fresh MCP server is built per request from that request's credentials.
+  const onerror = (error: Error) =>
+    logger.error("Error while handling MCP request: " + error);
+  const handler = createMcpHandler(
+    ({ requestInfo }) =>
+      getMcpServer(
+        requestInfo?.headers.get(ACCESS_KEY_ID_HEADER) ?? "",
+        requestInfo?.headers.get(ACCESS_KEY_SECRET_HEADER) ?? ""
+      ),
+    { onerror }
+  );
+  const nodeHandler = toNodeHandler(handler, { onerror });
 
-    if (!xLaraAccessKeyId || !xLaraAccessKeySecret) {
+  router.post("/", async (req, res) => {
+    if (!req.headers[ACCESS_KEY_ID_HEADER] || !req.headers[ACCESS_KEY_SECRET_HEADER]) {
       logger.debug("No credentials provided in MCP request");
       restServer.sendJsonRpc(res, new InvalidCredentialsError());
       return;
     }
 
-    const transport: StreamableHTTPServerTransport =
-      new StreamableHTTPServerTransport({
-        // In stateless mode we don't need to track the client session
-        sessionIdGenerator: undefined,
-      });
-
-    const server = getMcpServer(xLaraAccessKeyId, xLaraAccessKeySecret);
-    await server.connect(transport);
-
-    try {
-      await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-      if (error instanceof InvalidInputError) {
-        logger.error(
-          "Invalid input error while handling MCP request: " + error.message
-        );
-        restServer.sendJsonRpc(res, error);
-        return;
-      }
-
-      logger.error("Generic error while handling MCP request: " + error);
-      restServer.sendJsonRpc(res, new ServerException("Internal server error"));
-    }
+    // express.json() has already drained the request stream: hand the parsed body over
+    await nodeHandler(req, res, req.body);
   });
 
-  // The MCP Streamable HTTP server→client SSE stream (GET) and session
-  // termination (DELETE) are optional capabilities this server does not
-  // implement. The spec requires 405 so clients fall back gracefully; any
-  // other status (notably 400) is treated as a hard protocol error.
+  // The 2025-era server→client SSE stream (GET) and session termination
+  // (DELETE) are not implemented (and do not exist in 2026-07-28). The spec
+  // requires 405 so clients fall back gracefully; any other status (notably
+  // 400) is treated as a hard protocol error.
   router.get("/", (_req, res) => {
     res.status(405).set("Allow", "POST").end();
   });

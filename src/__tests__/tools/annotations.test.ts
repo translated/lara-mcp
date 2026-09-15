@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool } from "@modelcontextprotocol/server";
 
 // Stub the logger before importing `mcp/tools.js`: the real logger pulls in
 // `src/env.ts`, which parses `process.env` at module load — side effects

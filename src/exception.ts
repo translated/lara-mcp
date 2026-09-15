@@ -6,14 +6,6 @@ class ServerException extends Error {
   }
 }
 
-class InvalidSessionIdError extends ServerException {
-  code: number = -32600;
-
-  constructor() {
-    super("Bad Request: No valid session ID provided");
-  }
-}
-
 class InvalidCredentialsError extends ServerException {
   code: number = -32600;
 
@@ -32,7 +24,6 @@ class InvalidInputError extends ServerException {
 
 export {
   ServerException,
-  InvalidSessionIdError,
   InvalidCredentialsError,
   InvalidInputError,
 };

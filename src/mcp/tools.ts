@@ -1,7 +1,10 @@
 import {
   CallToolRequest,
   CallToolResult,
-} from "@modelcontextprotocol/sdk/types.js";
+  ProtocolError,
+  ProtocolErrorCode,
+  Tool,
+} from "@modelcontextprotocol/server";
 import { LaraApiError, TimeoutError as LaraTimeoutError, Translator } from "@translated/lara";
 import * as z from "zod/v4";
 
@@ -229,16 +232,16 @@ async function CallTool(
 
   logger.debug({ toolName: name }, "Tool called");
 
+  const handler = Object.hasOwn(handlers, name) ? handlers[name] : undefined;
+  const lister = Object.hasOwn(listers, name) ? listers[name] : undefined;
+  if (!handler && !lister) {
+    logger.warn(`Requested a tool with name ${name}, but it was not found`);
+    // MCP spec: an unknown tool is a protocol error, not a tool execution error
+    throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Tool ${name} not found`);
+  }
+
   try {
-    let result: unknown;
-    if (name in handlers) {
-      result = await handlers[name as keyof typeof handlers](args, lara);
-    } else if (name in listers) {
-      result = await listers[name as keyof typeof listers](lara);
-    } else {
-      logger.warn(`Requested a tool with name ${name}, but it was not found`);
-      throw new InvalidInputError(`Tool ${name} not found`);
-    }
+    const result = handler ? await handler(args, lara) : await lister!(lara);
 
     const structuredContent = toStructuredContent(result);
     return {
@@ -253,48 +256,58 @@ async function CallTool(
       ],
     };
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      const fieldErrors = error.issues
-        .map(i => {
-          const field = i.path.length > 0 ? i.path.join('.') : 'arguments';
-          return `${field}: ${i.message}`;
-        })
-        .join('; ');
-      throw new InvalidInputError(`Invalid input: ${fieldErrors}`);
-    }
-
-    // Preserve existing InvalidInputError instances (and their messages)
-    if (error instanceof InvalidInputError) {
-      throw error;
-    }
-
-    if (error instanceof LaraApiError) {
-      throw new InvalidInputError(error.message);
-    }
-
-    if (error instanceof LaraTimeoutError) {
-      throw new InvalidInputError("The translation request timed out. Try again or increase the timeout.");
-    }
-
-    // Log full error internally for debugging
-    logger.error({ error, toolName: name }, "Tool execution error");
-
-    // Return generic error to client for unexpected errors
-    throw new InvalidInputError("An error occurred while processing your request");
+    // MCP spec: execution failures (bad arguments, API errors) are reported as
+    // isError results so the model can read the message and self-correct.
+    return {
+      isError: true,
+      content: [{ type: "text", text: toolErrorMessage(error, name) }],
+    };
   }
+}
+
+function toolErrorMessage(error: unknown, name: string): string {
+  if (error instanceof z.ZodError) {
+    const fieldErrors = error.issues
+      .map(i => {
+        const field = i.path.length > 0 ? i.path.join('.') : 'arguments';
+        return `${field}: ${i.message}`;
+      })
+      .join('; ');
+    return `Invalid input: ${fieldErrors}`;
+  }
+
+  if (error instanceof InvalidInputError || error instanceof LaraApiError) {
+    return error.message;
+  }
+
+  if (error instanceof LaraTimeoutError) {
+    return "The translation request timed out. Try again or increase the timeout.";
+  }
+
+  // Log full error internally for debugging
+  logger.error({ error, toolName: name }, "Tool execution error");
+
+  // Return generic error to client for unexpected errors
+  return "An error occurred while processing your request";
+}
+
+// zod's toJSONSchema return type is wider than the MCP Tool schema type; the
+// generated schemas for our z.object inputs/outputs are always type "object".
+function jsonSchema(schema: z.ZodType): Tool["inputSchema"] {
+  return z.toJSONSchema(schema) as Tool["inputSchema"];
 }
 
 // Anthropic Software Directory policy requires every tool to advertise title,
 // readOnlyHint, and destructiveHint so clients can render labels and warn
 // before destructive calls.
 // https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy
-const toolDefinitions = [
+const toolDefinitions: Tool[] = [
   {
     name: "detect_language",
     description:
       "Detects the language of the provided text. Returns the detected language, content type, and a list of predictions with confidence scores. Accepts a single string or an array of strings (up to 128 elements).",
-    inputSchema: z.toJSONSchema(detectLanguageSchema),
-    outputSchema: z.toJSONSchema(detectLanguageOutputSchema),
+    inputSchema: jsonSchema(detectLanguageSchema),
+    outputSchema: jsonSchema(detectLanguageOutputSchema),
     annotations: {
       title: "Detect language",
       readOnlyHint: true,
@@ -308,8 +321,8 @@ const toolDefinitions = [
     description:
       "Translate text between languages using Lara Translate. Supports language detection, context-aware translations, translation memories, and glossaries. " +
       "The optional 'instructions' parameter accepts short localization directives (e.g., 'Translate formally') — only provide them when the content specifically requires tone, formality, or terminology adjustments.",
-    inputSchema: z.toJSONSchema(translateSchema),
-    outputSchema: z.toJSONSchema(translateOutputSchema),
+    inputSchema: jsonSchema(translateSchema),
+    outputSchema: jsonSchema(translateOutputSchema),
     annotations: {
       title: "Translate text",
       readOnlyHint: true,
@@ -322,8 +335,8 @@ const toolDefinitions = [
     name: "create_memory",
     description:
       "Create a translation memory with a custom name in your Lara Translate account. Translation memories store pairs of source and target text segments (translation units) for reuse in future translations.",
-    inputSchema: z.toJSONSchema(createMemorySchema),
-    outputSchema: z.toJSONSchema(createMemoryOutputSchema),
+    inputSchema: jsonSchema(createMemorySchema),
+    outputSchema: jsonSchema(createMemoryOutputSchema),
     annotations: {
       title: "Create translation memory",
       readOnlyHint: false,
@@ -335,8 +348,8 @@ const toolDefinitions = [
     name: "delete_memory",
     description:
       "Deletes a translation memory from your Lara Translate account.",
-    inputSchema: z.toJSONSchema(deleteMemorySchema),
-    outputSchema: z.toJSONSchema(deleteMemoryOutputSchema),
+    inputSchema: jsonSchema(deleteMemorySchema),
+    outputSchema: jsonSchema(deleteMemoryOutputSchema),
     annotations: {
       title: "Delete translation memory",
       readOnlyHint: false,
@@ -348,8 +361,8 @@ const toolDefinitions = [
     name: "update_memory",
     description:
       "Updates a translation memory in your Lara Translate account.",
-    inputSchema: z.toJSONSchema(updateMemorySchema),
-    outputSchema: z.toJSONSchema(updateMemoryOutputSchema),
+    inputSchema: jsonSchema(updateMemorySchema),
+    outputSchema: jsonSchema(updateMemoryOutputSchema),
     annotations: {
       title: "Rename translation memory",
       readOnlyHint: false,
@@ -361,8 +374,8 @@ const toolDefinitions = [
     name: "add_translation",
     description:
       "Adds a translation to a translation memory in your Lara Translate account.",
-    inputSchema: z.toJSONSchema(addTranslationSchema),
-    outputSchema: z.toJSONSchema(addTranslationOutputSchema),
+    inputSchema: jsonSchema(addTranslationSchema),
+    outputSchema: jsonSchema(addTranslationOutputSchema),
     annotations: {
       title: "Add translation unit to memory",
       readOnlyHint: false,
@@ -374,8 +387,8 @@ const toolDefinitions = [
     name: "delete_translation",
     description:
       "Deletes a translation from a translation memory in your Lara Translate account.",
-    inputSchema: z.toJSONSchema(deleteTranslationSchema),
-    outputSchema: z.toJSONSchema(deleteTranslationOutputSchema),
+    inputSchema: jsonSchema(deleteTranslationSchema),
+    outputSchema: jsonSchema(deleteTranslationOutputSchema),
     annotations: {
       title: "Delete translation unit from memory",
       readOnlyHint: false,
@@ -387,8 +400,8 @@ const toolDefinitions = [
     name: "import_tmx",
     description:
       "Imports a TMX file into a translation memory. This is an async operation that returns an import job object containing an import_id. Poll with check_import_status using the returned import_id until the import is complete.",
-    inputSchema: z.toJSONSchema(importTmxSchema),
-    outputSchema: z.toJSONSchema(importTmxOutputSchema),
+    inputSchema: jsonSchema(importTmxSchema),
+    outputSchema: jsonSchema(importTmxOutputSchema),
     annotations: {
       title: "Import TMX file",
       readOnlyHint: false,
@@ -401,8 +414,8 @@ const toolDefinitions = [
     name: "check_import_status",
     description:
       "Checks the status of a TMX import job started by import_tmx. Poll this tool with the import_id returned from import_tmx until the import is complete. The response includes a progress field to track completion.",
-    inputSchema: z.toJSONSchema(checkImportStatusSchema),
-    outputSchema: z.toJSONSchema(checkImportStatusOutputSchema),
+    inputSchema: jsonSchema(checkImportStatusSchema),
+    outputSchema: jsonSchema(checkImportStatusOutputSchema),
     annotations: {
       title: "Check TMX import status",
       readOnlyHint: true,
@@ -415,8 +428,8 @@ const toolDefinitions = [
     name: "list_memories",
     description:
       "Lists all translation memories in your Lara Translate account.",
-    inputSchema: z.toJSONSchema(listMemoriesSchema),
-    outputSchema: z.toJSONSchema(listMemoriesOutputSchema),
+    inputSchema: jsonSchema(listMemoriesSchema),
+    outputSchema: jsonSchema(listMemoriesOutputSchema),
     annotations: {
       title: "List translation memories",
       readOnlyHint: true,
@@ -428,8 +441,8 @@ const toolDefinitions = [
     name: "list_languages",
     description:
       "Lists all supported languages in your Lara Translate account.",
-    inputSchema: z.toJSONSchema(listLanguagesSchema),
-    outputSchema: z.toJSONSchema(listLanguagesOutputSchema),
+    inputSchema: jsonSchema(listLanguagesSchema),
+    outputSchema: jsonSchema(listLanguagesOutputSchema),
     annotations: {
       title: "List supported languages",
       readOnlyHint: true,
@@ -441,8 +454,8 @@ const toolDefinitions = [
     name: "list_glossaries",
     description:
       "Lists all glossaries in your Lara Translate account. Glossaries are collections of terms with their translations that enforce specific terminology during translation.",
-    inputSchema: z.toJSONSchema(listGlossariesSchema),
-    outputSchema: z.toJSONSchema(listGlossariesOutputSchema),
+    inputSchema: jsonSchema(listGlossariesSchema),
+    outputSchema: jsonSchema(listGlossariesOutputSchema),
     annotations: {
       title: "List glossaries",
       readOnlyHint: true,
@@ -454,8 +467,8 @@ const toolDefinitions = [
     name: "get_glossary",
     description:
       "Retrieves a specific glossary by ID from your Lara Translate account. Returns null if the glossary is not found.",
-    inputSchema: z.toJSONSchema(getGlossarySchema),
-    outputSchema: z.toJSONSchema(getGlossaryOutputSchema),
+    inputSchema: jsonSchema(getGlossarySchema),
+    outputSchema: jsonSchema(getGlossaryOutputSchema),
     annotations: {
       title: "Get glossary",
       readOnlyHint: true,
@@ -467,8 +480,8 @@ const toolDefinitions = [
     name: "create_glossary",
     description:
       "Create a glossary with a custom name in your Lara Translate account. Glossaries enforce specific terminology during translation.",
-    inputSchema: z.toJSONSchema(createGlossarySchema),
-    outputSchema: z.toJSONSchema(createGlossaryOutputSchema),
+    inputSchema: jsonSchema(createGlossarySchema),
+    outputSchema: jsonSchema(createGlossaryOutputSchema),
     annotations: {
       title: "Create glossary",
       readOnlyHint: false,
@@ -480,8 +493,8 @@ const toolDefinitions = [
     name: "update_glossary",
     description:
       "Updates the name of a glossary in your Lara Translate account.",
-    inputSchema: z.toJSONSchema(updateGlossarySchema),
-    outputSchema: z.toJSONSchema(updateGlossaryOutputSchema),
+    inputSchema: jsonSchema(updateGlossarySchema),
+    outputSchema: jsonSchema(updateGlossaryOutputSchema),
     annotations: {
       title: "Rename glossary",
       readOnlyHint: false,
@@ -493,8 +506,8 @@ const toolDefinitions = [
     name: "delete_glossary",
     description:
       "Deletes a glossary from your Lara Translate account.",
-    inputSchema: z.toJSONSchema(deleteGlossarySchema),
-    outputSchema: z.toJSONSchema(deleteGlossaryOutputSchema),
+    inputSchema: jsonSchema(deleteGlossarySchema),
+    outputSchema: jsonSchema(deleteGlossaryOutputSchema),
     annotations: {
       title: "Delete glossary",
       readOnlyHint: false,
@@ -506,8 +519,8 @@ const toolDefinitions = [
     name: "import_glossary_csv",
     description:
       "Imports a CSV file into a glossary. Supports unidirectional and multidirectional formats. This is an async operation that returns an import job object containing an import_id. Poll with check_glossary_import_status using the returned import_id until the import is complete.",
-    inputSchema: z.toJSONSchema(importGlossaryCsvSchema),
-    outputSchema: z.toJSONSchema(importGlossaryCsvOutputSchema),
+    inputSchema: jsonSchema(importGlossaryCsvSchema),
+    outputSchema: jsonSchema(importGlossaryCsvOutputSchema),
     annotations: {
       title: "Import glossary CSV",
       readOnlyHint: false,
@@ -520,8 +533,8 @@ const toolDefinitions = [
     name: "check_glossary_import_status",
     description:
       "Checks the status of a glossary CSV import job started by import_glossary_csv. Poll this tool with the import_id returned from import_glossary_csv until the import is complete.",
-    inputSchema: z.toJSONSchema(checkGlossaryImportStatusSchema),
-    outputSchema: z.toJSONSchema(checkGlossaryImportStatusOutputSchema),
+    inputSchema: jsonSchema(checkGlossaryImportStatusSchema),
+    outputSchema: jsonSchema(checkGlossaryImportStatusOutputSchema),
     annotations: {
       title: "Check glossary import status",
       readOnlyHint: true,
@@ -534,8 +547,8 @@ const toolDefinitions = [
     name: "export_glossary",
     description:
       "Exports a glossary as CSV from your Lara Translate account. Supports unidirectional and multidirectional formats.",
-    inputSchema: z.toJSONSchema(exportGlossarySchema),
-    outputSchema: z.toJSONSchema(exportGlossaryOutputSchema),
+    inputSchema: jsonSchema(exportGlossarySchema),
+    outputSchema: jsonSchema(exportGlossaryOutputSchema),
     annotations: {
       title: "Export glossary as CSV",
       readOnlyHint: true,
@@ -548,8 +561,8 @@ const toolDefinitions = [
     name: "get_glossary_counts",
     description:
       "Retrieves the term and language counts for a glossary in your Lara Translate account.",
-    inputSchema: z.toJSONSchema(getGlossaryCountsSchema),
-    outputSchema: z.toJSONSchema(getGlossaryCountsOutputSchema),
+    inputSchema: jsonSchema(getGlossaryCountsSchema),
+    outputSchema: jsonSchema(getGlossaryCountsOutputSchema),
     annotations: {
       title: "Get glossary entry count",
       readOnlyHint: true,
@@ -561,8 +574,8 @@ const toolDefinitions = [
     name: "add_glossary_entry",
     description:
       "Adds or replaces an entry in a glossary in your Lara Translate account. Supports both monodirectional and multidirectional glossaries.",
-    inputSchema: z.toJSONSchema(addGlossaryEntrySchema),
-    outputSchema: z.toJSONSchema(addGlossaryEntryOutputSchema),
+    inputSchema: jsonSchema(addGlossaryEntrySchema),
+    outputSchema: jsonSchema(addGlossaryEntryOutputSchema),
     annotations: {
       title: "Add or replace glossary entry",
       readOnlyHint: false,
@@ -574,8 +587,8 @@ const toolDefinitions = [
     name: "delete_glossary_entry",
     description:
       "Deletes an entry from a glossary in your Lara Translate account. Use term for monodirectional glossaries or guid for multidirectional glossaries.",
-    inputSchema: z.toJSONSchema(deleteGlossaryEntrySchema),
-    outputSchema: z.toJSONSchema(deleteGlossaryEntryOutputSchema),
+    inputSchema: jsonSchema(deleteGlossaryEntrySchema),
+    outputSchema: jsonSchema(deleteGlossaryEntryOutputSchema),
     annotations: {
       title: "Delete glossary entry",
       readOnlyHint: false,

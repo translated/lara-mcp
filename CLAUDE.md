@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Lara Translate MCP Server is a Model Context Protocol (MCP) server that provides translation capabilities through the Lara Translate API. The server supports both STDIO and HTTP transport modes.
 
+It is built on the MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, `@modelcontextprotocol/node`) and serves both protocol eras on every transport:
+- **2026-07-28** (stateless: no `initialize`, per-request `_meta` envelope, `server/discover`, `Mcp-Method`/`Mcp-Name` headers, cacheable list results)
+- **2025-era** (2024-11-05 … 2025-11-25, `initialize` handshake) for clients that have not upgraded
+
 ## Development Commands
 
 ### Setup
@@ -50,9 +54,9 @@ docker build -t lara-mcp .
 
 The server operates in two transport modes determined by the `TRANSPORT` environment variable:
 
-1. **STDIO Mode** (`src/index.ts:56-75`): Direct MCP server using stdio transport, requires `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
+1. **STDIO Mode** (`src/index.ts`): `serveStdio(factory)` negotiates the era on the opening exchange and pins one server instance per connection. Requires `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
 
-2. **HTTP Mode** (`src/index.ts:42-54`): REST API server with MCP protocol endpoint at `/v1`
+2. **HTTP Mode** (`src/rest/routes/mcp.ts`): Express server with the MCP endpoint at `/v1`. POST goes through `createMcpHandler(factory)` wrapped with `toNodeHandler`; a fresh MCP server is built per request from the `x-lara-access-key-id` / `x-lara-access-key-secret` headers (missing headers → 400 before the handler runs). GET/DELETE answer 405.
 
 ### Core Components
 
@@ -62,7 +66,9 @@ The server factory function `getMcpServer(accessKeyId, accessKeySecret)` creates
 - `accessKeyId`: The Lara Translate API access key ID
 - `accessKeySecret`: The Lara Translate API access key secret
 
-The server initializes a `Translator` instance from the `@translated/lara` SDK and configures MCP request handlers for tools and resources.
+The server initializes a `Translator` instance from the `@translated/lara` SDK and configures MCP request handlers (low-level `Server.setRequestHandler('tools/list', …)`) for tools and resources.
+
+`cacheHints` set the 2026-07-28 `ttlMs`/`cacheScope` fields: `tools/list`, `resources/list`, `resources/templates/list` and `server/discover` are `public` with a 1h TTL (identical for every account); `resources/read` is `private` with TTL 0 (account data).
 
 #### Tools (`src/mcp/tools/`)
 
@@ -114,6 +120,7 @@ Each tool exports a handler function and a Zod validation schema. Tool registrat
 The MCP server exposes translation memories as resources:
 - Resource URI format: `memory://{memoryId}`
 - Resource template: `memory://{memoryId}` for listing memories
+- Unknown resources and missing memories throw `ResourceNotFoundError` (-32602); a blank memory name throws `InvalidParams`
 
 ### Path Aliases
 
@@ -139,10 +146,12 @@ Custom exception classes (`src/exception.ts`):
 - `InvalidInputError` - Invalid request parameters (code: -32600)
 - `InvalidCredentialsError` - Authentication failure (code: -32600)
 
-Error handling in `src/mcp/tools.ts`:
-- Zod validation errors return specific field names (not full error details for security)
-- Existing `InvalidInputError` instances are preserved and re-thrown
-- Other unexpected errors are logged internally and returned as generic "An error occurred while processing your request" message
+Error handling in `src/mcp/tools.ts` (`CallTool`):
+- Unknown tool names throw a `ProtocolError` with code -32602 (JSON-RPC error)
+- Every tool execution failure is returned in-band as `{ isError: true, content: [{ type: "text", text }] }` so the model can read it and self-correct:
+  - Zod validation errors list field names and reasons (not full error details for security)
+  - `InvalidInputError`, `LaraApiError` messages and the Lara timeout message are surfaced as-is
+  - Other unexpected errors are logged internally and returned as generic "An error occurred while processing your request" message
 - Privacy-sensitive translations (with `no_trace=true`) are logged for audit purposes
 
 ### Logging
@@ -152,9 +161,12 @@ The server uses Pino structured logging (`src/logger.ts`). Log level is controll
 ## Testing
 
 Tests are located in `src/__tests__/` and mirror the source structure:
-- `tools/` - Individual tool tests (71 total tests)
-- `server/` - REST server tests
-- `utils/mocks.ts` - Shared test utilities with Vitest mocks
+- `tools/` - Individual tool tests
+- `server/` - REST server tests, resources, and protocol tests:
+  - `era.http.test.ts` - SDK client over a real socket in legacy, pinned 2026-07-28 and auto-negotiated modes
+  - `wire2026.test.ts` - raw wire contract (cache fields, `resultType`, `serverInfo`, header mismatch -32020, unsupported version -32022, CORS)
+  - `stdio.test.ts` - spawns `src/index.ts` with tsx and connects in each era
+- `utils/mocks.ts` - Shared test utilities with Vitest mocks (importing it registers a module-wide `vi.mock` of `@translated/lara`, so server-level tests that need their own Lara mock do not import it)
 
 Tests use Vitest with coverage reporting (v8 provider).
 
