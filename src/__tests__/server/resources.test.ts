@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ProtocolError, ProtocolErrorCode, ResourceNotFoundError } from "@modelcontextprotocol/server";
+import { ProtocolErrorCode, ResourceNotFoundError } from "@modelcontextprotocol/server";
 import type { ReadResourceRequest } from "@modelcontextprotocol/server";
 import type { Translator } from "@translated/lara";
 
@@ -61,12 +61,14 @@ describe("resources", () => {
     });
   });
 
-  it("throws InvalidParams when the memory name is blank", async () => {
+  it("throws ResourceNotFoundError when the memory name is blank", async () => {
     const promise = read("memories://list/  ");
 
-    await expect(promise).rejects.toBeInstanceOf(ProtocolError);
-    await expect(promise).rejects.not.toBeInstanceOf(ResourceNotFoundError);
-    await expect(promise).rejects.toMatchObject({ code: ProtocolErrorCode.InvalidParams });
+    await expect(promise).rejects.toBeInstanceOf(ResourceNotFoundError);
+    await expect(promise).rejects.toMatchObject({
+      code: ProtocolErrorCode.InvalidParams,
+      message: expect.stringContaining("Memory name is required."),
+    });
   });
 
   it("throws ResourceNotFoundError for an unknown URI", async () => {

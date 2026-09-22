@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 
-import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import { serveStdio, type StdioServerHandle } from "@modelcontextprotocol/server/stdio";
 import { env } from "./env.js";
 import getMcpServer from "./mcp/server.js";
-import mcpRouter from "./rest/routes/mcp.js";
+import mcpRouter, { MCP_MOUNT_PATH, closeMcpHandler } from "./rest/routes/mcp.js";
 import serverInfoRouter from "./rest/routes/server-info.js";
 import { RestServer } from "./rest/server.js";
 import { logger } from "./logger.js";
-
-type StdioServerHandle = ReturnType<typeof serveStdio>;
 
 // -- Start server
 logger.info("Detected server mode: " + env.TRANSPORT);
@@ -45,7 +43,7 @@ function httpServer() {
 
   restServer
     .configure()
-    .use("/v1", mcpRouter(restServer))
+    .use(MCP_MOUNT_PATH, mcpRouter(restServer))
     .use("/server-info", serverInfoRouter(restServer));
 
   restServer.start();

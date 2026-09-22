@@ -30,7 +30,8 @@ export const translateSchema = z.object({
   target: z
     .string()
     .describe(
-      "The target language code (e.g., 'it-IT' for Italian). This specifies the language you want the text translated into."
+      "The target language code (e.g., 'it-IT' for Italian). This specifies the single language you want the text translated into. " +
+      "This field accepts ONE language code only. If the user wants the text translated into multiple languages, call this tool once per target language."
     ),
   context: z
     .string()
@@ -66,7 +67,8 @@ export const translateSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      "A list of translation memory IDs for adapting the translation."
+      "A list of translation memory IDs (format 'mem_*') for adapting the translation. " +
+      "If the user refers to a memory by name rather than by ID, call list_memories first to resolve the name to its ID before calling this tool."
     ),
   glossaries: z
     .array(
@@ -78,7 +80,8 @@ export const translateSchema = z.object({
     .max(10)
     .optional()
     .describe(
-      "Array of glossary IDs to apply during translation (max 10). IDs must match format: gls_* (e.g., ['gls_xyz123', 'gls_abc456']). Glossaries enforce specific terminology and terms."
+      "Array of glossary IDs to apply during translation (max 10). IDs must match format: gls_* (e.g., ['gls_xyz123', 'gls_abc456']). Glossaries enforce specific terminology and terms. " +
+      "If the user refers to a glossary by name rather than by ID (e.g., 'my company glossary'), call list_glossaries first to resolve the name to its ID before calling this tool."
     ),
   no_trace: z
     .boolean()

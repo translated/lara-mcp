@@ -5,7 +5,9 @@ import { ListResources, ListResourceTemplates, ReadResource } from "./resources.
 import { logger } from "#logger";
 import { PACKAGE_VERSION } from "../version.js";
 
-const PUBLIC_1H = { ttlMs: 60 * 60 * 1000, cacheScope: "public" } as const;
+// Tool and resource catalogs are static but auth-gated, so they are cacheable per client and never
+// by a shared intermediary; resource contents are live account data and are never cached.
+const STATIC_LIST_HINT = { ttlMs: 60 * 60 * 1000, cacheScope: "private" } as const;
 
 export default function getMcpServer(
   accessKeyId: string,
@@ -42,15 +44,12 @@ export default function getMcpServer(
         tools: {},
         resources: {},
       },
-      // 2026-07-28 cacheable results (ignored on 2025-era responses). Tool and
-      // resource catalogs and server capabilities are static and identical for
-      // every account; resource contents are account data, so they must never
-      // be shared or reused.
+      // 2026-07-28 CacheableResult hints (ignored on 2025-era responses).
       cacheHints: {
-        "tools/list": PUBLIC_1H,
-        "resources/list": PUBLIC_1H,
-        "resources/templates/list": PUBLIC_1H,
-        "server/discover": PUBLIC_1H,
+        "tools/list": STATIC_LIST_HINT,
+        "resources/list": STATIC_LIST_HINT,
+        "resources/templates/list": STATIC_LIST_HINT,
+        "server/discover": STATIC_LIST_HINT,
         "resources/read": { ttlMs: 0, cacheScope: "private" },
       },
     }

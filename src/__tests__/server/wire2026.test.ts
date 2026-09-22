@@ -93,13 +93,13 @@ describe("2026-07-28 wire contract", () => {
       capabilities: { tools: {}, resources: {} },
       resultType: "complete",
       ttlMs: 3_600_000,
-      cacheScope: "public",
+      cacheScope: "private",
     });
     expectServerInfo(res.body.result);
   });
 
   it.each(["tools/list", "resources/list", "resources/templates/list"])(
-    "%s is a public cacheable result with a 1h TTL",
+    "%s is a per-client cacheable result with a 1h TTL",
     async (method) => {
       const res = await modern(method);
 
@@ -107,7 +107,7 @@ describe("2026-07-28 wire contract", () => {
       expect(res.body.result).toMatchObject({
         resultType: "complete",
         ttlMs: 3_600_000,
-        cacheScope: "public",
+        cacheScope: "private",
       });
       expectServerInfo(res.body.result);
     }

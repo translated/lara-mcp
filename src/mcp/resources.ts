@@ -1,8 +1,6 @@
 import {
   ListResourcesResult,
   ListResourceTemplatesResult,
-  ProtocolError,
-  ProtocolErrorCode,
   ReadResourceRequest,
   ReadResourceResult,
   ResourceNotFoundError,
@@ -78,7 +76,7 @@ async function ReadResource(
   if (uri.startsWith("memories://list/")) {
     const name = uri.slice("memories://list/".length).trim();
     if (!name) {
-      throw new ProtocolError(ProtocolErrorCode.InvalidParams, "Memory name is required.");
+      throw new ResourceNotFoundError(uri, "Memory name is required.");
     }
 
     const memory = await getMemoryByName(lara, name);
@@ -97,7 +95,7 @@ async function ReadResource(
   }
 
   logger.warn(`Requested a resource with uri ${uri}, but it was not found`);
-  throw new ResourceNotFoundError(uri);
+  throw new ResourceNotFoundError(uri, `Unknown resource: ${uri}`);
 }
 
 export { ListResourceTemplates, ListResources, ReadResource };
