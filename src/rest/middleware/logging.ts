@@ -45,5 +45,5 @@ export default function loggingMiddleware(req: Request, res: Response, next: Nex
 
     next();
 
-    logger.info(`Sending response: ${res.statusCode} ${res.statusMessage}`);
+    logger.info(`Sending response: ${req.method} ${req.url} - ${res.statusCode} ${res.statusMessage}`);
 }

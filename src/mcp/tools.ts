@@ -121,8 +121,8 @@ import {
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
 
-type Handler = (args: any, lara: Translator) => Promise<any>;
-type Lister = (lara: Translator) => Promise<any>;
+type Handler = (args: unknown, lara: Translator) => Promise<unknown>;
+type Lister = (lara: Translator) => Promise<unknown>;
 
 const handlers: Record<string, Handler> = {
   detect_language: detectLanguage,

@@ -1,7 +1,7 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import { logger } from "#logger";
-import { textBlockSchema } from "./_schemas.js";
+import { glossaryIdSchema, textBlockSchema } from "./_schemas.js";
 
 export { textBlockSchema };
 
@@ -71,12 +71,7 @@ export const translateSchema = z.object({
       "If the user refers to a memory by name rather than by ID, call list_memories first to resolve the name to its ID before calling this tool."
     ),
   glossaries: z
-    .array(
-      z.string()
-        .min(1)
-        .max(255)
-        .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format")
-    )
+    .array(glossaryIdSchema)
     .max(10)
     .optional()
     .describe(
@@ -128,7 +123,6 @@ const makeInstructions = (text: string) =>
   `Always consider the following contextual information: ${text}`;
 
 export async function translateHandler(args: unknown, lara: Translator) {
-  const validatedArgs = translateSchema.parse(args);
   const {
     text,
     source,
@@ -143,7 +137,7 @@ export async function translateHandler(args: unknown, lara: Translator) {
     style,
     reasoning,
     content_type
-  } = validatedArgs;
+  } = translateSchema.parse(args);
   let instructionsList = [...(instructions ?? [])];
 
   if (context) {

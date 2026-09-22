@@ -8,9 +8,8 @@ export const checkGlossaryImportStatusSchema = z.object({
   id: z.string().describe("The ID of the glossary import job"),
 });
 
-export async function checkGlossaryImportStatus(args: any, lara: Translator) {
-  const validatedArgs = checkGlossaryImportStatusSchema.parse(args);
-  const { id } = validatedArgs;
+export async function checkGlossaryImportStatus(args: unknown, lara: Translator) {
+  const { id } = checkGlossaryImportStatusSchema.parse(args);
 
   return await lara.glossaries.getImportStatus(id);
 }
