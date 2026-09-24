@@ -164,7 +164,7 @@ The server uses Pino structured logging (`src/logger.ts`). Log level is controll
 ## Testing
 
 Tests are located in `src/__tests__/` and mirror the source structure:
-- `tools/` - Individual tool tests
+- `tools/` - Individual tool tests, plus `dispatch.test.ts`, which calls every advertised tool by its MCP name through `CallTool` (catches a tool defined but not registered, or registered but not advertised)
 - `server/` - REST server tests, resources, and protocol tests:
   - `era.http.test.ts` - SDK client over a real socket in legacy, pinned 2026-07-28 and auto-negotiated modes
   - `wire2026.test.ts` - raw wire contract (cache fields, `resultType`, `serverInfo`, header mismatch -32020, unsupported version -32022, CORS)
