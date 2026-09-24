@@ -129,3 +129,14 @@ export const detectResultSchema = z
       .describe("Ranked list of candidate languages with confidence scores"),
   })
   .loose();
+
+export const glossaryIdSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format");
+
+export const glossaryFileFormatSchema = z.enum([
+  "csv/table-uni",
+  "csv/table-multi",
+]);

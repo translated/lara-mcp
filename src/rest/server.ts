@@ -4,9 +4,9 @@ import cors from "./middleware/cors.js";
 import { env } from "#env";
 import { ServerException } from "#exception";
 import {
-  JSONRPCError,
-  JSONRPCResponse,
-} from "@modelcontextprotocol/sdk/types.js";
+  JSONRPCErrorResponse,
+  JSONRPCResultResponse,
+} from "@modelcontextprotocol/server";
 import { logger } from "#logger";
 import loggingMiddleware from "./middleware/logging.js";
 import { createServer, Server } from "node:http";
@@ -87,7 +87,7 @@ export class RestServer {
 
   private createJsonRpcResponse(
     payload: ServerException | any
-  ): JSONRPCResponse | JSONRPCError {
+  ): JSONRPCResultResponse | JSONRPCErrorResponse {
     if (payload instanceof ServerException) {
       return {
         jsonrpc: "2.0",

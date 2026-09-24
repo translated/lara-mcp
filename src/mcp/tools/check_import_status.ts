@@ -8,9 +8,8 @@ export const checkImportStatusSchema = z.object({
   id: z.string().describe("The ID of the import job"),
 });
 
-export async function checkImportStatus(args: any, lara: Translator) {
-  const validatedArgs = checkImportStatusSchema.parse(args);
-  const { id } = validatedArgs;
+export async function checkImportStatus(args: unknown, lara: Translator) {
+  const { id } = checkImportStatusSchema.parse(args);
 
   return await lara.memories.getImportStatus(id);
 }

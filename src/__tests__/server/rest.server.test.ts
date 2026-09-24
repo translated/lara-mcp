@@ -24,7 +24,7 @@ const defaultPostMcpBody = {
   id: 1,
   method: "initialize",
   params: {
-    protocolVersion: "2.0",
+    protocolVersion: "2025-11-25",
     capabilities: {},
     clientInfo: {
       name: "MyClient",

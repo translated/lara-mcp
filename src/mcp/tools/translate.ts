@@ -1,7 +1,7 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import { logger } from "#logger";
-import { textBlockSchema } from "./_schemas.js";
+import { glossaryIdSchema, textBlockSchema } from "./_schemas.js";
 
 export { textBlockSchema };
 
@@ -30,7 +30,8 @@ export const translateSchema = z.object({
   target: z
     .string()
     .describe(
-      "The target language code (e.g., 'it-IT' for Italian). This specifies the language you want the text translated into."
+      "The target language code (e.g., 'it-IT' for Italian). This specifies the single language you want the text translated into. " +
+      "This field accepts ONE language code only. If the user wants the text translated into multiple languages, call this tool once per target language."
     ),
   context: z
     .string()
@@ -66,19 +67,16 @@ export const translateSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      "A list of translation memory IDs for adapting the translation."
+      "A list of translation memory IDs (format 'mem_*') for adapting the translation. " +
+      "If the user refers to a memory by name rather than by ID, call list_memories first to resolve the name to its ID before calling this tool."
     ),
   glossaries: z
-    .array(
-      z.string()
-        .min(1)
-        .max(255)
-        .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format")
-    )
+    .array(glossaryIdSchema)
     .max(10)
     .optional()
     .describe(
-      "Array of glossary IDs to apply during translation (max 10). IDs must match format: gls_* (e.g., ['gls_xyz123', 'gls_abc456']). Glossaries enforce specific terminology and terms."
+      "Array of glossary IDs to apply during translation (max 10). IDs must match format: gls_* (e.g., ['gls_xyz123', 'gls_abc456']). Glossaries enforce specific terminology and terms. " +
+      "If the user refers to a glossary by name rather than by ID (e.g., 'my company glossary'), call list_glossaries first to resolve the name to its ID before calling this tool."
     ),
   no_trace: z
     .boolean()
@@ -125,7 +123,6 @@ const makeInstructions = (text: string) =>
   `Always consider the following contextual information: ${text}`;
 
 export async function translateHandler(args: unknown, lara: Translator) {
-  const validatedArgs = translateSchema.parse(args);
   const {
     text,
     source,
@@ -140,7 +137,7 @@ export async function translateHandler(args: unknown, lara: Translator) {
     style,
     reasoning,
     content_type
-  } = validatedArgs;
+  } = translateSchema.parse(args);
   let instructionsList = [...(instructions ?? [])];
 
   if (context) {

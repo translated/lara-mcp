@@ -1,6 +1,6 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
-import { InvalidInputError } from "#exception";
+import { validateSentenceContext } from "./validators.js";
 import { memoryImportSchema } from "./_schemas.js";
 
 export const addTranslationOutputSchema = memoryImportSchema;
@@ -39,7 +39,6 @@ export const addTranslationSchema = z.object({
 });
 
 export async function addTranslation(args: unknown, lara: Translator) {
-  const validatedArgs = addTranslationSchema.parse(args);
   const {
     id,
     source,
@@ -49,26 +48,11 @@ export async function addTranslation(args: unknown, lara: Translator) {
     tuid,
     sentence_before,
     sentence_after,
-  } = validatedArgs;
+  } = addTranslationSchema.parse(args);
 
-  if (!tuid) {
-    return await lara.memories.addTranslation(
-      id,
-      source,
-      target,
-      sentence,
-      translation
-    );
-  }
+  validateSentenceContext(sentence_before, sentence_after);
 
-  if (
-    (sentence_before && !sentence_after) ||
-    (!sentence_before && sentence_after)
-  ) {
-    throw new InvalidInputError("Please provide both sentence_before and sentence_after");
-  }
-
-  return await lara.memories.addTranslation(
+  return lara.memories.addTranslation(
     id,
     source,
     target,

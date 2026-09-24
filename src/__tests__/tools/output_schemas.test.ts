@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool, CallToolRequest } from "@modelcontextprotocol/server";
 import { Translator } from "@translated/lara";
-import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
-
 // Stub the logger before importing `mcp/tools.js`: the real logger pulls in
 // `src/env.ts`, which parses `process.env` at module load.
 vi.mock("#logger", () => ({
@@ -15,7 +13,7 @@ vi.mock("@translated/lara", async (importOriginal) => {
   const { createMockTranslator } = await import("../utils/mocks.js");
   return {
     ...actual,
-    Translator: vi.fn(() => createMockTranslator()),
+    Translator: vi.fn(function () { return createMockTranslator(); }),
   };
 });
 

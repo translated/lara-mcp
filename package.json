@@ -1,6 +1,6 @@
 {
   "name": "@translated/lara-mcp",
-  "version": "1.0.6",
+  "version": "2.0.0",
   "description": "Lara API official MCP server",
   "author": {
     "name": "Translated",
@@ -54,41 +54,49 @@
     "translated"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@translated/lara": "^1.8.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
+    "hono": "^4.13.8",
     "pino": "^9.14.0",
-    "zod": "^3.25.76"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.15",
     "@types/supertest": "^6.0.3",
-    "@vitest/coverage-v8": "^3.2.6",
+    "@vitest/coverage-v8": "^4.1.11",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.6"
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
   },
   "pnpm": {
     "overrides": {
       "brace-expansion@>=1.0.0 <1.1.12": "^1.1.12",
-      "brace-expansion@>=2.0.0 <2.0.3": "^2.0.3",
+      "brace-expansion@>=2.0.0 <2.1.4": "^2.1.4",
       "brace-expansion@>=3.0.0 <3.0.1": "^3.0.1",
-      "brace-expansion@>=4.0.0 <5.0.5": "^5.0.5",
-      "fast-uri@<3.1.2": "^3.1.2",
+      "brace-expansion@>=4.0.0 <5.0.9": "^5.0.9",
+      "fast-uri@<3.1.6": "^3.1.6",
       "picomatch@<4.0.4": "^4.0.4",
       "path-to-regexp@>=8.0.0 <8.4.2": "^8.4.2",
-      "postcss@<8.5.10": "^8.5.10",
-      "vite@<7.3.3": "^7.3.3",
-      "hono@<4.12.21": "^4.12.21",
-      "@hono/node-server@<1.19.14": "^1.19.14",
-      "ip-address@<10.1.1": "^10.1.1",
-      "qs@>=6.11.1 <6.15.2": "^6.15.2"
+      "postcss@<8.5.23": "^8.5.23",
+      "nanoid@<3.3.18": "^3.3.18",
+      "vite@<7.3.5": "^7.3.5",
+      "esbuild@>=0.27.3 <0.28.1": "^0.28.1",
+      "hono@<4.13.5": "^4.13.5",
+      "@hono/node-server@<1.19.15": "^1.19.15",
+      "body-parser@>=2.0.0 <2.3.0": "^2.3.0",
+      "form-data@>=4.0.0 <4.0.6": "^4.0.6",
+      "ip-address@<10.3.1": "^10.3.1",
+      "qs@<6.16.0": "^6.16.0"
     }
   }
 }
