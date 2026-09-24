@@ -1,6 +1,6 @@
 import express from "express";
 import { createMcpHandler } from "@modelcontextprotocol/server";
-import type { AuthInfo, McpRequestContext } from "@modelcontextprotocol/server";
+import type { AuthInfo, McpHttpHandler, McpRequestContext } from "@modelcontextprotocol/server";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { RestServer } from "#rest/server";
 import getMcpServer from "#mcp/server";
@@ -35,12 +35,18 @@ function onMcpError(error: Error) {
  * One handler serves both protocol eras: 2026-07-28 (per-request envelope) and, via the stateless
  * legacy fallback, 2025-era clients that still use the initialize handshake. Each request gets a
  * fresh server instance from the factory; the SDK owns its lifecycle.
+ *
+ * Built on the first mounted router rather than at module load: stdio mode imports this module too
+ * (index.ts imports mcpRouter unconditionally) and must not pay for an HTTP handler it never serves.
  */
-const mcpHandler = createMcpHandler(serverFactory, { legacy: "stateless", onerror: onMcpError });
-const nodeHandler = toNodeHandler(mcpHandler, { onerror: onMcpError });
+let mcpHandler: McpHttpHandler | undefined;
+let nodeHandler: ReturnType<typeof toNodeHandler> | undefined;
 
+/** Closes the HTTP handler, aborting in-flight exchanges. No-op when no router was mounted. */
 export async function closeMcpHandler(): Promise<void> {
-  await mcpHandler.close();
+  await mcpHandler?.close();
+  mcpHandler = undefined;
+  nodeHandler = undefined;
 }
 
 /**
@@ -49,6 +55,9 @@ export async function closeMcpHandler(): Promise<void> {
  */
 function mcpRouter(restServer: RestServer): express.Router {
   const router = express.Router();
+
+  mcpHandler ??= createMcpHandler(serverFactory, { legacy: "stateless", onerror: onMcpError });
+  nodeHandler ??= toNodeHandler(mcpHandler, { onerror: onMcpError });
 
   router.post("/", async (req, res) => {
     const accessKeyId = req.headers[ACCESS_KEY_ID_HEADER] as string | undefined;
@@ -71,7 +80,7 @@ function mcpRouter(restServer: RestServer): express.Router {
     (req as express.Request & { auth?: AuthInfo }).auth = authInfo;
 
     // express.json() has already drained the request stream: hand the parsed body over
-    await nodeHandler(req, res, req.body);
+    await nodeHandler!(req, res, req.body);
   });
 
   // 2026-07-28 removed the GET SSE stream (replaced by subscriptions/listen) and there are no sessions

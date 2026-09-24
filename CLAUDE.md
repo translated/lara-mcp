@@ -56,7 +56,7 @@ The server operates in two transport modes determined by the `TRANSPORT` environ
 
 1. **STDIO Mode** (`src/index.ts`): `serveStdio(factory)` negotiates the era on the opening exchange and pins one server instance per connection. Requires `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables.
 
-2. **HTTP Mode** (`src/rest/routes/mcp.ts`): Express server with the MCP endpoint at `MCP_MOUNT_PATH` (`/v1`). The route validates the `x-lara-access-key-id` / `x-lara-access-key-secret` headers (missing → 400 before the handler runs) and passes them to the SDK as `req.auth`; the module-level `createMcpHandler(factory)`, wrapped with `toNodeHandler`, builds a fresh MCP server per request from that pass-through `authInfo`. GET/DELETE answer 405. `closeMcpHandler()` is called on shutdown.
+2. **HTTP Mode** (`src/rest/routes/mcp.ts`): Express server with the MCP endpoint at `MCP_MOUNT_PATH` (`/v1`). The route validates the `x-lara-access-key-id` / `x-lara-access-key-secret` headers (missing → 400 before the handler runs) and passes them to the SDK as `req.auth`; the module-level `createMcpHandler(factory)`, wrapped with `toNodeHandler`, builds a fresh MCP server per request from that pass-through `authInfo`. GET/DELETE answer 405. The handler is built on the first mounted router (not at module load, so stdio mode does not pay for it) and torn down by `closeMcpHandler()`.
 
 ### Core Components
 
@@ -157,6 +157,10 @@ Error handling in `src/mcp/tools.ts` (`CallTool`):
   - Other unexpected errors are logged internally and returned as generic "An error occurred while processing your request" message
 - Privacy-sensitive translations (with `no_trace=true`) are logged for audit purposes
 
+### Shutdown
+
+`src/shutdown.ts` owns the signal path: it closes the MCP handler, stops the server, and returns the process exit code (1 when teardown throws, so a failed shutdown is not reported as success). It lives outside `index.ts` because importing `index.ts` starts a server, which would make the path untestable.
+
 ### Logging
 
 The server uses Pino structured logging (`src/logger.ts`). Log level is controlled by `LOGGING_LEVEL` environment variable.
@@ -169,6 +173,7 @@ Tests are located in `src/__tests__/` and mirror the source structure:
   - `era.http.test.ts` - SDK client over a real socket in legacy, pinned 2026-07-28 and auto-negotiated modes
   - `wire2026.test.ts` - raw wire contract (cache fields, `resultType`, `serverInfo`, header mismatch -32020, unsupported version -32022, CORS)
   - `stdio.test.ts` - spawns `src/index.ts` with tsx and connects in each era
+  - `shutdown.test.ts` - MCP handler lifecycle (lazy build, closed once) and `shutdown()` exit codes
 - `utils/mocks.ts` - Shared test utilities with Vitest mocks (importing it registers a module-wide `vi.mock` of `@translated/lara`, so server-level tests that need their own Lara mock do not import it)
 
 Tests use Vitest with coverage reporting (v8 provider).

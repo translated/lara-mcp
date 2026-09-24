@@ -3,10 +3,11 @@
 import { serveStdio, type StdioServerHandle } from "@modelcontextprotocol/server/stdio";
 import { env } from "./env.js";
 import getMcpServer from "./mcp/server.js";
-import mcpRouter, { MCP_MOUNT_PATH, closeMcpHandler } from "./rest/routes/mcp.js";
+import mcpRouter, { MCP_MOUNT_PATH } from "./rest/routes/mcp.js";
 import serverInfoRouter from "./rest/routes/server-info.js";
 import { RestServer } from "./rest/server.js";
 import { logger } from "./logger.js";
+import { shutdown } from "./shutdown.js";
 
 // -- Start server
 logger.info("Detected server mode: " + env.TRANSPORT);
@@ -23,17 +24,8 @@ switch (env.TRANSPORT) {
     throw new Error("Invalid transport: " + env.TRANSPORT + ". Must be either 'stdio' or 'http'");
 }
 
-process.on("SIGINT", () => signalHandler(server));
-process.on("SIGTERM", () => signalHandler(server));
-process.on("SIGQUIT", () => signalHandler(server));
-
-// -- Signal handler
-async function signalHandler(server: RestServer | StdioServerHandle) {
-  try {
-    await (server instanceof RestServer ? server.stop() : server.close());
-  } finally {
-    process.exit(0);
-  }
+for (const signal of ["SIGINT", "SIGTERM", "SIGQUIT"] as const) {
+  process.on(signal, () => shutdown(server).then((code) => process.exit(code)));
 }
 
 // -- HTTP server
