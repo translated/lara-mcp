@@ -18,6 +18,7 @@ import { PACKAGE_VERSION } from "../../version.js";
 const createMockTranslator = () => ({
   getLanguages: vi.fn(),
   memories: { delete: vi.fn(), list: vi.fn() },
+  glossaries: { list: vi.fn() },
   client: { setExtraHeader: vi.fn() },
 });
 
@@ -116,6 +117,32 @@ describe.each(eras)("HTTP MCP endpoint ($era era, $label)", ({ era, clientOption
       accessKeyId: "test-id",
       accessKeySecret: "test-secret",
     });
+  });
+
+  // Regression #54: team-plan accounts get memories/glossaries without
+  // isPersonal (and with null metadata). The client validates structuredContent
+  // against the advertised outputSchema, so a too-strict schema rejects the call.
+  it("accepts team-plan memories and glossaries missing optional metadata", async () => {
+    const memories = [
+      { id: "mem_1", name: "Team TM", createdAt: "2026-01-01T00:00:00.000Z", ownerId: "team_1", externalId: null, secret: null, sharedAt: null },
+      { id: "mem_2", name: "Bare" },
+    ];
+    const glossaries = [
+      { id: "gls_1", name: "Team terms", ownerId: "team_1", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: null },
+      { id: "gls_2", name: "Bare" },
+    ];
+    translator.memories.list.mockResolvedValue(memories);
+    translator.glossaries.list.mockResolvedValue(glossaries);
+    // Load-bearing: the client only validates against outputSchemas it has cached from tools/list.
+    await client.listTools();
+
+    const mem = await client.callTool({ name: "list_memories", arguments: {} });
+    const gls = await client.callTool({ name: "list_glossaries", arguments: {} });
+
+    expect(mem.isError).toBeFalsy();
+    expect(mem.structuredContent).toEqual({ items: memories });
+    expect(gls.isError).toBeFalsy();
+    expect(gls.structuredContent).toEqual({ items: glossaries });
   });
 
   it("returns invalid tool arguments as an isError result", async () => {

@@ -16,26 +16,33 @@ export const textBlockSchema = z
   })
   .loose();
 
+// The Lara API only guarantees id and name: other metadata is omitted or null
+// for some account types (e.g. team plans have no isPersonal). Every other
+// field is nullish so validating clients don't reject the whole result.
 export const memorySchema = z
   .object({
     id: z.string().describe("Unique memory identifier (format: mem_*)"),
-    createdAt: isoDate,
-    updatedAt: isoDate,
-    sharedAt: isoDate,
+    createdAt: isoDate.nullish(),
+    updatedAt: isoDate.nullish(),
+    sharedAt: isoDate.nullish(),
     name: z.string().describe("Display name of the memory"),
     externalId: z
       .string()
-      .optional()
+      .nullish()
       .describe("External identifier (e.g. MyMemory ID) when imported"),
-    secret: z.string().optional().describe("Memory secret, if any"),
-    ownerId: z.string().describe("Identifier of the memory owner"),
+    secret: z.string().nullish().describe("Memory secret, if any"),
+    ownerId: z.string().nullish().describe("Identifier of the memory owner"),
     collaboratorsCount: z
       .number()
       .int()
+      .nullish()
       .describe("Number of collaborators with access to the memory"),
     isPersonal: z
       .boolean()
-      .describe("True if the memory is private to the owner"),
+      .nullish()
+      .describe(
+        "True if the memory is private to the owner. Omitted for some account types (e.g. team plans)."
+      ),
   })
   .loose();
 
@@ -59,16 +66,20 @@ export const memoryImportSchema = z
   })
   .loose();
 
+// Same contract as memorySchema: only id and name are guaranteed.
 export const glossarySchema = z
   .object({
     id: z.string().describe("Unique glossary identifier (format: gls_*)"),
     name: z.string().describe("Display name of the glossary"),
-    ownerId: z.string().describe("Identifier of the glossary owner"),
-    createdAt: isoDate,
-    updatedAt: isoDate,
+    ownerId: z.string().nullish().describe("Identifier of the glossary owner"),
+    createdAt: isoDate.nullish(),
+    updatedAt: isoDate.nullish(),
     isPersonal: z
       .boolean()
-      .describe("True if the glossary is private to the owner"),
+      .nullish()
+      .describe(
+        "True if the glossary is private to the owner. Omitted for some account types (e.g. team plans)."
+      ),
   })
   .loose();
 
