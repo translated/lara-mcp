@@ -133,6 +133,7 @@ describe.each(eras)("HTTP MCP endpoint ($era era, $label)", ({ era, clientOption
     ];
     translator.memories.list.mockResolvedValue(memories);
     translator.glossaries.list.mockResolvedValue(glossaries);
+    // Load-bearing: the client only validates against outputSchemas it has cached from tools/list.
     await client.listTools();
 
     const mem = await client.callTool({ name: "list_memories", arguments: {} });
