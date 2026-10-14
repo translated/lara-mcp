@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 vi.mock("#logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -18,7 +17,7 @@ vi.mock("@translated/lara", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@translated/lara")>();
   return {
     ...actual,
-    Translator: vi.fn(() => {
+    Translator: vi.fn(function () {
       const instance = {
         client: { setExtraHeader: vi.fn(), token: (globalThis as any).__laraToken },
         translate: vi.fn(),
@@ -34,12 +33,13 @@ vi.mock("@translated/lara", async (importOriginal) => {
 // the very handler getMcpServer registered.
 const { handlers } = vi.hoisted(() => ({ handlers: new Map<unknown, any>() }));
 
-vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
-  Server: vi.fn(() => ({
-    setRequestHandler: (schema: unknown, handler: any) => handlers.set(schema, handler),
-    // What the initialize handshake told this server instance: set on STDIO, never on HTTP.
+vi.mock("@modelcontextprotocol/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@modelcontextprotocol/server")>()),
+  Server: vi.fn(function () { return {
+    setRequestHandler: (method: string, handler: any) => handlers.set(method, handler),
+    // What the client said it is: set by initialize or the 2026 envelope, never on the HTTP fallback.
     getClientVersion: () => (globalThis as any).__clientInfo,
-  })),
+  }; }),
 }));
 
 const URL_BASE = "http://localhost:8080";
@@ -69,7 +69,7 @@ let fetchMock: ReturnType<typeof createFetchMock>;
 
 async function loadServer(env: Record<string, string> = {}) {
   const home = mkdtempSync(join(tmpdir(), "lara-server-metrics-"));
-  // Seeded, so the install event is not in the way of what each test asserts.
+  // Seeded, as a returning installation.
   writeFileSync(join(home, "installation-id"), randomUUID());
 
   delete process.env.DO_NOT_TRACK;
@@ -90,11 +90,18 @@ async function loadServer(env: Record<string, string> = {}) {
   return { getMcpServer, metrics };
 }
 
-const callTool = (name: string, args?: unknown, extra?: unknown) =>
-  handlers.get(CallToolRequestSchema)(
+const callTool = (name: string, args?: unknown, ctx?: unknown) =>
+  handlers.get("tools/call")(
     { method: "tools/call", params: { name, arguments: args } },
-    extra ?? {}
+    ctx ?? {}
   );
+
+// Tool failures come back as isError results, the message in the only text block.
+const expectToolError = async (result: Promise<any>, message?: string) => {
+  const { isError, content } = await result;
+  expect(isError).toBe(true);
+  if (message) expect(content[0].text).toContain(message);
+};
 
 const sentEvents = () =>
   fetchMock.mock.calls
@@ -179,7 +186,7 @@ describe("getMcpServer funnel metrics", () => {
     expect(call.latencyMs).toBeGreaterThanOrEqual(0);
   });
 
-  it("reports auth_fail beside call_error even though CallTool rewrites the error", async () => {
+  it("reports auth_fail beside call_error even though CallTool turns the error into a result", async () => {
     const { getMcpServer, metrics } = await loadServer();
     const { LaraApiError } = await import("@translated/lara");
     getMcpServer("key-id", "key-secret");
@@ -188,9 +195,7 @@ describe("getMcpServer funnel metrics", () => {
       new LaraApiError(401, "AuthenticationError", "invalid credentials")
     );
 
-    await expect(
-      callTool("translate", { target: "it", text: [{ text: "hello" }] })
-    ).rejects.toThrow("invalid credentials");
+    await expectToolError(callTool("translate", { target: "it", text: [{ text: "hello" }] }), "invalid credentials");
     await metrics.flushNow();
 
     const events = sentEvents();
@@ -203,7 +208,7 @@ describe("getMcpServer funnel metrics", () => {
     const { getMcpServer, metrics } = await loadServer();
     getMcpServer("key-id", "key-secret");
 
-    await expect(callTool("translate", { target: 42 })).rejects.toThrow();
+    await expectToolError(callTool("translate", { target: 42 }));
     await metrics.flushNow();
 
     const events = sentEvents();
@@ -221,9 +226,7 @@ describe("getMcpServer funnel metrics", () => {
     translators[0].translate.mockRejectedValue(
       new LaraApiError(401, "AuthenticationError", "invalid credentials")
     );
-    await expect(
-      callTool("translate", { target: "it", text: [{ text: "hello" }] })
-    ).rejects.toThrow("invalid credentials");
+    await expectToolError(callTool("translate", { target: "it", text: [{ text: "hello" }] }), "invalid credentials");
     await metrics.flushNow();
 
     const events = sentEvents();
@@ -241,7 +244,7 @@ describe("getMcpServer funnel metrics", () => {
     const { getMcpServer, metrics } = await loadServer();
     getMcpServer("key-id", "key-secret");
 
-    await expect(callTool("translate", { target: 42 })).rejects.toThrow();
+    await expectToolError(callTool("translate", { target: 42 }));
     await metrics.flushNow();
 
     expect(sentEvents()).toHaveLength(0);
@@ -263,9 +266,7 @@ describe("getMcpServer funnel metrics", () => {
     translators[0].translate.mockRejectedValueOnce(
       new LaraApiError(401, "AuthenticationError", "invalid credentials")
     );
-    await expect(
-      callTool("translate", { target: "it", text: [{ text: "hello" }], no_trace: true })
-    ).rejects.toThrow();
+    await expectToolError(callTool("translate", { target: "it", text: [{ text: "hello" }], no_trace: true }));
     await metrics.flushNow();
     expect(fetchMock).not.toHaveBeenCalled();
 
@@ -304,12 +305,27 @@ describe("getMcpServer funnel metrics", () => {
     }
   });
 
+  it("buckets the client from the 2026-07-28 request envelope", async () => {
+    // A 2025-era handshake on the same instance must not win over what this request says.
+    (globalThis as any).__clientInfo = { name: "claude-ai", version: "0.9.1" };
+    const { getMcpServer, metrics } = await loadServer();
+    getMcpServer("key-id", "key-secret");
+
+    await callTool("list_memories", undefined, {
+      mcpReq: { envelope: { "io.modelcontextprotocol/clientInfo": { name: "Codex", version: "2.3.0" } } },
+    });
+    await metrics.flushNow();
+
+    const call = sentEvents().find((event: any) => event.eventType === "call_success");
+    expect(call.metadata).toMatchObject({ client: "codex", clientVersion: "2.3.0" });
+  });
+
   it("buckets the HTTP client from its User-Agent", async () => {
     const { getMcpServer, metrics } = await loadServer({ TRANSPORT: "http" });
     getMcpServer("key-id", "key-secret");
 
     await callTool("list_memories", undefined, {
-      requestInfo: { headers: { "user-agent": "Cursor/1.2 (Macintosh; jane)" } },
+      http: { req: new Request("http://localhost/v1", { headers: { "user-agent": "Cursor/1.2 (Macintosh; jane)" } }) },
     });
     await metrics.flushNow();
 
@@ -338,7 +354,7 @@ describe("getMcpServer funnel metrics", () => {
     translators[0].translate.mockRejectedValueOnce(
       new LaraApiError(400, "BadRequest", "confidential message from the API")
     );
-    await expect(callTool("translate", args)).rejects.toThrow();
+    await expectToolError(callTool("translate", args));
     await metrics.flushNow();
 
     const payload = JSON.stringify(sentEvents());

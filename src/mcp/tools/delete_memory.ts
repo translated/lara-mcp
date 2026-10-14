@@ -12,8 +12,7 @@ export const deleteMemorySchema = z.object({
     ),
 });
 
-export async function deleteMemory(args: any, lara: Translator) {
-  const validatedArgs = deleteMemorySchema.parse(args);
-  const { id } = validatedArgs;
+export async function deleteMemory(args: unknown, lara: Translator) {
+  const { id } = deleteMemorySchema.parse(args);
   return await lara.memories.delete(id);
 }

@@ -10,13 +10,10 @@ export const createGlossarySchema = z.object({
     .describe(
       "The name of the new glossary, it should be short and descriptive, like 'brand_terms' or 'legal_terminology'"
     )
-    .refine((name) => name.length <= 250, {
-      message: "Name of the glossary can't be more than 250 characters",
-    }),
+    .max(250, "Name of the glossary can't be more than 250 characters"),
 });
 
-export async function createGlossary(args: any, lara: Translator) {
-  const validatedArgs = createGlossarySchema.parse(args);
-  const { name } = validatedArgs;
+export async function createGlossary(args: unknown, lara: Translator) {
+  const { name } = createGlossarySchema.parse(args);
   return await lara.glossaries.create(name);
 }

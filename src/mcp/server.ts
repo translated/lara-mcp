@@ -1,18 +1,15 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { CLIENT_INFO_META_KEY, Server, type Implementation } from "@modelcontextprotocol/server";
 import { Credentials, Translator } from "@translated/lara";
-import {
-  CallToolRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ListToolsRequestSchema,
-  ReadResourceRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
 import { CallTool, ListTools } from "./tools.js";
 import { ListResources, ListResourceTemplates, ReadResource } from "./resources.js";
 import { logger } from "#logger";
 import { getLaraClient } from "../lara-client.js";
 import { clientFor, clientVersionFor, createMetricsContext } from "../metrics.js";
 import { PACKAGE_VERSION } from "../version.js";
+
+// Tool and resource catalogs are static but auth-gated, so they are cacheable per client and never
+// by a shared intermediary; resource contents are live account data and are never cached.
+const STATIC_LIST_HINT = { ttlMs: 60 * 60 * 1000, cacheScope: "private" } as const;
 
 export default function getMcpServer(
   accessKeyId: string,
@@ -47,6 +44,14 @@ export default function getMcpServer(
         tools: {},
         resources: {},
       },
+      // 2026-07-28 CacheableResult hints (ignored on 2025-era responses).
+      cacheHints: {
+        "tools/list": STATIC_LIST_HINT,
+        "resources/list": STATIC_LIST_HINT,
+        "resources/templates/list": STATIC_LIST_HINT,
+        "server/discover": STATIC_LIST_HINT,
+        "resources/read": { ttlMs: 0, cacheScope: "private" },
+      },
     }
   );
   logger.debug("MCP server created! Setting request handlers...");
@@ -56,27 +61,32 @@ export default function getMcpServer(
   // out of, which makes every report inside CallTool a no-op.
   const metrics = createMetricsContext(lara);
 
-  server.setRequestHandler(ListToolsRequestSchema, ListTools);
-  server.setRequestHandler(CallToolRequestSchema, (request, extra) => {
+  server.setRequestHandler('tools/list', ListTools);
+  server.setRequestHandler('tools/call', (request, ctx) => {
     if (!metrics) return CallTool(request, lara);
 
-    // clientInfo is only known on STDIO: on the stateless HTTP transport the initialize handshake
-    // went to another server instance, and the User-Agent is all this request carries.
-    const clientInfo = server.getClientVersion();
+    // clientInfo rides on every 2026-07-28 request's envelope, which the SDK lifts out of `_meta`
+    // before the handler sees it; on 2025-era connections it is what the initialize handshake said.
+    // On the stateless 2025 HTTP fallback the handshake went to another server instance, and the
+    // User-Agent is all this request carries.
+    const envelope = ctx?.mcpReq?.envelope as Record<string, unknown> | undefined;
+    const clientInfo =
+      (envelope?.[CLIENT_INFO_META_KEY] as Partial<Implementation> | undefined) ??
+      server.getClientVersion();
     return CallTool(request, lara, metrics, {
       client: clientFor(
         clientInfo?.name,
         request.params._meta,
-        extra?.requestInfo?.headers?.["user-agent"]
+        ctx?.http?.req?.headers.get("user-agent") ?? undefined
       ),
       clientVersion: clientVersionFor(clientInfo?.version),
     });
   });
 
   // -- Resources
-  server.setRequestHandler(ListResourceTemplatesRequestSchema, ListResourceTemplates);
-  server.setRequestHandler(ListResourcesRequestSchema, ListResources);
-  server.setRequestHandler(ReadResourceRequestSchema, (request) =>
+  server.setRequestHandler('resources/templates/list', ListResourceTemplates);
+  server.setRequestHandler('resources/list', ListResources);
+  server.setRequestHandler('resources/read', (request) =>
     ReadResource(request, lara)
   );
 

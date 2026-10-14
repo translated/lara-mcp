@@ -1,15 +1,12 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
 import { InvalidInputError } from "#exception";
-import { glossaryImportSchema } from "./_schemas.js";
+import { glossaryIdSchema, glossaryImportSchema } from "./_schemas.js";
 
 export const deleteGlossaryEntryOutputSchema = glossaryImportSchema;
 
 export const deleteGlossaryEntrySchema = z.object({
-  id: z.string()
-    .min(1)
-    .max(255)
-    .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format")
+  id: glossaryIdSchema
     .describe("The glossary ID (format: gls_*, e.g., 'gls_xyz123')"),
   term: z.object({
     language: z.string().describe("The language code of the term"),

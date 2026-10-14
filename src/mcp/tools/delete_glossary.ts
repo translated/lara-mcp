@@ -1,19 +1,15 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
-import { glossarySchema } from "./_schemas.js";
+import { glossaryIdSchema, glossarySchema } from "./_schemas.js";
 
 export const deleteGlossaryOutputSchema = glossarySchema;
 
 export const deleteGlossarySchema = z.object({
-  id: z.string()
-    .min(1)
-    .max(255)
-    .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format")
+  id: glossaryIdSchema
     .describe("The glossary ID to delete (format: gls_*, e.g., 'gls_xyz123')"),
 });
 
-export async function deleteGlossary(args: any, lara: Translator) {
-  const validatedArgs = deleteGlossarySchema.parse(args);
-  const { id } = validatedArgs;
+export async function deleteGlossary(args: unknown, lara: Translator) {
+  const { id } = deleteGlossarySchema.parse(args);
   return await lara.glossaries.delete(id);
 }

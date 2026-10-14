@@ -18,8 +18,7 @@ export const updateMemorySchema = z.object({
     }),
 });
 
-export async function updateMemory(args: any, lara: Translator) {
-  const validatedArgs = updateMemorySchema.parse(args);
-  const { id, name } = validatedArgs;
+export async function updateMemory(args: unknown, lara: Translator) {
+  const { id, name } = updateMemorySchema.parse(args);
   return await lara.memories.update(id, name);
 }

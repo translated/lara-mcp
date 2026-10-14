@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { serveStdio, type StdioServerHandle } from "@modelcontextprotocol/server/stdio";
 import { env } from "./env.js";
 import getMcpServer from "./mcp/server.js";
-import mcpRouter from "./rest/routes/mcp.js";
+import mcpRouter, { MCP_MOUNT_PATH } from "./rest/routes/mcp.js";
 import serverInfoRouter from "./rest/routes/server-info.js";
 import { RestServer } from "./rest/server.js";
 import { logger } from "./logger.js";
 import { flushNow } from "./metrics.js";
-import { Server as McpServer } from "@modelcontextprotocol/sdk/server/index.js";
+import { shutdown } from "./shutdown.js";
 
 // -- Start server
 logger.info("Detected server mode: " + env.TRANSPORT);
 
-let server: RestServer | McpServer;
+let server: RestServer | StdioServerHandle;
 switch (env.TRANSPORT) {
   case "stdio":
-    server = await stdioServer();
+    server = stdioServer();
     break;
   case "http":
     server = httpServer();
@@ -25,21 +25,17 @@ switch (env.TRANSPORT) {
     throw new Error("Invalid transport: " + env.TRANSPORT + ". Must be either 'stdio' or 'http'");
 }
 
-process.on("SIGINT", () => void signalHandler(server));
-process.on("SIGTERM", () => void signalHandler(server));
-process.on("SIGQUIT", () => void signalHandler(server));
+for (const signal of ["SIGINT", "SIGTERM", "SIGQUIT"] as const) {
+  process.on(signal, () => void shutdownAndFlush(server));
+}
+
 // A STDIO client that closes stdin ends the process without a signal: the event loop simply runs
 // dry, and the unref'd flush timer does not hold it. `once`, so a delivery that fails and requeues
 // cannot keep the process alive in a loop.
 process.once("beforeExit", () => void flushNow());
 
-// -- Signal handler
-async function signalHandler(server: RestServer | McpServer) {
-  if (server instanceof RestServer) {
-    server.stop();
-  } else {
-    server.close();
-  }
+async function shutdownAndFlush(server: RestServer | StdioServerHandle) {
+  const code = await shutdown(server);
 
   // Deliver the queued metrics before the process goes: batched events are held
   // in memory behind an unref'd timer, so without this the last batch dies with
@@ -50,7 +46,7 @@ async function signalHandler(server: RestServer | McpServer) {
     new Promise((resolve) => setTimeout(resolve, 2000)),
   ]);
 
-  process.exit(0);
+  process.exit(code);
 }
 
 // -- HTTP server
@@ -60,7 +56,7 @@ function httpServer() {
 
   restServer
     .configure()
-    .use("/v1", mcpRouter(restServer))
+    .use(MCP_MOUNT_PATH, mcpRouter(restServer))
     .use("/server-info", serverInfoRouter(restServer));
 
   restServer.start();
@@ -68,22 +64,21 @@ function httpServer() {
 }
 
 // -- STDIO server
-async function stdioServer() {
+function stdioServer() {
   logger.info(
     "Detected stdio server mode, starting MCP server with stdio transport..."
   );
-  if (!env.LARA_ACCESS_KEY_ID || !env.LARA_ACCESS_KEY_SECRET) {
+  const { LARA_ACCESS_KEY_ID: accessKeyId, LARA_ACCESS_KEY_SECRET: accessKeySecret } = env;
+  if (!accessKeyId || !accessKeySecret) {
     throw new Error(
       "LARA_ACCESS_KEY_ID and LARA_ACCESS_KEY_SECRET must be set when using stdio server"
     );
   }
 
-  const mcpServer = getMcpServer(env.LARA_ACCESS_KEY_ID, env.LARA_ACCESS_KEY_SECRET);
-
-  await mcpServer.connect(new StdioServerTransport()).catch((error) => {
-    logger.error("Error connecting to MCP server: " + error);
-    process.exit(1);
+  // serveStdio negotiates the era on the opening exchange (2026-07-28 via
+  // server/discover, or the 2025 initialize handshake) and pins one server
+  // instance per connection.
+  return serveStdio(() => getMcpServer(accessKeyId, accessKeySecret), {
+    onerror: (error) => logger.error("MCP stdio error: " + error),
   });
-
-  return mcpServer;
 }

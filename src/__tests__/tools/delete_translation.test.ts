@@ -74,7 +74,10 @@ describe('deleteTranslation', () => {
       args.source,
       args.target,
       args.sentence,
-      args.translation
+      args.translation,
+      undefined,
+      undefined,
+      undefined
     );
     expect(result).toEqual(mockResult);
   });

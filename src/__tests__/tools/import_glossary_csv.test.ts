@@ -79,6 +79,6 @@ describe('importGlossaryCsv', () => {
     await expect(importGlossaryCsv({
       id: 'gls_xyz123',
       csv_content: largeContent,
-    }, mockTranslator as any as Translator)).rejects.toThrow('CSV file too large');
+    }, mockTranslator as any as Translator)).rejects.toThrow('File too large. Maximum allowed size is 5MB.');
   });
 });

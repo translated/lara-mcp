@@ -1,20 +1,16 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
-import { glossaryCountsSchema } from "./_schemas.js";
+import { glossaryIdSchema, glossaryCountsSchema } from "./_schemas.js";
 
 export const getGlossaryCountsOutputSchema = glossaryCountsSchema;
 
 export const getGlossaryCountsSchema = z.object({
-  id: z.string()
-    .min(1)
-    .max(255)
-    .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format")
+  id: glossaryIdSchema
     .describe("The glossary ID (format: gls_*, e.g., 'gls_xyz123')"),
 });
 
-export async function getGlossaryCounts(args: any, lara: Translator) {
-  const validatedArgs = getGlossaryCountsSchema.parse(args);
-  const { id } = validatedArgs;
+export async function getGlossaryCounts(args: unknown, lara: Translator) {
+  const { id } = getGlossaryCountsSchema.parse(args);
 
   return await lara.glossaries.counts(id);
 }

@@ -21,8 +21,7 @@ export const createMemorySchema = z.object({
     .optional(),
 });
 
-export async function createMemory(args: any, lara: Translator) {
-  const validatedArgs = createMemorySchema.parse(args);
-  const { name, external_id } = validatedArgs;
+export async function createMemory(args: unknown, lara: Translator) {
+  const { name, external_id } = createMemorySchema.parse(args);
   return await lara.memories.create(name, external_id);
 }

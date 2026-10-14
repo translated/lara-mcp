@@ -1,25 +1,19 @@
 import { Translator } from "@translated/lara";
 import { z } from "zod/v4";
-import { glossarySchema } from "./_schemas.js";
+import { glossaryIdSchema, glossarySchema } from "./_schemas.js";
 
 export const updateGlossaryOutputSchema = glossarySchema;
 
 export const updateGlossarySchema = z.object({
-  id: z.string()
-    .min(1)
-    .max(255)
-    .regex(/^gls_[a-zA-Z0-9_-]+$/, "Invalid glossary ID format")
+  id: glossaryIdSchema
     .describe("The glossary ID (format: gls_*, e.g., 'gls_xyz123')"),
   name: z
     .string()
     .describe("The new name for the glossary")
-    .refine((name) => name.length <= 250, {
-      message: "Name can't be more than 250 characters",
-    }),
+    .max(250, "Name can't be more than 250 characters"),
 });
 
-export async function updateGlossary(args: any, lara: Translator) {
-  const validatedArgs = updateGlossarySchema.parse(args);
-  const { id, name } = validatedArgs;
+export async function updateGlossary(args: unknown, lara: Translator) {
+  const { id, name } = updateGlossarySchema.parse(args);
   return await lara.glossaries.update(id, name);
 }

@@ -71,6 +71,6 @@ describe('importTmx input validation', () => {
     await expect(importTmx({
       id: 'mem_xyz123',
       tmx_content: largeContent,
-    }, mockTranslator as any as Translator)).rejects.toThrow('TMX file too large');
+    }, mockTranslator as any as Translator)).rejects.toThrow('File too large. Maximum allowed size is 5MB.');
   });
 });

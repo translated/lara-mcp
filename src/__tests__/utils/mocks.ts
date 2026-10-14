@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 import { Translator } from '@translated/lara';
 
 /**
@@ -9,45 +9,48 @@ export type MockTranslator = ReturnType<typeof createMockTranslator>;
 /**
  * Creates a mock Translator instance with all required methods mocked
  */
+// Explicit Mock return type keeps the exported type nameable for declaration emit
+const mock = (): Mock => vi.fn();
+
 export function createMockTranslator() {
   return {
-    detect: vi.fn(),
-    translate: vi.fn(),
-    getLanguages: vi.fn(),
-    createMemory: vi.fn(),
-    updateMemory: vi.fn(),
-    deleteMemory: vi.fn(),
-    getMemories: vi.fn(),
-    addTranslation: vi.fn(),
-    deleteTranslation: vi.fn(),
-    importTmx: vi.fn(),
-    getImportStatus: vi.fn(),
+    detect: mock(),
+    translate: mock(),
+    getLanguages: mock(),
+    createMemory: mock(),
+    updateMemory: mock(),
+    deleteMemory: mock(),
+    getMemories: mock(),
+    addTranslation: mock(),
+    deleteTranslation: mock(),
+    importTmx: mock(),
+    getImportStatus: mock(),
     memories: {
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      get: vi.fn(),
-      list: vi.fn(),
-      addTranslation: vi.fn(),
-      deleteTranslation: vi.fn(),
-      importTmx: vi.fn(),
-      getImportStatus: vi.fn(),
+      create: mock(),
+      update: mock(),
+      delete: mock(),
+      get: mock(),
+      list: mock(),
+      addTranslation: mock(),
+      deleteTranslation: mock(),
+      importTmx: mock(),
+      getImportStatus: mock(),
     },
     glossaries: {
-      list: vi.fn(),
-      get: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      importCsv: vi.fn(),
-      getImportStatus: vi.fn(),
-      export: vi.fn(),
-      counts: vi.fn(),
-      addOrReplaceEntry: vi.fn(),
-      deleteEntry: vi.fn(),
+      list: mock(),
+      get: mock(),
+      create: mock(),
+      update: mock(),
+      delete: mock(),
+      importCsv: mock(),
+      getImportStatus: mock(),
+      export: mock(),
+      counts: mock(),
+      addOrReplaceEntry: mock(),
+      deleteEntry: mock(),
     },
     client: {
-      setExtraHeader: vi.fn(),
+      setExtraHeader: mock(),
     }
   };
 }
@@ -58,7 +61,7 @@ export function createMockTranslator() {
 export function setupTranslatorMock() {
   vi.mock('@translated/lara', () => {
     return {
-      Translator: vi.fn(() => createMockTranslator())
+      Translator: vi.fn(function () { return createMockTranslator(); })
     };
   });
 }

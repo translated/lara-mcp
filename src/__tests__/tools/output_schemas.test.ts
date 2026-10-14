@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool, CallToolRequest } from "@modelcontextprotocol/server";
 import { Translator } from "@translated/lara";
-import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
-
 // Stub the logger before importing `mcp/tools.js`: the real logger pulls in
 // `src/env.ts`, which parses `process.env` at module load.
 vi.mock("#logger", () => ({
@@ -15,7 +13,7 @@ vi.mock("@translated/lara", async (importOriginal) => {
   const { createMockTranslator } = await import("../utils/mocks.js");
   return {
     ...actual,
-    Translator: vi.fn(() => createMockTranslator()),
+    Translator: vi.fn(function () { return createMockTranslator(); }),
   };
 });
 
@@ -23,6 +21,7 @@ import { CallTool, ListTools } from "../../mcp/tools.js";
 import { listMemoriesOutputSchema } from "../../mcp/tools/list_memories.js";
 import { createMemoryOutputSchema } from "../../mcp/tools/create_memory.js";
 import { getGlossaryOutputSchema } from "../../mcp/tools/get_glossary.js";
+import { listGlossariesOutputSchema } from "../../mcp/tools/list_glossaries.js";
 import type { MockTranslator } from "../utils/mocks.js";
 
 function makeRequest(
@@ -141,5 +140,37 @@ describe("structuredContent conforms to outputSchema", () => {
     expect(() =>
       getGlossaryOutputSchema.parse(miss.structuredContent)
     ).not.toThrow();
+  });
+
+  // Regression #54: the API omits isPersonal (and may null other metadata) for
+  // team-plan accounts; only id and name are guaranteed.
+  describe("accepts payloads with only id and name guaranteed", () => {
+    const bare = { id: "x_1", name: "Bare" };
+    const nulled = {
+      id: "x_2",
+      name: "Nulled",
+      createdAt: null,
+      updatedAt: null,
+      sharedAt: null,
+      externalId: null,
+      secret: null,
+      ownerId: null,
+      collaboratorsCount: null,
+      isPersonal: null,
+    };
+
+    it.each([
+      ["listMemoriesOutputSchema", listMemoriesOutputSchema, { items: [bare, nulled] }],
+      ["listGlossariesOutputSchema", listGlossariesOutputSchema, { items: [bare, nulled] }],
+      ["createMemoryOutputSchema", createMemoryOutputSchema, bare],
+      ["getGlossaryOutputSchema", getGlossaryOutputSchema, { glossary: nulled }],
+    ])("%s", (_, schema, payload) => {
+      expect(() => schema.parse(payload)).not.toThrow();
+    });
+
+    it("still rejects items without id or name", () => {
+      expect(() => listMemoriesOutputSchema.parse({ items: [{ name: "No id" }] })).toThrow();
+      expect(() => listGlossariesOutputSchema.parse({ items: [{ id: "gls_1" }] })).toThrow();
+    });
   });
 });
