@@ -253,13 +253,8 @@ async function CallTool(
   try {
     const result = handler ? await handler(args, lara) : await lister!(lara);
 
-    // Reported from inside the try, not from a wrapper around this function:
-    // the catch below rewrites the SDK's errors, so only here is the original
-    // still in hand. Fire-and-forget — it never delays or alters the result.
-    reportCallSuccess(metrics, call);
-
     const structuredContent = toStructuredContent(result);
-    return {
+    const response: CallToolResult = {
       structuredContent,
       // MCP spec: when outputSchema is declared, the server SHOULD also return
       // the serialized JSON in a TextContent block for legacy clients that
@@ -270,6 +265,14 @@ async function CallTool(
         { type: "text", text: JSON.stringify(structuredContent) },
       ],
     };
+
+    // Reported from inside the try, not from a wrapper around this function:
+    // the catch below turns every failure into an isError result, so only here
+    // is the original error still in hand. Last, once the response is built, so
+    // a call is never reported as both a success and an error. Fire-and-forget,
+    // and it swallows its own failures — it never delays or alters the result.
+    reportCallSuccess(metrics, call);
+    return response;
   } catch (error) {
     reportCallError(metrics, call, error);
 

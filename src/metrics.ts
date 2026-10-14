@@ -57,12 +57,14 @@ function normalizeUrl(value: string): string | undefined {
   if (!trimmed) return undefined;
 
   try {
-    new URL(trimmed);
-    return trimmed;
+    // `localhost:8080` parses too, as a `localhost:` scheme fetch can never deliver to.
+    const { protocol } = new URL(trimmed);
+    if (protocol === "http:" || protocol === "https:") return trimmed;
   } catch {
-    logger.warn("METRICS_URL is not a valid URL; funnel metrics are disabled");
-    return undefined;
+    // Unparseable: same verdict as a scheme fetch cannot use.
   }
+  logger.warn("METRICS_URL is not a valid http(s) URL; funnel metrics are disabled");
+  return undefined;
 }
 
 // Constant for the process lifetime, so they are built once rather than per event.
@@ -287,7 +289,8 @@ let installationId: string | undefined;
 const getInstallationId = (): string => (installationId ??= resolveInstallationId());
 
 function resolveInstallationId(): string {
-  const dir = env.LARA_HOME ?? join(homedir(), ".lara");
+  // `||`: an empty LARA_HOME (a blank entry in a JSON config) would otherwise mean the cwd.
+  const dir = env.LARA_HOME || join(homedir(), ".lara");
   const file = join(dir, INSTALLATION_FILE);
 
   let stored: string | undefined;
@@ -302,9 +305,10 @@ function resolveInstallationId(): string {
   try {
     mkdirSync(dir, { recursive: true });
     // `wx` fails if the file appeared meanwhile, which settles the race between two processes
-    // starting together without a lock.
-    // A file that exists but holds something unusable is overwritten instead.
-    writeFileSync(file, id, { flag: stored === undefined ? "wx" : "w" });
+    // starting together without a lock. An empty file is one the other process has created but not
+    // written yet, so it goes the same way rather than being clobbered. A file that holds something
+    // unusable is overwritten instead.
+    writeFileSync(file, id, { flag: stored ? "w" : "wx" });
     return id;
   } catch (error) {
     if ((error as NodeJS.ErrnoException | null)?.code === "EEXIST") {
@@ -351,7 +355,9 @@ async function getToken(): Promise<string> {
   if (!body.token) throw new Error("issue-token returned no token");
 
   token = body.token;
-  tokenExpiresAt = Date.now() + (body.expiresIn ?? 3600) * 1000 - TOKEN_MARGIN_MS;
+  const lifetimeMs = (body.expiresIn ?? 3600) * 1000;
+  // Renewed a minute early, but never so early that a short-lived token counts as expired on arrival.
+  tokenExpiresAt = Date.now() + lifetimeMs - Math.min(TOKEN_MARGIN_MS, lifetimeMs / 2);
   tokenRetryAfter = 0;
   return token;
 }
@@ -620,12 +626,22 @@ const clientFields = ({ client, clientVersion }: CallInfo) => ({
 
 /**
  * Report a tool call that returned. Called from inside CallTool rather than from a wrapper around
- * it, because CallTool rewrites the SDK's errors before they escape and the error path below needs
- * the original.
+ * it, because CallTool turns every failure into an isError result before it escapes and the error
+ * path below needs the original.
+ *
+ * Both reporters swallow their own failures: a bug in here must never turn a call Lara completed
+ * into an error, or add a call_error to a call that succeeded.
  */
 export function reportCallSuccess(ctx: MetricsContext | undefined, call: CallInfo): void {
   if (!ctx || isNoTrace(call.args)) return;
+  try {
+    describeSuccess(ctx, call);
+  } catch (error) {
+    logger.debug({ error }, "Metrics: could not report a call");
+  }
+}
 
+function describeSuccess(ctx: MetricsContext, call: CallInfo): void {
   const accountId = accountIdFor(ctx);
   if (!accountId) return;
 
@@ -654,7 +670,14 @@ export function reportCallError(
   error: unknown
 ): void {
   if (!ctx || isNoTrace(call.args)) return;
+  try {
+    describeError(ctx, call, error);
+  } catch (reportError) {
+    logger.debug({ error: reportError }, "Metrics: could not report a call");
+  }
+}
 
+function describeError(ctx: MetricsContext, call: CallInfo, error: unknown): void {
   const errorType = errorTypeFor(error);
   const isAuthError = errorType.startsWith("auth_");
   const accountId = accountIdFor(ctx);
@@ -669,6 +692,10 @@ export function reportCallError(
     logEvent({ eventType: "auth_fail", errorType, metadata });
     return;
   }
+
+  // The SDK holds a token, so the credentials were accepted even though this call failed: a first
+  // call that fails must not leave an account with errors and no auth_success.
+  if (!isAuthError) reportAuthSuccessOnce(accountId, call);
 
   logEvent({
     eventType: "call_error",

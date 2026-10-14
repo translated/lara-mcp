@@ -212,9 +212,10 @@ describe("getMcpServer funnel metrics", () => {
     await metrics.flushNow();
 
     const events = sentEvents();
-    expect(events.map((event: any) => event.eventType)).toEqual(["call_error"]);
-    expect(events[0].errorType).toBe("validation_error");
-    expect(events[0].metadata.invalidFields).toContain("target");
+    // The SDK holds a token, so the account's first event is still its auth_success.
+    expect(events.map((event: any) => event.eventType)).toEqual(["auth_success", "call_error"]);
+    expect(events[1].errorType).toBe("validation_error");
+    expect(events[1].metadata.invalidFields).toContain("target");
   });
 
   it("reports a key Lara rejected outright as one auth_fail with no account", async () => {
@@ -374,6 +375,24 @@ describe("getMcpServer funnel metrics", () => {
     await metrics.flushNow();
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("never turns a call Lara completed into an error when metrics break", async () => {
+    const { getMcpServer, metrics } = await loadServer();
+    getMcpServer("key-id", "key-secret");
+    Object.defineProperty(translators[0].client, "token", {
+      get() {
+        throw new Error("metrics bug");
+      },
+    });
+
+    translators[0].memories.list.mockResolvedValue([{ id: "mem_1", name: "Mine" }]);
+    const result = await callTool("list_memories");
+    await metrics.flushNow();
+
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent).toEqual({ items: [{ id: "mem_1", name: "Mine" }] });
+    expect(sentEvents()).toHaveLength(0);
   });
 
   it("returns the tool result untouched", async () => {

@@ -173,7 +173,7 @@ tool call.
 - **Configuration**: `DEFAULT_METRICS_URL` / `DEFAULT_METRICS_API_KEY` are
   compiled in (the key is public by design: it only buys ingest tokens for
   channel `mcp`) and overridden by `METRICS_URL` / `METRICS_API_KEY`. Either one
-  empty, an unparseable URL, or `DO_NOT_TRACK` and `metricsEnabled()` is false —
+  empty, a URL that is not http(s), or `DO_NOT_TRACK` and `metricsEnabled()` is false —
   nothing is measured, queued or written to disk. `vitest.config.ts` sets
   `DO_NOT_TRACK=1` so no test run reaches production.
 - **Delivery**: `POST /auth/issue-token` (API key, `{ installationId }`) buys a
@@ -185,13 +185,16 @@ tool call.
   `flushBeforeExit()` (capped at 2s), and `flushNow()` runs once on `beforeExit` — a STDIO client closing stdin ends
   the process without a signal. An event whose metadata is over 4096 bytes is
   dropped alone, since the backend would reject the whole batch.
-- **Installation id**: a UUID at `${LARA_HOME ?? ~/.lara}/installation-id`,
+- **Installation id**: a UUID at `${LARA_HOME || ~/.lara}/installation-id`,
   resolved on the first token request. `writeFileSync(..., { flag: "wx" })`
-  settles the race between two processes starting together. An unwritable home
+  settles the race between two processes starting together; an empty file is
+  one still being written, so it is never overwritten. An unwritable home
   falls back to a per-process id. There is **no `install` event**: on `mcp` the
   backend's funnel starts at `auth_success`.
-- **Events**: `auth_success` (deduplicated per account per process — the HTTP
-  transport is stateless and builds a Translator per request), `call_success`,
+- **Events**: `auth_success` (the first call from an account whose token the SDK
+  holds, failed or not, unless it failed on the credentials; deduplicated per
+  account per process — the HTTP transport is stateless and builds a Translator
+  per request), `call_success`,
   `call_error`, and `auth_fail` beside a `call_error` Lara answered with
   401/403. Unknown tool names are not reported.
 - **`accountId`**: the `id` claim of the Lara token the SDK holds, read through

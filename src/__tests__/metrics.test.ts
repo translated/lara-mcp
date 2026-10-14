@@ -423,6 +423,35 @@ describe("installation id", () => {
     expect(() => readFileSync(idFile(home), "utf8")).toThrow();
   });
 
+  it("does not clobber a file another process has created but not written yet", async () => {
+    const home = mkdtempSync(join(tmpdir(), "lara-metrics-"));
+    writeFileSync(idFile(home), "");
+
+    const metrics = await loadMetrics({ LARA_HOME: home });
+    metrics.logEvent({ eventType: "auth_success", accountId: ACCOUNT });
+    await metrics.flushNow();
+
+    // The other process owns the file: this one keeps going with a per-process id.
+    expect(readFileSync(idFile(home), "utf8")).toBe("");
+    expect(bodyOf(callsTo(fetchMock, TOKEN_URL)[0]).installationId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("treats an empty LARA_HOME as unset rather than as the working directory", async () => {
+    const home = mkdtempSync(join(tmpdir(), "lara-metrics-home-"));
+    const previousHome = process.env.HOME;
+    process.env.HOME = home;
+    try {
+      const metrics = await loadMetrics({ LARA_HOME: "" });
+      metrics.logEvent({ eventType: "auth_success", accountId: ACCOUNT });
+      await metrics.flushNow();
+
+      const stored = readFileSync(join(home, ".lara", "installation-id"), "utf8");
+      expect(bodyOf(callsTo(fetchMock, TOKEN_URL)[0]).installationId).toBe(stored);
+    } finally {
+      process.env.HOME = previousHome;
+    }
+  });
+
   it("creates it on the first token and reuses it across start-ups", async () => {
     const home = mkdtempSync(join(tmpdir(), "lara-metrics-"));
 
@@ -682,6 +711,21 @@ describe("delivery", () => {
     expect(callsTo(fetchMock, INGEST_URL)).toHaveLength(3);
   });
 
+  it("does not treat a short-lived token as expired on arrival", async () => {
+    fetchMock.mockImplementationOnce(async () =>
+      ({ ok: true, status: 200, json: async () => ({ status: "success", token: "t", expiresIn: 30 }) }) as any
+    );
+
+    metrics.logEvent(event());
+    await metrics.flushNow();
+    vi.advanceTimersByTime(2000);
+    metrics.logEvent(event());
+    await metrics.flushNow();
+
+    expect(callsTo(fetchMock, TOKEN_URL)).toHaveLength(1);
+    expect(callsTo(fetchMock, INGEST_URL)).toHaveLength(2);
+  });
+
   it("holds the batch back while the token endpoint is in cooldown", async () => {
     fetchMock.mockImplementationOnce(async () => ({ ok: false, status: 429 }) as unknown as Response);
 
@@ -903,6 +947,8 @@ describe("opt-out and configuration", () => {
     ["an empty API key", { METRICS_API_KEY: "" }],
     ["a blank API key", { METRICS_API_KEY: "   " }],
     ["a malformed URL", { METRICS_URL: "not a url" }],
+    // Parses as a `localhost:` scheme, which fetch could never deliver to.
+    ["a URL without http(s)", { METRICS_URL: "localhost:8080" }],
   ])("is off with %s", async (_label, env) => {
     const metrics = await loadMetrics(env);
 
@@ -1008,16 +1054,18 @@ describe("reporting a tool call", () => {
     await metrics.flushNow();
 
     const events = sentEvents();
+    // The timeout comes from an account whose token was accepted, so it also gets its auth_success.
     expect(events.map((e: any) => e.eventType)).toEqual([
       "call_error",
       "auth_fail",
+      "auth_success",
       "call_error",
     ]);
     expect(events[0].errorType).toBe("auth_401");
     expect(events[0].metadata).toMatchObject({ httpStatus: 401, laraErrorType: "AuthenticationError" });
     expect(events[1].metadata).toMatchObject({ httpStatus: 401 });
-    expect(events[2].errorType).toBe("timeout");
-    expect(events[2].latencyMs).toBeGreaterThanOrEqual(0);
+    expect(events[3].errorType).toBe("timeout");
+    expect(events[3].latencyMs).toBeGreaterThanOrEqual(0);
   });
 
   it("reports only auth_fail, without an account, for a key Lara rejected outright", async () => {
