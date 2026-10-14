@@ -40,10 +40,6 @@ pnpm test:watch
 
 # Run tests with coverage report
 pnpm test:coverage
-
-# Metrics E2E: built server + local mock metrics backend (never production).
-# Set LARA_ACCESS_KEY_ID / LARA_ACCESS_KEY_SECRET to also run the real-key funnel.
-pnpm test:e2e
 ```
 
 ### Docker Development
