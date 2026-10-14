@@ -624,6 +624,23 @@ describe("delivery", () => {
     expect(callsTo(fetchMock, INGEST_URL)).toHaveLength(2);
   });
 
+  it("retries a requeued batch on its own timer, with no further event to trigger it", async () => {
+    fetchMock.mockImplementationOnce(async () =>
+      ({ ok: true, status: 200, json: async () => ({ status: "success", token: "t", expiresIn: 3600 }) }) as any
+    );
+    fetchMock.mockImplementationOnce(async () => ({ ok: false, status: 503 }) as any);
+
+    metrics.logEvent(event());
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(eventsSent(fetchMock)).toHaveLength(1);
+
+    // The server goes idle: only the retry timer can deliver it now.
+    await vi.advanceTimersByTimeAsync(30_000);
+    const ingests = callsTo(fetchMock, INGEST_URL);
+    expect(ingests).toHaveLength(2);
+    expect(bodyOf(ingests[1]).events[0].eventId).toBe(bodyOf(ingests[0]).events[0].eventId);
+  });
+
   it("requeues a batch the backend could not take, and drops one it rejected", async () => {
     fetchMock.mockImplementation(async (...args: any[]) => {
       const url = args[0] as string;

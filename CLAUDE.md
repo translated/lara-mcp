@@ -178,8 +178,9 @@ tool call.
   `DO_NOT_TRACK=1` so no test run reaches production.
 - **Delivery**: `POST /auth/issue-token` (API key, `{ installationId }`) buys a
   token; events go to `POST /metrics/ingest-events` with it. Batched every 2s
-  behind an `unref`'d timer, one retry on 401 only, requeued on 429/5xx, dropped
-  on any other rejection, queue capped at 10 000. One drain at a time;
+  behind an `unref`'d timer, one retry on 401 only, requeued on 429/5xx and
+  retried on its own 30s timer, dropped on any other rejection, queue capped at
+  10 000. One drain at a time;
   flushes asked for meanwhile fold into one rerun. `shutdown()` ends with
   `flushBeforeExit()` (capped at 2s), and `flushNow()` runs once on `beforeExit` — a STDIO client closing stdin ends
   the process without a signal. An event whose metadata is over 4096 bytes is
@@ -200,12 +201,14 @@ tool call.
   `accountId`, which the backend allows) for a key Lara rejected; any other
   early error is lost — a made-up id would be a fake account in every dashboard.
 - **`metadata`**: never content, credentials, ids or raw client strings.
-  - Always: `feature` (`text` / `language_detection` / `resource_management` —
-    shared vocabulary, stable forever), `toolName`, `transport`, `os`,
-    `nodeVersion`, `client` (closed bucket shared with mcp-private: `claude`,
+  - Every event: `transport`, `os`, `nodeVersion`, `client` (closed bucket shared with mcp-private: `claude`,
     `claude-code`, `chatgpt`, `cursor`, `codex`, `vscode`, `other`, from the
     clientInfo — `initialize` or the 2026-07-28 per-request envelope — or else
     the User-Agent), `clientVersion` (only if it looks like a version).
+  - Call events (`call_*`, and `auth_fail`, which is tied to a call): `feature`
+    (`text` / `language_detection` / `resource_management` — shared vocabulary,
+    stable forever) and `toolName`. `auth_success` is about the credentials, not
+    a call, so it carries neither, as on mcp-private.
   - `translate`: `sourceLang`/`targetLang` only if they match a language-tag
     pattern; option values/counts/flags (`style`, `priority`, `contentType`,
     `reasoning`, `blockCount`, `glossaryCount`, `memoryCount`,

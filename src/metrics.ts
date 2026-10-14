@@ -29,6 +29,8 @@ const TOKEN_MARGIN_MS = 60_000;
 const TOKEN_COOLDOWN_MS = 10_000;
 /** Ingest allows 100 requests/min per installation; one flush every 2s stays far under it. */
 const FLUSH_INTERVAL_MS = 2000;
+/** A batch that could not be delivered is retried on its own, slower: the backend is down or busy. */
+const RETRY_INTERVAL_MS = 30_000;
 /** The backend accepts 1000 events per batch. */
 const MAX_BATCH = 500;
 /** A backlog means the backend is unreachable; past this the oldest events are dropped. */
@@ -388,15 +390,17 @@ export function logEvent(event: MetricsEvent): void {
   // same eventId to be recognizable as a duplicate.
   queue.push({ ...event, ...ENVELOPE, eventId: randomUUID(), timestamp: new Date().toISOString() });
   trimQueue();
+  scheduleFlush(FLUSH_INTERVAL_MS);
+}
 
-  if (!flushTimer) {
-    flushTimer = setTimeout(() => {
-      flushTimer = undefined;
-      void flushNow();
-    }, FLUSH_INTERVAL_MS);
-    // Without unref an idle server would be held open by the metrics timer alone.
-    flushTimer.unref();
-  }
+function scheduleFlush(delayMs: number): void {
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = undefined;
+    void flushNow();
+  }, delayMs);
+  // Without unref an idle server would be held open by the metrics timer alone.
+  flushTimer.unref();
 }
 
 /**
@@ -441,6 +445,9 @@ async function drainQueue(): Promise<void> {
       // Bounded here rather than left to the next logEvent: a server that goes idle while the
       // backend is down would otherwise sit above the cap indefinitely.
       trimQueue();
+      // Retried on a timer of its own: an idle server would otherwise hold the batch until the next
+      // tool call, or until it shuts down.
+      scheduleFlush(RETRY_INTERVAL_MS);
       return;
     }
   }
