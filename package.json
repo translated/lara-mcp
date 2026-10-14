@@ -65,7 +65,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.0.0",
+    "@modelcontextprotocol/client": "^2.2.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.15",
@@ -96,7 +96,9 @@
       "body-parser@>=2.0.0 <2.3.0": "^2.3.0",
       "form-data@>=4.0.0 <4.0.6": "^4.0.6",
       "ip-address@<10.3.1": "^10.3.1",
-      "qs@<6.16.0": "^6.16.0"
+      "qs@<6.16.0": "^6.16.0",
+      "proxy-addr@<2.0.8": "^2.0.8",
+      "source-map-js@<1.2.2": "^1.2.2"
     }
   }
 }
