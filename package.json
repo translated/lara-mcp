@@ -40,7 +40,8 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "pnpm build && node scripts/e2e-metrics.mjs"
   },
   "keywords": [
     "mcp",
