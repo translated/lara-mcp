@@ -179,8 +179,9 @@ tool call.
 - **Delivery**: `POST /auth/issue-token` (API key, `{ installationId }`) buys a
   token; events go to `POST /metrics/ingest-events` with it. Batched every 2s
   behind an `unref`'d timer, one retry on 401 only, requeued on 429/5xx, dropped
-  on any other rejection, queue capped at 10 000. `flushNow()` runs on signals
-  (after `shutdown()`, capped at 2s) and once on `beforeExit` — a STDIO client closing stdin ends
+  on any other rejection, queue capped at 10 000. One drain at a time;
+  flushes asked for meanwhile fold into one rerun. `shutdown()` ends with
+  `flushBeforeExit()` (capped at 2s), and `flushNow()` runs once on `beforeExit` — a STDIO client closing stdin ends
   the process without a signal. An event whose metadata is over 4096 bytes is
   dropped alone, since the backend would reject the whole batch.
 - **Installation id**: a UUID at `${LARA_HOME ?? ~/.lara}/installation-id`,
@@ -217,7 +218,7 @@ tool call.
 
 ### Shutdown
 
-`src/shutdown.ts` owns the signal path: it closes the MCP handler, stops the server, and returns the process exit code (1 when teardown throws, so a failed shutdown is not reported as success). It lives outside `index.ts` because importing `index.ts` starts a server, which would make the path untestable.
+`src/shutdown.ts` owns the signal path: it closes the MCP handler, stops the server, delivers the queued metrics, and returns the process exit code (1 when teardown throws, so a failed shutdown is not reported as success). It lives outside `index.ts` because importing `index.ts` starts a server, which would make the path untestable.
 
 ### Logging
 
@@ -232,7 +233,7 @@ Tests are located in `src/__tests__/` and mirror the source structure:
   - `era.http.test.ts` - SDK client over a real socket in legacy, pinned 2026-07-28 and auto-negotiated modes
   - `wire2026.test.ts` - raw wire contract (cache fields, `resultType`, `serverInfo`, header mismatch -32020, unsupported version -32022, CORS)
   - `stdio.test.ts` - spawns `src/index.ts` with tsx and connects in each era
-  - `shutdown.test.ts` - MCP handler lifecycle (lazy build, closed once) and `shutdown()` exit codes
+  - `shutdown.test.ts` - MCP handler lifecycle (lazy build, closed once), `shutdown()` exit codes and its final metrics flush
 - `metrics.test.ts` - The metrics client in isolation
 - `utils/mocks.ts` - Shared test utilities with Vitest mocks (importing it registers a module-wide `vi.mock` of `@translated/lara`, so server-level tests that need their own Lara mock do not import it)
 

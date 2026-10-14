@@ -6,7 +6,7 @@ import { logger } from "#logger";
  * `Translator.client` is `protected` in the type declarations only; everything
  * below reaches it through the single cast in getLaraClient().
  */
-export interface LaraClientShape {
+interface LaraClientShape {
   /**
    * The Lara access token the SDK holds: the result of its own /v2/auth
    * exchange of the access key. Populated lazily, on the first request.

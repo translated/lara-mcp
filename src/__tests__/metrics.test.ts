@@ -22,9 +22,8 @@ type Metrics = typeof import("../metrics.js");
 async function loadMetrics(
   env: Record<string, string | undefined> = {}
 ): Promise<Metrics> {
-  // A home of its own per load, already carrying an installation id: only the
-  // tests that pass their own LARA_HOME care about the `install` event, and
-  // every other one would otherwise start with a stray one in the queue.
+  // A home of its own per load, already carrying an installation id, so no test
+  // writes to another's (or to ~/.lara). Tests about the id pass their own LARA_HOME.
   let home = env.LARA_HOME;
   if (!("LARA_HOME" in env)) {
     home = mkdtempSync(join(tmpdir(), "lara-metrics-"));
@@ -69,6 +68,9 @@ const callsTo = (fetchMock: ReturnType<typeof createFetchMock>, url: string) =>
 
 const bodyOf = (call: any) => JSON.parse(call[1].body);
 
+const eventsSent = (fetchMock: ReturnType<typeof createFetchMock>) =>
+  callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+
 /** A real 3-segment JWT whose payload is the given object. */
 function laraToken(payload: Record<string, unknown>): string {
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -80,6 +82,10 @@ const ACCOUNT = "acc_4kQpXbW2mNvRt7yZjD3sLh";
 /** A Translator stand-in exposing only the internal client field metrics reads. */
 const translatorWithToken = (token?: string) =>
   ({ client: token === undefined ? {} : { token } }) as any;
+
+/** A metrics context whose Translator already holds a token for ACCOUNT. */
+const accountCtx = (metrics: Metrics) =>
+  metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })));
 
 describe("accountIdFromToken", () => {
   let metrics: Metrics;
@@ -427,7 +433,7 @@ describe("installation id", () => {
     const stored = readFileSync(idFile(home), "utf8");
     expect(stored).toMatch(/^[0-9a-f-]{36}$/);
     expect(bodyOf(callsTo(fetchMock, TOKEN_URL)[0]).installationId).toBe(stored);
-    const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    const events = eventsSent(fetchMock);
     expect(events.map((event: any) => event.eventType)).toEqual(["auth_success"]);
 
     fetchMock.mockClear();
@@ -448,7 +454,7 @@ describe("installation id", () => {
     await metrics.flushNow();
 
     expect(readFileSync(idFile(home), "utf8")).toMatch(/^[0-9a-f-]{36}$/);
-    const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    const events = eventsSent(fetchMock);
     expect(events.map((event: any) => event.eventType)).toEqual(["auth_success"]);
   });
 
@@ -463,7 +469,7 @@ describe("installation id", () => {
 
     const installationId = bodyOf(callsTo(fetchMock, TOKEN_URL)[0]).installationId;
     expect(installationId).toMatch(/^[0-9a-f-]{36}$/);
-    const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    const events = eventsSent(fetchMock);
     expect(events.map((event: any) => event.eventType)).toEqual(["auth_success"]);
   });
 });
@@ -488,6 +494,28 @@ describe("delivery", () => {
     eventType: "call_success" as const,
     accountId: ACCOUNT,
     ...overrides,
+  });
+
+  it("folds flushes asked for during a slow delivery into one rerun instead of stacking them", async () => {
+    // The backend answers late and with a 503: every drain fails and requeues.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    fetchMock.mockImplementation(async (...args: any[]) => {
+      if (String(args[0]).endsWith("/auth/issue-token")) {
+        return { ok: true, status: 200, json: async () => ({ status: "success", token: "t", expiresIn: 3600 }) } as any;
+      }
+      await gate;
+      return { ok: false, status: 503 } as any;
+    });
+
+    metrics.logEvent(event());
+    const first = metrics.flushNow();
+    for (let i = 0; i < 5; i++) void metrics.flushNow();
+    release();
+    await first;
+
+    // The drain in flight plus one rerun, not one per flush asked for.
+    expect(callsTo(fetchMock, INGEST_URL)).toHaveLength(2);
   });
 
   it("buys a token with the API key and sends events with the token", async () => {
@@ -734,13 +762,13 @@ describe("delivery", () => {
     metrics.logEvent(event());
     await metrics.flushNow();
 
-    const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    const events = eventsSent(fetchMock);
     expect(events).toHaveLength(1);
     expect(events[0].metadata).toBeUndefined();
   });
 
   it("keeps the largest real event far under the metadata cap", async () => {
-    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    const ctx = accountCtx(metrics)!;
     ctx.accountId = ACCOUNT;
     const longPath = z.object(
       Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`${"f".repeat(80)}${i}`, z.string()]))
@@ -771,7 +799,7 @@ describe("delivery", () => {
     );
     await metrics.flushNow();
 
-    const [sent] = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    const [sent] = eventsSent(fetchMock);
     expect(Buffer.byteLength(JSON.stringify(sent.metadata))).toBeLessThan(2048);
   });
 
@@ -878,7 +906,7 @@ describe("opt-out and configuration", () => {
 
   it("builds no context when telemetry is off", async () => {
     const metrics = await loadMetrics({ DO_NOT_TRACK: "1" });
-    expect(metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))).toBeUndefined();
+    expect(accountCtx(metrics)).toBeUndefined();
   });
 });
 
@@ -886,8 +914,7 @@ describe("reporting a tool call", () => {
   let fetchMock: ReturnType<typeof createFetchMock>;
   let metrics: Metrics;
 
-  const sentEvents = () =>
-    callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+  const sentEvents = () => eventsSent(fetchMock);
 
   const call = (toolName: string, args?: unknown) => ({ toolName, args, startedAt: Date.now() });
 
@@ -902,7 +929,7 @@ describe("reporting a tool call", () => {
   });
 
   it("reports auth_success once, then a call_success per call", async () => {
-    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    const ctx = accountCtx(metrics)!;
 
     metrics.reportCallSuccess(ctx, call("translate", { target: "it", text: [{ text: "ciao" }] }));
     metrics.reportCallSuccess(ctx, call("list_memories"));
@@ -952,7 +979,7 @@ describe("reporting a tool call", () => {
   });
 
   it("reports call_error, and auth_fail beside it when Lara rejected the key", async () => {
-    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    const ctx = accountCtx(metrics)!;
     ctx.accountId = ACCOUNT;
 
     metrics.reportCallError(
@@ -1006,7 +1033,7 @@ describe("reporting a tool call", () => {
   });
 
   it("reports nothing at all for a no_trace call", async () => {
-    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    const ctx = accountCtx(metrics)!;
     const private_ = { target: "it", text: [{ text: "secret" }], no_trace: true };
 
     metrics.reportCallSuccess(ctx, call("translate", private_));
@@ -1026,7 +1053,7 @@ describe("reporting a tool call", () => {
   });
 
   it("stamps the client on auth_success and on every call", async () => {
-    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    const ctx = accountCtx(metrics)!;
     const withClient = { ...call("list_memories"), client: "claude", clientVersion: "0.9.1" };
 
     metrics.reportCallSuccess(ctx, withClient);

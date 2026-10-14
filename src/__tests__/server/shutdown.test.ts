@@ -17,6 +17,10 @@ vi.mock("@modelcontextprotocol/server", async (importOriginal) => ({
   createMcpHandler,
 }));
 
+// The metrics queue is delivered last, after teardown; its own delivery is covered in metrics.test.ts.
+const { flushBeforeExit } = vi.hoisted(() => ({ flushBeforeExit: vi.fn(async () => {}) }));
+vi.mock("../../metrics.js", () => ({ flushBeforeExit }));
+
 vi.mock("#logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -64,6 +68,7 @@ describe("shutdown()", () => {
     createMcpHandler.mockClear();
     close.mockClear();
     vi.mocked(logger.error).mockClear();
+    flushBeforeExit.mockReset().mockResolvedValue(undefined);
   });
 
   it("closes the MCP handler before stopping the HTTP server, and exits 0", async () => {
@@ -72,10 +77,11 @@ describe("shutdown()", () => {
     const order: string[] = [];
     close.mockImplementation(async () => void order.push("handler"));
     vi.spyOn(restServer, "stop").mockImplementation(async () => void order.push("http"));
+    flushBeforeExit.mockImplementation(async () => void order.push("metrics"));
 
     await expect(shutdown(restServer)).resolves.toBe(0);
 
-    expect(order).toEqual(["handler", "http"]);
+    expect(order).toEqual(["handler", "http", "metrics"]);
   });
 
   it("closes the stdio connection and exits 0", async () => {
@@ -92,6 +98,8 @@ describe("shutdown()", () => {
     vi.spyOn(restServer, "stop").mockRejectedValue(new Error("boom"));
 
     await expect(shutdown(restServer)).resolves.toBe(1);
+    // A failed teardown still delivers what was measured.
+    expect(flushBeforeExit).toHaveBeenCalledTimes(1);
 
     expect(logger.error).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.any(Error) }),

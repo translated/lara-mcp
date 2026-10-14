@@ -26,28 +26,13 @@ switch (env.TRANSPORT) {
 }
 
 for (const signal of ["SIGINT", "SIGTERM", "SIGQUIT"] as const) {
-  process.on(signal, () => void shutdownAndFlush(server));
+  process.on(signal, () => shutdown(server).then((code) => process.exit(code)));
 }
 
 // A STDIO client that closes stdin ends the process without a signal: the event loop simply runs
 // dry, and the unref'd flush timer does not hold it. `once`, so a delivery that fails and requeues
 // cannot keep the process alive in a loop.
 process.once("beforeExit", () => void flushNow());
-
-async function shutdownAndFlush(server: RestServer | StdioServerHandle) {
-  const code = await shutdown(server);
-
-  // Deliver the queued metrics before the process goes: batched events are held
-  // in memory behind an unref'd timer, so without this the last batch dies with
-  // it. Capped, because draining a long backlog would eat a shutdown budget the
-  // supervisor ends with a SIGKILL anyway.
-  await Promise.race([
-    flushNow(),
-    new Promise((resolve) => setTimeout(resolve, 2000)),
-  ]);
-
-  process.exit(code);
-}
 
 // -- HTTP server
 function httpServer() {

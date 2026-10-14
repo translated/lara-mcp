@@ -63,8 +63,6 @@ export default function getMcpServer(
 
   server.setRequestHandler('tools/list', ListTools);
   server.setRequestHandler('tools/call', (request, ctx) => {
-    if (!metrics) return CallTool(request, lara);
-
     // clientInfo rides on every 2026-07-28 request's envelope, which the SDK lifts out of `_meta`
     // before the handler sees it; on 2025-era connections it is what the initialize handshake said.
     // On the stateless 2025 HTTP fallback the handshake went to another server instance, and the
@@ -77,7 +75,7 @@ export default function getMcpServer(
       client: clientFor(
         clientInfo?.name,
         request.params._meta,
-        ctx?.http?.req?.headers.get("user-agent") ?? undefined
+        ctx?.http?.req?.headers.get("user-agent")
       ),
       clientVersion: clientVersionFor(clientInfo?.version),
     });

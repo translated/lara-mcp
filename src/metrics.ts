@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { LaraApiError, TimeoutError, type Translator } from "@translated/lara";
 import * as z from "zod/v4";
@@ -88,7 +89,7 @@ const BASE_METADATA = {
   nodeVersion: process.versions.node,
 };
 
-export type MetricsEvent = {
+type MetricsEvent = {
   eventType: "auth_success" | "auth_fail" | "call_success" | "call_error";
   /** Absent only on an `auth_fail` for credentials Lara never accepted. */
   accountId?: string;
@@ -106,16 +107,16 @@ type QueuedEvent = MetricsEvent & {
   timestamp: string;
 };
 
-/** Global opt-out, honoured before anything is measured, queued or written to disk. */
-const doNotTrack = (): boolean =>
-  ["1", "true", "yes"].includes((env.DO_NOT_TRACK ?? "").trim().toLowerCase());
-
 /**
  * Telemetry is on. Unconfigured = silently off, which is the intended fallback rather than a
- * failure. Both transports report: unlike the private server there is no store to depend on.
+ * failure. `DO_NOT_TRACK` is the global opt-out, honoured before anything is measured, queued or
+ * written to disk.
  */
-export const metricsEnabled = (): boolean =>
-  Boolean(BASE_URL && API_KEY) && !doNotTrack();
+const ENABLED =
+  Boolean(BASE_URL && API_KEY) &&
+  !["1", "true", "yes"].includes((env.DO_NOT_TRACK ?? "").trim().toLowerCase());
+
+export const metricsEnabled = (): boolean => ENABLED;
 
 /**
  * What a tool call exercises, from the shared vocabulary every Lara integration reports against.
@@ -160,11 +161,7 @@ export function callFieldsFor(
   };
   if (toolName !== "translate") return { metadata };
 
-  const { source, target, text } = (args ?? {}) as {
-    source?: unknown;
-    target?: unknown;
-    text?: unknown;
-  };
+  const { source, target } = (args ?? {}) as { source?: unknown; target?: unknown };
   // Lowercase BCP 47, and `auto` is what the engine actually does when no source is given. A value
   // that is not a language tag is left out: it is raw client input, and could be anything.
   const sourceLang = source === undefined || source === null ? "auto" : languageTag(source);
@@ -172,8 +169,9 @@ export function callFieldsFor(
   if (sourceLang) metadata.sourceLang = sourceLang;
   if (targetLang) metadata.targetLang = targetLang;
 
-  Object.assign(metadata, translateOptionsIn(args));
-  return { metadata, charsTranslated: charsTranslatedIn(text) };
+  const { options, charsTranslated } = translateFieldsIn(args);
+  Object.assign(metadata, options);
+  return { metadata, charsTranslated };
 }
 
 const LANGUAGE_TAG = /^[a-z]{2,3}(-[a-z0-9]{1,8}){0,3}$/;
@@ -189,9 +187,12 @@ function languageTag(value: unknown): string | undefined {
  * everything else as a count or a flag: never an id, an instruction or a context string. Taken from
  * a successful parse only, so every enum value is one the schema allows.
  */
-function translateOptionsIn(args: unknown): Record<string, unknown> {
+function translateFieldsIn(args: unknown): {
+  options: Record<string, unknown>;
+  charsTranslated?: number;
+} {
   const parsed = translateSchema.safeParse(args);
-  if (!parsed.success) return {};
+  if (!parsed.success) return { options: {} };
 
   const { text, style, priority, content_type, reasoning, glossaries, adapt_to, instructions, context } =
     parsed.data;
@@ -206,8 +207,15 @@ function translateOptionsIn(args: unknown): Record<string, unknown> {
     instructionCount: instructions?.length,
     hasContext: context ? true : undefined,
   };
-  // Unset options are left out rather than sent as null.
-  return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined));
+  return {
+    // Unset options are left out rather than sent as null.
+    options: Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)),
+    // Blocks flagged `translatable: false` are preserved verbatim, so counting them would overstate
+    // what the engine translated.
+    charsTranslated: text
+      .filter((block) => block.translatable !== false)
+      .reduce((total, block) => total + block.text.length, 0),
+  };
 }
 
 /**
@@ -253,22 +261,6 @@ const VERSION = /^\d[0-9A-Za-z.+-]{0,31}$/;
 export const clientVersionFor = (value: unknown): string | undefined =>
   typeof value === "string" && VERSION.test(value) ? value : undefined;
 
-/**
- * Characters a translate call actually sends to the engine: blocks flagged `translatable: false`
- * (see textBlockSchema in mcp/tools/_schemas.ts) are preserved verbatim, so counting them would
- * overstate usage.
- */
-function charsTranslatedIn(blocks: unknown): number | undefined {
-  if (!Array.isArray(blocks)) return undefined;
-
-  let total = 0;
-  for (const block of blocks) {
-    const { text, translatable } = (block ?? {}) as { text?: unknown; translatable?: unknown };
-    if (typeof text === "string" && translatable !== false) total += text.length;
-  }
-  return total;
-}
-
 function postJson(url: string, bearer: string, body: unknown): Promise<Response> {
   return fetch(url, {
     method: "POST",
@@ -308,7 +300,7 @@ function resolveInstallationId(): string {
   try {
     mkdirSync(dir, { recursive: true });
     // `wx` fails if the file appeared meanwhile, which settles the race between two processes
-    // starting together without a lock — the same job Redis SET NX does on the private server.
+    // starting together without a lock.
     // A file that exists but holds something unusable is overwritten instead.
     writeFileSync(file, id, { flag: stored === undefined ? "wx" : "w" });
     return id;
@@ -365,6 +357,7 @@ async function getToken(): Promise<string> {
 const queue: QueuedEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
 let flushing: Promise<void> | undefined;
+let flushAgain = false;
 
 /** Drops the oldest events once the backlog is past its bound. */
 function trimQueue(): void {
@@ -381,7 +374,7 @@ function trimQueue(): void {
 export function logEvent(event: MetricsEvent): void {
   if (!metricsEnabled()) return;
 
-  // Past the cap the backend rejects the whole batch, so the one event goes instead of up to 500.
+  // Past the cap the backend rejects the whole batch, so the one event goes instead of all of it.
   // Unreachable with the bounded fields above; this is the guarantee, not the expectation.
   const metadataBytes = Buffer.byteLength(JSON.stringify(event.metadata ?? {}));
   if (metadataBytes > MAX_METADATA_BYTES) {
@@ -408,11 +401,30 @@ export function logEvent(event: MetricsEvent): void {
 
 /**
  * Deliver whatever is queued. Awaited only on shutdown — otherwise the last batch dies with the
- * process. Flushes are serialized so two of them can never race for the same token.
+ * process. One drain at a time, so two can never race for the same token; a flush asked for while
+ * one runs is folded into a single rerun after it, so a backend slower than the flush interval
+ * cannot stack up drains.
  */
 export function flushNow(): Promise<void> {
-  flushing = (flushing ?? Promise.resolve()).then(drainQueue);
+  if (flushing) {
+    flushAgain = true;
+    return flushing;
+  }
+  flushing = (async () => {
+    do {
+      flushAgain = false;
+      await drainQueue();
+    } while (flushAgain);
+  })().finally(() => {
+    flushing = undefined;
+  });
   return flushing;
+}
+
+/** Deliver what is queued before the process goes, within a budget a supervisor will honour. */
+export function flushBeforeExit(timeoutMs = 2000): Promise<void> {
+  // Unref'd: the cap must not itself hold the process open once the flush is done.
+  return Promise.race([flushNow(), sleep(timeoutMs, undefined, { ref: false })]);
 }
 
 async function drainQueue(): Promise<void> {
@@ -453,9 +465,6 @@ async function sendBatch(events: QueuedEvent[]): Promise<void> {
   logger.debug({ status: response.status, events: events.length }, "Metrics batch rejected");
 }
 
-const asId = (value: unknown): string | undefined =>
-  typeof value === "string" && value.length > 0 ? value : undefined;
-
 /**
  * The Lara account (`acc_...`) a Lara access token belongs to. Credits are consumed per account,
  * so it is the granularity the funnel shares with every other channel: the access key is not an
@@ -470,7 +479,7 @@ export function accountIdFromToken(token: string): string | undefined {
     if (!payload) return undefined;
 
     const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return asId(decoded?.id);
+    return typeof decoded?.id === "string" && decoded.id ? decoded.id : undefined;
   } catch {
     return undefined;
   }
@@ -500,8 +509,7 @@ export function errorTypeFor(error: unknown): string {
   if (error instanceof TimeoutError) return "timeout";
   // A ZodError is what a tool's argument parse throws, and it reaches here
   // before CallTool has rewritten it into an InvalidInputError.
-  if (error instanceof z.ZodError) return "validation_error";
-  if (error instanceof InvalidInputError) return "validation_error";
+  if (error instanceof z.ZodError || error instanceof InvalidInputError) return "validation_error";
 
   const code = (error as { code?: unknown } | null)?.code;
   const name = (error as { name?: unknown } | null)?.name;
@@ -561,9 +569,8 @@ export function createMetricsContext(
 /**
  * The Lara account this session's events are attributed to.
  *
- * No token, no account, no event: an access key that `/v2/auth` rejected never produces one, so
- * the `auth_fail` for a bad key is lost. That is the right trade — a made-up id is a fake account
- * that pollutes every number in the funnel.
+ * No token, no account: an access key that `/v2/auth` rejected never produces one. Never made up —
+ * a fake id is a fake account that pollutes every number in the funnel.
  */
 function accountIdFor(ctx: MetricsContext): string | undefined {
   if (ctx.accountId) return ctx.accountId;
@@ -586,7 +593,7 @@ function reportAuthSuccessOnce(accountId: string, call: CallInfo): void {
   if (seenAccounts.size >= MAX_SEEN_ACCOUNTS) seenAccounts.clear();
   seenAccounts.add(accountId);
 
-  logEvent({ eventType: "auth_success", accountId, metadata: clientMetadata(call, { ...BASE_METADATA }) });
+  logEvent({ eventType: "auth_success", accountId, metadata: { ...BASE_METADATA, ...clientFields(call) } });
 }
 
 /** One tool call, as CallTool sees it. */
@@ -599,17 +606,10 @@ export type CallInfo = {
   clientVersion?: string;
 };
 
-function clientMetadata(call: CallInfo, metadata: Record<string, unknown>): Record<string, unknown> {
-  if (call.client) metadata.client = call.client;
-  if (call.clientVersion) metadata.clientVersion = call.clientVersion;
-  return metadata;
-}
-
-function callMetadata(call: CallInfo): { metadata: Record<string, unknown>; charsTranslated?: number } {
-  const fields = callFieldsFor(call.toolName, call.args);
-  clientMetadata(call, fields.metadata);
-  return fields;
-}
+const clientFields = ({ client, clientVersion }: CallInfo) => ({
+  ...(client && { client }),
+  ...(clientVersion && { clientVersion }),
+});
 
 /**
  * Report a tool call that returned. Called from inside CallTool rather than from a wrapper around
@@ -624,13 +624,13 @@ export function reportCallSuccess(ctx: MetricsContext | undefined, call: CallInf
 
   reportAuthSuccessOnce(accountId, call);
 
-  const { metadata, charsTranslated } = callMetadata(call);
+  const { metadata, charsTranslated } = callFieldsFor(call.toolName, call.args);
   logEvent({
     eventType: "call_success",
     accountId,
     latencyMs: Date.now() - call.startedAt,
     charsTranslated,
-    metadata,
+    metadata: { ...metadata, ...clientFields(call) },
   });
 }
 
@@ -650,11 +650,16 @@ export function reportCallError(
 
   const errorType = errorTypeFor(error);
   const isAuthError = errorType.startsWith("auth_");
-  const metadata = { ...callMetadata(call).metadata, ...errorDetailsFor(error) };
-
   const accountId = accountIdFor(ctx);
+  if (!accountId && !isAuthError) return;
+
+  const metadata = {
+    ...callFieldsFor(call.toolName, call.args).metadata,
+    ...clientFields(call),
+    ...errorDetailsFor(error),
+  };
   if (!accountId) {
-    if (isAuthError) logEvent({ eventType: "auth_fail", errorType, metadata });
+    logEvent({ eventType: "auth_fail", errorType, metadata });
     return;
   }
 
