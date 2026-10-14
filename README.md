@@ -236,31 +236,43 @@ Then add to your MCP config:
 
 ## Usage Metrics
 
-The server reports anonymous usage events to Lara so we can see how the
-integration is doing: an `install` the first time it runs, an `auth_success`
-the first time your credentials are accepted, and a `call_success` /
-`call_error` per tool call.
+The server reports usage events to Lara so we can see which tools and options
+are used and which problems users run into. Usage metrics are **on by default**.
+They are **pseudonymous**, not anonymous: each event is tied to your Lara account
+id.
 
-Events are reported against your Lara account, which is only known once your
-credentials have been accepted. Credentials Lara rejects outright therefore
-produce **no events at all** — including no `auth_fail`, which is only sent
-when a key that already worked stops being accepted.
+**Events:** an `auth_success` the first time your credentials are accepted, a
+`call_success` / `call_error` per tool call, and an `auth_fail` when Lara
+rejects your credentials (sent without an account id when the key never worked).
 
-**What is sent:** your Lara account id (`acc_...`), the tool name, the source
-and target language tags, how many characters were translated, how long the
-call took, and the server version.
+**What is sent:**
 
-**What is never sent:** the text you translate, your access key, your access
-key secret, and anything else that identifies you or your content.
+- your Lara account id (`acc_...`) and the server version;
+- the tool name, how long the call took, and how many characters were translated;
+- for `translate`: the source and target language tags, the options you used,
+  and how many text blocks, glossaries, memories and instructions the call had
+  (how many — never which);
+- the kind of client (`claude`, `claude-code`, `chatgpt`, `cursor`, `codex`,
+  `vscode` or `other`) and its version number;
+- the transport (`stdio` / `http`), operating system and Node.js version;
+- on errors: an error category, the HTTP status and error type Lara answered
+  with, and the names of invalid arguments.
 
-An installation id (a random UUID, tied to nothing) is generated on first run
-and kept at `~/.lara/installation-id` — set `LARA_HOME` to move it. It exists
-so repeated runs of the same install count as one.
+**What is never sent:** the text you translate or its translation, your access
+key id and secret, glossary and memory ids, instructions, context, error
+messages, raw client names or user agents.
+
+An installation id (a random UUID, tied to nothing) is generated the first time
+an event is sent and kept at `~/.lara/installation-id` — set `LARA_HOME` to move
+it. It identifies this installation to the metrics backend, never you.
 
 ### Opting out
 
-Set `DO_NOT_TRACK` to `1`, `true` or `yes` and nothing is measured, queued,
-written to disk or sent:
+**Per call:** a `translate` call with `no_trace: true` (Lara's own privacy flag)
+reports nothing at all — no event of any kind is sent for that call.
+
+**Entirely:** set `DO_NOT_TRACK` to `1`, `true` or `yes` and nothing is
+measured, queued, written to disk or sent:
 
 ```json
 {

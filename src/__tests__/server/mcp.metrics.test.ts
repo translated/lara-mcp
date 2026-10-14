@@ -37,6 +37,8 @@ const { handlers } = vi.hoisted(() => ({ handlers: new Map<unknown, any>() }));
 vi.mock("@modelcontextprotocol/sdk/server/index.js", () => ({
   Server: vi.fn(() => ({
     setRequestHandler: (schema: unknown, handler: any) => handlers.set(schema, handler),
+    // What the initialize handshake told this server instance: set on STDIO, never on HTTP.
+    getClientVersion: () => (globalThis as any).__clientInfo,
   })),
 }));
 
@@ -88,11 +90,11 @@ async function loadServer(env: Record<string, string> = {}) {
   return { getMcpServer, metrics };
 }
 
-const callTool = (name: string, args?: unknown) =>
-  handlers.get(CallToolRequestSchema)({
-    method: "tools/call",
-    params: { name, arguments: args },
-  });
+const callTool = (name: string, args?: unknown, extra?: unknown) =>
+  handlers.get(CallToolRequestSchema)(
+    { method: "tools/call", params: { name, arguments: args } },
+    extra ?? {}
+  );
 
 const sentEvents = () =>
   fetchMock.mock.calls
@@ -108,6 +110,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   delete (globalThis as any).__laraToken;
+  delete (globalThis as any).__clientInfo;
 });
 
 describe("getMcpServer funnel metrics", () => {
@@ -168,6 +171,9 @@ describe("getMcpServer funnel metrics", () => {
         sourceLang: "en-us",
         targetLang: "it-it",
         transport: "stdio",
+        os: process.platform,
+        nodeVersion: process.versions.node,
+        blockCount: 2,
       },
     });
     expect(call.latencyMs).toBeGreaterThanOrEqual(0);
@@ -203,17 +209,145 @@ describe("getMcpServer funnel metrics", () => {
     const events = sentEvents();
     expect(events.map((event: any) => event.eventType)).toEqual(["call_error"]);
     expect(events[0].errorType).toBe("validation_error");
+    expect(events[0].metadata.invalidFields).toContain("target");
   });
 
-  it("reports nothing when the SDK never exchanged the key for a token", async () => {
+  it("reports a key Lara rejected outright as one auth_fail with no account", async () => {
     (globalThis as any).__laraToken = undefined;
     const { getMcpServer, metrics } = await loadServer();
+    const { LaraApiError } = await import("@translated/lara");
     getMcpServer("bad-id", "bad-secret");
+
+    translators[0].translate.mockRejectedValue(
+      new LaraApiError(401, "AuthenticationError", "invalid credentials")
+    );
+    await expect(
+      callTool("translate", { target: "it", text: [{ text: "hello" }] })
+    ).rejects.toThrow("invalid credentials");
+    await metrics.flushNow();
+
+    const events = sentEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      eventType: "auth_fail",
+      errorType: "auth_401",
+      metadata: { toolName: "translate", httpStatus: 401, transport: "stdio" },
+    });
+    expect(events[0]).not.toHaveProperty("accountId");
+  });
+
+  it("reports nothing for any other failure before the account is known", async () => {
+    (globalThis as any).__laraToken = undefined;
+    const { getMcpServer, metrics } = await loadServer();
+    getMcpServer("key-id", "key-secret");
+
+    await expect(callTool("translate", { target: 42 })).rejects.toThrow();
+    await metrics.flushNow();
+
+    expect(sentEvents()).toHaveLength(0);
+  });
+
+  it("reports nothing for a no_trace call, even the auth_success it would have been", async () => {
+    const { getMcpServer, metrics } = await loadServer();
+    const { LaraApiError } = await import("@translated/lara");
+    getMcpServer("key-id", "key-secret");
+
+    translators[0].translate.mockResolvedValue({ translation: [{ text: "ciao" }] });
+    const result = await callTool("translate", {
+      target: "it",
+      text: [{ text: "hello" }],
+      no_trace: true,
+    });
+    expect(result.structuredContent).toBeDefined();
+
+    translators[0].translate.mockRejectedValueOnce(
+      new LaraApiError(401, "AuthenticationError", "invalid credentials")
+    );
+    await expect(
+      callTool("translate", { target: "it", text: [{ text: "hello" }], no_trace: true })
+    ).rejects.toThrow();
+    await metrics.flushNow();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // Per call: the next one without the flag is reported.
+    await callTool("translate", { target: "it", text: [{ text: "hello" }] });
+    await metrics.flushNow();
+    expect(sentEvents().map((event: any) => event.eventType)).toEqual([
+      "auth_success",
+      "call_success",
+    ]);
+  });
+
+  it("does not report a tool that does not exist", async () => {
+    const { getMcpServer, metrics } = await loadServer();
+    getMcpServer("key-id", "key-secret");
+
+    await expect(callTool("tell_me_your_secrets")).rejects.toThrow("not found");
+    // Prototype names are not tools either.
+    await expect(callTool("constructor", {})).rejects.toThrow("not found");
+    await expect(callTool("toString")).rejects.toThrow("not found");
+    await metrics.flushNow();
+
+    expect(sentEvents()).toHaveLength(0);
+  });
+
+  it("buckets the STDIO client from the initialize handshake", async () => {
+    (globalThis as any).__clientInfo = { name: "claude-ai", version: "0.9.1" };
+    const { getMcpServer, metrics } = await loadServer();
+    getMcpServer("key-id", "key-secret");
 
     await callTool("list_memories");
     await metrics.flushNow();
 
-    expect(sentEvents()).toHaveLength(0);
+    for (const event of sentEvents()) {
+      expect(event.metadata).toMatchObject({ client: "claude", clientVersion: "0.9.1" });
+    }
+  });
+
+  it("buckets the HTTP client from its User-Agent", async () => {
+    const { getMcpServer, metrics } = await loadServer({ TRANSPORT: "http" });
+    getMcpServer("key-id", "key-secret");
+
+    await callTool("list_memories", undefined, {
+      requestInfo: { headers: { "user-agent": "Cursor/1.2 (Macintosh; jane)" } },
+    });
+    await metrics.flushNow();
+
+    const call = sentEvents().find((event: any) => event.eventType === "call_success");
+    expect(call.metadata).toMatchObject({ client: "cursor", transport: "http" });
+    expect(call.metadata).not.toHaveProperty("clientVersion");
+    expect(JSON.stringify(sentEvents())).not.toContain("jane");
+  });
+
+  it("never reports text, credentials, ids or instructions", async () => {
+    const { getMcpServer, metrics } = await loadServer();
+    const { LaraApiError } = await import("@translated/lara");
+    getMcpServer("AKIDsecretKeyId", "secretKeySecret");
+
+    const args = {
+      source: "en",
+      target: "it",
+      text: [{ text: "a confidential sentence" }],
+      glossaries: ["gls_confidentialGlossary"],
+      adapt_to: ["mem_confidentialMemory"],
+      instructions: ["confidential instruction"],
+      context: "confidential context",
+    };
+    translators[0].translate.mockResolvedValueOnce({ translation: [{ text: "una frase" }] });
+    await callTool("translate", args);
+    translators[0].translate.mockRejectedValueOnce(
+      new LaraApiError(400, "BadRequest", "confidential message from the API")
+    );
+    await expect(callTool("translate", args)).rejects.toThrow();
+    await metrics.flushNow();
+
+    const payload = JSON.stringify(sentEvents());
+    expect(sentEvents().map((event: any) => event.eventType)).toEqual([
+      "auth_success",
+      "call_success",
+      "call_error",
+    ]);
+    expect(payload).not.toMatch(/confidential|una frase|secretKey|AKID/);
   });
 
   it("does no reporting at all when telemetry is opted out of", async () => {

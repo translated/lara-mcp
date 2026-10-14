@@ -10,16 +10,16 @@ import { env } from "#env";
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
 import { getLaraClient } from "./lara-client.js";
+import { translateSchema } from "./mcp/tools/translate.js";
 import { PACKAGE_VERSION } from "./version.js";
 
 /**
- * Where the funnel events go. Empty until the integrations monitoring backend
- * is deployed and a production key is issued for the `mcp` channel: with either
- * one missing telemetry is silently off, which is the intended fallback rather
- * than a failure. METRICS_URL / METRICS_API_KEY override both.
+ * Where the funnel events go. METRICS_URL / METRICS_API_KEY override both, and either one set to
+ * an empty string turns telemetry off. The key is public by design — it ships in the npm package —
+ * and only buys short-lived ingest tokens for the `mcp` channel.
  */
-const DEFAULT_METRICS_URL = "";
-const DEFAULT_METRICS_API_KEY = "";
+const DEFAULT_METRICS_URL = "https://integration-metrics.laratranslate.com";
+const DEFAULT_METRICS_API_KEY = "fef79db0da00dd07752b3cbffa89f5e911617aa943a338c7";
 
 const REQUEST_TIMEOUT_MS = 3000;
 /** A minute of slack, so a token never expires mid-flight. */
@@ -32,6 +32,8 @@ const FLUSH_INTERVAL_MS = 2000;
 const MAX_BATCH = 500;
 /** A backlog means the backend is unreachable; past this the oldest events are dropped. */
 const MAX_QUEUE = 10_000;
+/** The backend rejects a whole batch when one event's metadata is past this. */
+const MAX_METADATA_BYTES = 4096;
 /**
  * Accounts remembered for the auth_success dedup below. One HTTP process serves
  * many accounts, so the set has to be bounded; re-reporting an auth_success
@@ -76,14 +78,19 @@ const SESSION_ID = randomUUID();
 const ENVELOPE = { channel: "mcp", channelVersion: PACKAGE_VERSION, sessionId: SESSION_ID };
 
 /**
- * Which transport emitted the event. Both report the same way, and telling them
- * apart is the whole point of instrumenting both.
+ * On every event: which transport emitted it (both report the same way, and telling them apart is
+ * the whole point of instrumenting both) and the runtime it ran on, for bugs that only one
+ * environment hits.
  */
-const BASE_METADATA = { transport: env.TRANSPORT };
+const BASE_METADATA = {
+  transport: env.TRANSPORT,
+  os: process.platform,
+  nodeVersion: process.versions.node,
+};
 
 export type MetricsEvent = {
-  eventType: "install" | "auth_success" | "auth_fail" | "call_success" | "call_error";
-  /** Absent only on `install` and `auth_fail`, the two the backend lets omit it. */
+  eventType: "auth_success" | "auth_fail" | "call_success" | "call_error";
+  /** Absent only on an `auth_fail` for credentials Lara never accepted. */
   accountId?: string;
   errorType?: string;
   latencyMs?: number;
@@ -99,7 +106,7 @@ type QueuedEvent = MetricsEvent & {
   timestamp: string;
 };
 
-/** Opt-out, honoured before anything is measured, queued or written to disk. */
+/** Global opt-out, honoured before anything is measured, queued or written to disk. */
 const doNotTrack = (): boolean =>
   ["1", "true", "yes"].includes((env.DO_NOT_TRACK ?? "").trim().toLowerCase());
 
@@ -124,12 +131,23 @@ const featureFor = (toolName: string): string =>
   FEATURE_BY_TOOL[toolName as keyof typeof FEATURE_BY_TOOL] ?? "resource_management";
 
 /**
+ * The per-call opt-out: a call that asks Lara not to trace it is not reported either — no event of
+ * any kind. Read from the raw arguments, before validation, so a malformed flag still counts: it
+ * says the user wanted privacy, and erring on their side costs one data point.
+ */
+export const isNoTrace = (args: unknown): boolean => {
+  const flag = (args as { no_trace?: unknown } | null | undefined)?.no_trace;
+  return flag === true || flag === "true";
+};
+
+/**
  * The backend fields one tool call produces. It lives here with the rest of the reporting
- * vocabulary: `feature`, the language tags and the character count are all facts about how a
- * tool's arguments map onto the funnel, and they change together.
+ * vocabulary: `feature`, the language tags, the option flags and the character count are all facts
+ * about how a tool's arguments map onto the funnel, and they change together.
  *
  * The arguments are unvalidated — the tool handler is what parses them, and on the error path the
- * parse is exactly what failed — so every field is checked before use.
+ * parse is exactly what failed — so nothing raw is reported: language tags must look like one, and
+ * the option flags come only from a successful parse.
  */
 export function callFieldsFor(
   toolName: string,
@@ -147,12 +165,93 @@ export function callFieldsFor(
     target?: unknown;
     text?: unknown;
   };
-  // Lowercase BCP 47, and `auto` is what the engine actually does when no source is given.
-  metadata.sourceLang = typeof source === "string" ? source.toLowerCase() : "auto";
-  if (typeof target === "string") metadata.targetLang = target.toLowerCase();
+  // Lowercase BCP 47, and `auto` is what the engine actually does when no source is given. A value
+  // that is not a language tag is left out: it is raw client input, and could be anything.
+  const sourceLang = source === undefined || source === null ? "auto" : languageTag(source);
+  const targetLang = languageTag(target);
+  if (sourceLang) metadata.sourceLang = sourceLang;
+  if (targetLang) metadata.targetLang = targetLang;
 
+  Object.assign(metadata, translateOptionsIn(args));
   return { metadata, charsTranslated: charsTranslatedIn(text) };
 }
+
+const LANGUAGE_TAG = /^[a-z]{2,3}(-[a-z0-9]{1,8}){0,3}$/;
+
+function languageTag(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const tag = value.toLowerCase();
+  return LANGUAGE_TAG.test(tag) ? tag : undefined;
+}
+
+/**
+ * Which translate options a call used, so we can see what is actually exercised. Enums as they are,
+ * everything else as a count or a flag: never an id, an instruction or a context string. Taken from
+ * a successful parse only, so every enum value is one the schema allows.
+ */
+function translateOptionsIn(args: unknown): Record<string, unknown> {
+  const parsed = translateSchema.safeParse(args);
+  if (!parsed.success) return {};
+
+  const { text, style, priority, content_type, reasoning, glossaries, adapt_to, instructions, context } =
+    parsed.data;
+  const options: Record<string, unknown> = {
+    blockCount: text.length,
+    style,
+    priority,
+    contentType: content_type,
+    reasoning,
+    glossaryCount: glossaries?.length,
+    memoryCount: adapt_to?.length,
+    instructionCount: instructions?.length,
+    hasContext: context ? true : undefined,
+  };
+  // Unset options are left out rather than sent as null.
+  return Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined));
+}
+
+/**
+ * Which assistant made the call, as a closed vocabulary shared with mcp-private: raw client names
+ * and user agents are never reported, only the bucket they fall in. First match wins, so the
+ * narrower names come first.
+ */
+const CLIENTS: ReadonlyArray<[RegExp, string]> = [
+  [/openai|chatgpt/i, "chatgpt"],
+  [/claude[\s_-]?code/i, "claude-code"],
+  [/claude|anthropic/i, "claude"],
+  [/cursor/i, "cursor"],
+  [/codex/i, "codex"],
+  [/visual studio code|vscode/i, "vscode"],
+];
+
+/**
+ * The calling client, from what the request carries: ChatGPT's `openai/*` hints, the clientInfo of
+ * the initialize handshake (STDIO only — on the stateless HTTP transport it went to another
+ * request), then the HTTP User-Agent. Undefined when nothing identifies it.
+ */
+export function clientFor(
+  clientInfoName: unknown,
+  meta: unknown,
+  userAgent: unknown
+): string | undefined {
+  const hasOpenAiHints =
+    meta !== null &&
+    typeof meta === "object" &&
+    Object.keys(meta).some((key) => key.startsWith("openai/"));
+  if (hasOpenAiHints) return "chatgpt";
+
+  const signal = [clientInfoName, userAgent].find(
+    (value): value is string => typeof value === "string" && value !== ""
+  );
+  if (!signal) return undefined;
+  return CLIENTS.find(([pattern]) => pattern.test(signal))?.[1] ?? "other";
+}
+
+const VERSION = /^\d[0-9A-Za-z.+-]{0,31}$/;
+
+/** A client version only if it looks like one: it is free text the client sends. */
+export const clientVersionFor = (value: unknown): string | undefined =>
+  typeof value === "string" && VERSION.test(value) ? value : undefined;
 
 /**
  * Characters a translate call actually sends to the engine: blocks flagged `translatable: false`
@@ -180,23 +279,20 @@ function postJson(url: string, bearer: string, body: unknown): Promise<Response>
   });
 }
 
-type Installation = { id: string; created: boolean };
-
 /**
  * The installation this copy of the server reports as. A UUID generated once and kept next to the
  * rest of the product's state, so every restart and every upgrade share it: the backend's rate
  * limits are counted per installation, and a fresh one per start-up would make them meaningless.
  *
- * Resolved synchronously and once. It has to be, to know whether the id is new — which is what
- * decides the `install` event — and readFileSync at module load already has a precedent in
- * version.ts.
+ * Resolved on the first token request, not at module load: nothing is written to disk until there
+ * is something to send. No `install` event — on the `mcp` channel the funnel starts at
+ * `auth_success`, since a package download is not something the server can report reliably.
  */
-let installation: Installation | undefined;
+let installationId: string | undefined;
 
-const getInstallation = (): Installation =>
-  (installation ??= resolveInstallation());
+const getInstallationId = (): string => (installationId ??= resolveInstallationId());
 
-function resolveInstallation(): Installation {
+function resolveInstallationId(): string {
   const dir = env.LARA_HOME ?? join(homedir(), ".lara");
   const file = join(dir, INSTALLATION_FILE);
 
@@ -206,7 +302,7 @@ function resolveInstallation(): Installation {
   } catch {
     // Missing or unreadable: fall through and write a fresh one.
   }
-  if (stored && UUID_PATTERN.test(stored)) return { id: stored, created: false };
+  if (stored && UUID_PATTERN.test(stored)) return stored;
 
   const id = randomUUID();
   try {
@@ -215,12 +311,12 @@ function resolveInstallation(): Installation {
     // starting together without a lock — the same job Redis SET NX does on the private server.
     // A file that exists but holds something unusable is overwritten instead.
     writeFileSync(file, id, { flag: stored === undefined ? "wx" : "w" });
-    return { id, created: stored === undefined };
+    return id;
   } catch (error) {
     if ((error as NodeJS.ErrnoException | null)?.code === "EEXIST") {
       try {
         const winner = readFileSync(file, "utf8").trim();
-        if (UUID_PATTERN.test(winner)) return { id: winner, created: false };
+        if (UUID_PATTERN.test(winner)) return winner;
       } catch {
         // Unreadable right after it was created: fall through to the in-memory id.
       }
@@ -233,7 +329,7 @@ function resolveInstallation(): Installation {
       { error },
       "Could not persist the metrics installation id, using a per-process one"
     );
-    return { id, created: false };
+    return id;
   }
 }
 
@@ -254,8 +350,7 @@ async function getToken(): Promise<string> {
   if (Date.now() < tokenRetryAfter) throw new Error("issue-token is in cooldown");
   tokenRetryAfter = Date.now() + TOKEN_COOLDOWN_MS;
 
-  const installationId = getInstallation().id;
-  const response = await postJson(TOKEN_URL, API_KEY, { installationId });
+  const response = await postJson(TOKEN_URL, API_KEY, { installationId: getInstallationId() });
   if (!response.ok) throw new Error(`issue-token returned ${response.status}`);
 
   const body = (await response.json()) as { token?: string; expiresIn?: number };
@@ -285,6 +380,14 @@ function trimQueue(): void {
  */
 export function logEvent(event: MetricsEvent): void {
   if (!metricsEnabled()) return;
+
+  // Past the cap the backend rejects the whole batch, so the one event goes instead of up to 500.
+  // Unreachable with the bounded fields above; this is the guarantee, not the expectation.
+  const metadataBytes = Buffer.byteLength(JSON.stringify(event.metadata ?? {}));
+  if (metadataBytes > MAX_METADATA_BYTES) {
+    logger.debug({ eventType: event.eventType, metadataBytes }, "Metrics event dropped, metadata too large");
+    return;
+  }
 
   // The envelope is stamped last so it always wins: channel and sessionId are facts about this
   // process, never something a caller supplies. Both are stamped on the way in rather than at
@@ -383,8 +486,12 @@ export function errorTypeFor(error: unknown): string {
     if (status === 401 || status === 403) return `auth_${status}`;
     if (status === 429) return "rate_limit_429";
     if (status === 413) return "payload_too_large";
+    if (error.type === "AuthenticationError") {
+      // The SDK wraps a /v2/auth request that never got an answer as a 500 AuthenticationError:
+      // the network failed, the credentials were never judged.
+      return status >= 500 ? "network_error" : "auth_401";
+    }
     if (status >= 500) return "server_error";
-    if (error.type === "AuthenticationError") return "auth_401";
     // Every other 4xx from Lara is a request we built wrong.
     if (status >= 400) return "validation_error";
     return "unknown";
@@ -405,12 +512,34 @@ export function errorTypeFor(error: unknown): string {
   return "unknown";
 }
 
-/** A credential Lara rejected, which is what separates auth_fail from any other call_error. */
-const isAuthError = (error: unknown): boolean =>
-  error instanceof LaraApiError &&
-  (error.statusCode === 401 ||
-    error.statusCode === 403 ||
-    error.type === "AuthenticationError");
+const LARA_ERROR_TYPE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+const MAX_INVALID_FIELDS = 10;
+
+/**
+ * What went wrong, beyond errorType, for the problems errorType groups together. Never a message:
+ * those can quote the request. The Lara error type is an identifier from the API, kept only while it
+ * looks like one; the invalid fields are schema paths with array indices folded, never a value.
+ */
+export function errorDetailsFor(error: unknown): Record<string, unknown> {
+  if (error instanceof LaraApiError) {
+    return {
+      httpStatus: error.statusCode,
+      ...(LARA_ERROR_TYPE.test(error.type) && { laraErrorType: error.type }),
+    };
+  }
+
+  if (error instanceof z.ZodError) {
+    const fields = error.issues.map((issue) =>
+      issue.path.length > 0
+        ? issue.path.map((key) => (typeof key === "number" ? "*" : String(key))).join(".").slice(0, 64)
+        : "arguments"
+    );
+    // In issue order, which is schema order: the first fields are the ones a client got wrong first.
+    return { invalidFields: [...new Set(fields)].slice(0, MAX_INVALID_FIELDS) };
+  }
+
+  return {};
+}
 
 /**
  * Everything one MCP session needs to report against. The account is not known when the session is
@@ -452,12 +581,34 @@ function accountIdFor(ctx: MetricsContext): string | undefined {
  */
 const seenAccounts = new Set<string>();
 
-function reportAuthSuccessOnce(accountId: string): void {
+function reportAuthSuccessOnce(accountId: string, call: CallInfo): void {
   if (seenAccounts.has(accountId)) return;
   if (seenAccounts.size >= MAX_SEEN_ACCOUNTS) seenAccounts.clear();
   seenAccounts.add(accountId);
 
-  logEvent({ eventType: "auth_success", accountId, metadata: { ...BASE_METADATA } });
+  logEvent({ eventType: "auth_success", accountId, metadata: clientMetadata(call, { ...BASE_METADATA }) });
+}
+
+/** One tool call, as CallTool sees it. */
+export type CallInfo = {
+  toolName: string;
+  args: unknown;
+  startedAt: number;
+  /** A bucket from clientFor, never a raw name. */
+  client?: string;
+  clientVersion?: string;
+};
+
+function clientMetadata(call: CallInfo, metadata: Record<string, unknown>): Record<string, unknown> {
+  if (call.client) metadata.client = call.client;
+  if (call.clientVersion) metadata.clientVersion = call.clientVersion;
+  return metadata;
+}
+
+function callMetadata(call: CallInfo): { metadata: Record<string, unknown>; charsTranslated?: number } {
+  const fields = callFieldsFor(call.toolName, call.args);
+  clientMetadata(call, fields.metadata);
+  return fields;
 }
 
 /**
@@ -465,55 +616,54 @@ function reportAuthSuccessOnce(accountId: string): void {
  * it, because CallTool rewrites the SDK's errors before they escape and the error path below needs
  * the original.
  */
-export function reportCallSuccess(
-  ctx: MetricsContext | undefined,
-  toolName: string,
-  args: unknown,
-  startedAt: number
-): void {
-  if (!ctx) return;
+export function reportCallSuccess(ctx: MetricsContext | undefined, call: CallInfo): void {
+  if (!ctx || isNoTrace(call.args)) return;
 
   const accountId = accountIdFor(ctx);
   if (!accountId) return;
 
-  reportAuthSuccessOnce(accountId);
+  reportAuthSuccessOnce(accountId, call);
 
-  const call = callFieldsFor(toolName, args);
+  const { metadata, charsTranslated } = callMetadata(call);
   logEvent({
     eventType: "call_success",
     accountId,
-    latencyMs: Date.now() - startedAt,
-    charsTranslated: call.charsTranslated,
-    metadata: call.metadata,
+    latencyMs: Date.now() - call.startedAt,
+    charsTranslated,
+    metadata,
   });
 }
 
-/** Report a tool call that threw. The error itself is never altered, only described. */
+/**
+ * Report a tool call that threw. The error itself is never altered, only described.
+ *
+ * Without an account — the SDK never got a token — only a credential Lara rejected is reported: it
+ * is the one failure that explains why there is no account, and `auth_fail` is the one event the
+ * backend takes without one. Any other early error is lost, by design.
+ */
 export function reportCallError(
   ctx: MetricsContext | undefined,
-  toolName: string,
-  args: unknown,
-  startedAt: number,
+  call: CallInfo,
   error: unknown
 ): void {
-  if (!ctx) return;
+  if (!ctx || isNoTrace(call.args)) return;
+
+  const errorType = errorTypeFor(error);
+  const isAuthError = errorType.startsWith("auth_");
+  const metadata = { ...callMetadata(call).metadata, ...errorDetailsFor(error) };
 
   const accountId = accountIdFor(ctx);
-  if (!accountId) return;
-
-  const { metadata } = callFieldsFor(toolName, args);
-  const errorType = errorTypeFor(error);
-  const latencyMs = Date.now() - startedAt;
-
-  logEvent({ eventType: "call_error", accountId, errorType, latencyMs, metadata });
-  if (isAuthError(error)) {
-    logEvent({ eventType: "auth_fail", accountId, errorType, metadata });
+  if (!accountId) {
+    if (isAuthError) logEvent({ eventType: "auth_fail", errorType, metadata });
+    return;
   }
-}
 
-// The one event that is not about a request: this copy of the server had no installation id, so
-// this is the first time it has ever run. It carries no accountId — no key has been accepted yet —
-// which is one of the two cases the backend allows that on.
-if (metricsEnabled() && getInstallation().created) {
-  logEvent({ eventType: "install", metadata: { ...BASE_METADATA } });
+  logEvent({
+    eventType: "call_error",
+    accountId,
+    errorType,
+    latencyMs: Date.now() - call.startedAt,
+    metadata,
+  });
+  if (isAuthError) logEvent({ eventType: "auth_fail", accountId, errorType, metadata });
 }

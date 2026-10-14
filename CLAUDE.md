@@ -151,36 +151,54 @@ Error handling in `src/mcp/tools.ts`:
 ### Usage Metrics (`src/metrics.ts`)
 
 Funnel telemetry for the `mcp` channel of the Lara integrations monitoring
-backend. Both transports report; the module is self-contained and its failures
-never reach a tool call.
+backend (`integration-metrics.laratranslate.com`). On by default, both
+transports report; the module is self-contained and its failures never reach a
+tool call.
 
+- **Opt-out**: per call, `no_trace: true` on `translate` means that call emits
+  **no event of any kind** (`isNoTrace`, read from the raw arguments so a
+  malformed flag still counts). Globally, `DO_NOT_TRACK` set to `1`/`true`/`yes`.
 - **Configuration**: `DEFAULT_METRICS_URL` / `DEFAULT_METRICS_API_KEY` are
-  compiled in and overridden by `METRICS_URL` / `METRICS_API_KEY`. Either one
-  empty, an unparseable URL, or `DO_NOT_TRACK` set to `1`/`true`/`yes` and
-  `metricsEnabled()` is false — nothing is measured, queued or written to disk.
+  compiled in (the key is public by design: it only buys ingest tokens for
+  channel `mcp`) and overridden by `METRICS_URL` / `METRICS_API_KEY`. Either one
+  empty, an unparseable URL, or `DO_NOT_TRACK` and `metricsEnabled()` is false —
+  nothing is measured, queued or written to disk. `vitest.config.ts` sets
+  `DO_NOT_TRACK=1` so no test run reaches production.
 - **Delivery**: `POST /auth/issue-token` (API key, `{ installationId }`) buys a
   token; events go to `POST /metrics/ingest-events` with it. Batched every 2s
   behind an `unref`'d timer, one retry on 401 only, requeued on 429/5xx, dropped
-  on any other rejection, queue capped at 10 000. `flushNow()` is awaited once,
-  on shutdown, capped at 2s.
+  on any other rejection, queue capped at 10 000. `flushNow()` runs on signals
+  (capped at 2s) and once on `beforeExit` — a STDIO client closing stdin ends
+  the process without a signal. An event whose metadata is over 4096 bytes is
+  dropped alone, since the backend would reject the whole batch.
 - **Installation id**: a UUID at `${LARA_HOME ?? ~/.lara}/installation-id`,
-  resolved synchronously at module load. `writeFileSync(..., { flag: "wx" })`
+  resolved on the first token request. `writeFileSync(..., { flag: "wx" })`
   settles the race between two processes starting together. An unwritable home
-  falls back to a per-process id. A freshly created file is what triggers the
-  one `install` event.
-- **Events**: `install` (no `accountId`), `auth_success` (deduplicated per
-  account per process — the HTTP transport is stateless and builds a Translator
-  per request), `call_success`, `call_error`, and `auth_fail` beside a
-  `call_error` Lara answered with 401/403.
+  falls back to a per-process id. There is **no `install` event**: on `mcp` the
+  backend's funnel starts at `auth_success`.
+- **Events**: `auth_success` (deduplicated per account per process — the HTTP
+  transport is stateless and builds a Translator per request), `call_success`,
+  `call_error`, and `auth_fail` beside a `call_error` Lara answered with
+  401/403. Unknown tool names are not reported.
 - **`accountId`**: the `id` claim of the Lara token the SDK holds, read through
   `getLaraClient()` in `src/lara-client.ts` (the one cast through the SDK's
   `protected client`). The SDK authenticates lazily, so it is only knowable
-  after a call has succeeded. No token means no account and **no event** — a
-  made-up id would be a fake account in every dashboard.
-- **`metadata`**: `feature` (`text` / `language_detection` /
-  `resource_management` — a shared vocabulary, values are stable forever),
-  `toolName`, `transport`, and `sourceLang`/`targetLang` on `translate`. Never
-  the translated text, never a credential.
+  after a call has succeeded. Without it the only event is `auth_fail` (no
+  `accountId`, which the backend allows) for a key Lara rejected; any other
+  early error is lost — a made-up id would be a fake account in every dashboard.
+- **`metadata`**: never content, credentials, ids or raw client strings.
+  - Always: `feature` (`text` / `language_detection` / `resource_management` —
+    shared vocabulary, stable forever), `toolName`, `transport`, `os`,
+    `nodeVersion`, `client` (closed bucket shared with mcp-private: `claude`,
+    `claude-code`, `chatgpt`, `cursor`, `codex`, `vscode`, `other`, from
+    clientInfo on STDIO or the User-Agent on HTTP), `clientVersion` (STDIO,
+    only if it looks like a version).
+  - `translate`: `sourceLang`/`targetLang` only if they match a language-tag
+    pattern; option values/counts/flags (`style`, `priority`, `contentType`,
+    `reasoning`, `blockCount`, `glossaryCount`, `memoryCount`,
+    `instructionCount`, `hasContext`) only from a successful schema parse.
+  - Errors: `httpStatus`, `laraErrorType` (identifier-shaped only),
+    `invalidFields` (Zod paths, indices folded to `*`, max 10).
 - **Where it is emitted**: inside `CallTool`'s own try/catch, not from a wrapper
   around it — `CallTool` rewrites `LaraApiError` into `InvalidInputError` before
   it escapes, so only there is the original error still available to classify.

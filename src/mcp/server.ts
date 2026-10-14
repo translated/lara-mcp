@@ -11,7 +11,7 @@ import { CallTool, ListTools } from "./tools.js";
 import { ListResources, ListResourceTemplates, ReadResource } from "./resources.js";
 import { logger } from "#logger";
 import { getLaraClient } from "../lara-client.js";
-import { createMetricsContext } from "../metrics.js";
+import { clientFor, clientVersionFor, createMetricsContext } from "../metrics.js";
 import { PACKAGE_VERSION } from "../version.js";
 
 export default function getMcpServer(
@@ -57,9 +57,21 @@ export default function getMcpServer(
   const metrics = createMetricsContext(lara);
 
   server.setRequestHandler(ListToolsRequestSchema, ListTools);
-  server.setRequestHandler(CallToolRequestSchema, (request) =>
-    CallTool(request, lara, metrics)
-  );
+  server.setRequestHandler(CallToolRequestSchema, (request, extra) => {
+    if (!metrics) return CallTool(request, lara);
+
+    // clientInfo is only known on STDIO: on the stateless HTTP transport the initialize handshake
+    // went to another server instance, and the User-Agent is all this request carries.
+    const clientInfo = server.getClientVersion();
+    return CallTool(request, lara, metrics, {
+      client: clientFor(
+        clientInfo?.name,
+        request.params._meta,
+        extra?.requestInfo?.headers?.["user-agent"]
+      ),
+      clientVersion: clientVersionFor(clientInfo?.version),
+    });
+  });
 
   // -- Resources
   server.setRequestHandler(ListResourceTemplatesRequestSchema, ListResourceTemplates);

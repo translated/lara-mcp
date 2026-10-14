@@ -118,6 +118,7 @@ import {
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
 import {
+  type CallInfo,
   type MetricsContext,
   reportCallError,
   reportCallSuccess,
@@ -229,19 +230,25 @@ function narrate(name: string, args: any, result: any): string {
 async function CallTool(
   request: CallToolRequest,
   lara: Translator,
-  metrics?: MetricsContext
+  metrics?: MetricsContext,
+  client?: Pick<CallInfo, "client" | "clientVersion">
 ): Promise<CallToolResult> {
   const { name, arguments: args } = request.params;
-  const startedAt = Date.now();
+  // hasOwn, not `in`: a tool named "constructor" must not reach Object.prototype.
+  const isHandler = Object.hasOwn(handlers, name);
+  const isLister = Object.hasOwn(listers, name);
+  // An unknown tool never reached Lara, and its name is whatever the client made up: not a call.
+  const call: CallInfo = { toolName: name, args, startedAt: Date.now(), ...client };
+  const callMetrics = isHandler || isLister ? metrics : undefined;
 
   logger.debug({ toolName: name }, "Tool called");
 
   try {
     let result: unknown;
-    if (name in handlers) {
-      result = await handlers[name as keyof typeof handlers](args, lara);
-    } else if (name in listers) {
-      result = await listers[name as keyof typeof listers](lara);
+    if (isHandler) {
+      result = await handlers[name](args, lara);
+    } else if (isLister) {
+      result = await listers[name](lara);
     } else {
       logger.warn(`Requested a tool with name ${name}, but it was not found`);
       throw new InvalidInputError(`Tool ${name} not found`);
@@ -250,7 +257,7 @@ async function CallTool(
     // Reported from inside the try, not from a wrapper around this function:
     // the catch below rewrites the SDK's errors, so only here is the original
     // still in hand. Fire-and-forget — it never delays or alters the result.
-    reportCallSuccess(metrics, name, args, startedAt);
+    reportCallSuccess(callMetrics, call);
 
     const structuredContent = toStructuredContent(result);
     return {
@@ -265,7 +272,7 @@ async function CallTool(
       ],
     };
   } catch (error) {
-    reportCallError(metrics, name, args, startedAt, error);
+    reportCallError(callMetrics, call, error);
 
     if (error instanceof z.ZodError) {
       const fieldErrors = error.issues

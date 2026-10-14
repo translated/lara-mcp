@@ -28,6 +28,10 @@ switch (env.TRANSPORT) {
 process.on("SIGINT", () => void signalHandler(server));
 process.on("SIGTERM", () => void signalHandler(server));
 process.on("SIGQUIT", () => void signalHandler(server));
+// A STDIO client that closes stdin ends the process without a signal: the event loop simply runs
+// dry, and the unref'd flush timer does not hold it. `once`, so a delivery that fails and requeues
+// cannot keep the process alive in a loop.
+process.once("beforeExit", () => void flushNow());
 
 // -- Signal handler
 async function signalHandler(server: RestServer | McpServer) {

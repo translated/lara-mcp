@@ -53,7 +53,7 @@ function createFetchMock() {
   // built, which the global fetch signature does not describe positionally.
   return vi.fn(async (...args: any[]) => {
     const url = args[0] as string;
-    if (url === TOKEN_URL) {
+    if (url.endsWith("/auth/issue-token")) {
       return {
         ok: true,
         status: 200,
@@ -124,6 +124,8 @@ describe("errorTypeFor", () => {
     [new LaraApiError(429, "TooManyRequests", "slow down"), "rate_limit_429"],
     [new LaraApiError(413, "PayloadTooLarge", "too big"), "payload_too_large"],
     [new LaraApiError(500, "ServerError", "boom"), "server_error"],
+    // How the SDK wraps a /v2/auth request that never got an answer.
+    [new LaraApiError(500, "AuthenticationError", "fetch failed"), "network_error"],
     [new LaraApiError(400, "BadRequest", "bad"), "validation_error"],
     [new LaraApiError(200, "Weird", "?"), "unknown"],
   ])("maps a Lara API error to its token", (error, expected) => {
@@ -170,13 +172,192 @@ describe("callFieldsFor", () => {
     );
   });
 
-  it("carries the transport and the tool name", () => {
+  it("carries the transport, the runtime and the tool name", () => {
     const { metadata } = metrics.callFieldsFor("list_memories", undefined);
     expect(metadata).toEqual({
       transport: "stdio",
+      os: process.platform,
+      nodeVersion: process.versions.node,
       feature: "resource_management",
       toolName: "list_memories",
     });
+  });
+
+  it("leaves out a language that is not a language tag", () => {
+    const { metadata } = metrics.callFieldsFor("translate", {
+      source: "please translate this secret",
+      target: "Il contratto con ACME scade domani",
+      text: [],
+    });
+    expect(metadata.sourceLang).toBeUndefined();
+    expect(metadata.targetLang).toBeUndefined();
+    expect(JSON.stringify(metadata)).not.toMatch(/secret|ACME/);
+
+    expect(metrics.callFieldsFor("translate", { source: null, target: "it" }).metadata.sourceLang).toBe("auto");
+    expect(metrics.callFieldsFor("translate", { source: 42, target: "it" }).metadata.sourceLang).toBeUndefined();
+  });
+
+  it("reports which translate options were used, as values, counts and flags only", () => {
+    const { metadata } = metrics.callFieldsFor("translate", {
+      target: "it",
+      text: [{ text: "a" }, { text: "b", translatable: false }],
+      style: "fluid",
+      priority: "background",
+      content_type: "text/html",
+      reasoning: true,
+      glossaries: ["gls_secretGlossary1", "gls_secretGlossary2"],
+      adapt_to: ["mem_secretMemory"],
+      instructions: ["Use the secret brand voice"],
+      context: "secret context about the customer",
+      no_trace: false,
+      timeout_in_millis: 1000,
+    });
+
+    expect(metadata).toMatchObject({
+      blockCount: 2,
+      style: "fluid",
+      priority: "background",
+      contentType: "text/html",
+      reasoning: true,
+      glossaryCount: 2,
+      memoryCount: 1,
+      instructionCount: 1,
+      hasContext: true,
+    });
+    expect(JSON.stringify(metadata)).not.toMatch(/gls_|mem_|secret/);
+  });
+
+  it("leaves unset options out", () => {
+    const { metadata } = metrics.callFieldsFor("translate", { target: "it", text: [{ text: "a" }] });
+    expect(metadata.blockCount).toBe(1);
+    for (const key of ["style", "priority", "contentType", "reasoning", "glossaryCount", "memoryCount", "instructionCount", "hasContext"]) {
+      expect(metadata).not.toHaveProperty(key);
+    }
+  });
+
+  it("reports no options from arguments that do not parse", () => {
+    const { metadata } = metrics.callFieldsFor("translate", {
+      target: "it",
+      text: [{ text: "a" }],
+      style: "my secret style",
+    });
+    expect(metadata).not.toHaveProperty("style");
+    expect(metadata).not.toHaveProperty("blockCount");
+    expect(JSON.stringify(metadata)).not.toContain("secret");
+  });
+});
+
+describe("isNoTrace", () => {
+  let metrics: Metrics;
+  beforeEach(async () => {
+    metrics = await loadMetrics();
+  });
+
+  it.each([
+    [{ no_trace: true }, true],
+    // Malformed, but still a request for privacy.
+    [{ no_trace: "true" }, true],
+    [{ no_trace: false }, false],
+    [{ no_trace: "false" }, false],
+    [{}, false],
+    [undefined, false],
+    [null, false],
+    ["not an object", false],
+  ])("reads %j as %s", (args, expected) => {
+    expect(metrics.isNoTrace(args)).toBe(expected);
+  });
+});
+
+describe("clientFor", () => {
+  let metrics: Metrics;
+  beforeEach(async () => {
+    metrics = await loadMetrics();
+  });
+
+  it.each([
+    ["claude-ai", "claude"],
+    ["Claude Desktop", "claude"],
+    ["claude-code", "claude-code"],
+    ["Claude Code", "claude-code"],
+    ["cursor-vscode", "cursor"],
+    ["Visual Studio Code", "vscode"],
+    ["codex-mcp-client", "codex"],
+    ["openai-mcp", "chatgpt"],
+    ["my-own-agent v1 (jane@example.com)", "other"],
+  ])("buckets the client name %s as %s", (name, expected) => {
+    expect(metrics.clientFor(name, undefined, undefined)).toBe(expected);
+  });
+
+  it("prefers the clientInfo name over the User-Agent", () => {
+    expect(metrics.clientFor("claude-ai", undefined, "Cursor/1.2")).toBe("claude");
+    expect(metrics.clientFor(undefined, undefined, "Cursor/1.2")).toBe("cursor");
+    expect(metrics.clientFor("", undefined, "node")).toBe("other");
+  });
+
+  it("recognises ChatGPT by its openai/* hints", () => {
+    expect(metrics.clientFor("mcp", { "openai/userAgent": "x" }, undefined)).toBe("chatgpt");
+  });
+
+  it("is undefined when nothing identifies the client", () => {
+    expect(metrics.clientFor(undefined, undefined, undefined)).toBeUndefined();
+    expect(metrics.clientFor(undefined, null, ["array", "header"])).toBeUndefined();
+  });
+
+  it.each([
+    ["0.9.1", "0.9.1"],
+    ["1.2.3-beta.1+build5", "1.2.3-beta.1+build5"],
+    ["v1.2.3", undefined],
+    ["1.2.3 (jane@example.com)", undefined],
+    ["1".repeat(40), undefined],
+    [123, undefined],
+    [undefined, undefined],
+  ])("keeps the client version %j only if it looks like one", (value, expected) => {
+    expect(metrics.clientVersionFor(value)).toBe(expected);
+  });
+});
+
+describe("errorDetailsFor", () => {
+  let metrics: Metrics;
+  beforeEach(async () => {
+    metrics = await loadMetrics();
+  });
+
+  it("describes a Lara API error by status and type, never by message", () => {
+    const details = metrics.errorDetailsFor(new LaraApiError(422, "InvalidLanguage", "bad target 'secret'"));
+    expect(details).toEqual({ httpStatus: 422, laraErrorType: "InvalidLanguage" });
+  });
+
+  it("drops a Lara error type that does not look like an identifier", () => {
+    expect(metrics.errorDetailsFor(new LaraApiError(400, "bad target 'secret'", "x"))).toEqual({
+      httpStatus: 400,
+    });
+  });
+
+  it("lists the invalid fields with array indices folded, deduplicated and capped", () => {
+    const schema = z.object({
+      target: z.string(),
+      text: z.array(z.object({ text: z.string() })),
+      ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`f${i}`, z.string()])),
+    });
+    const error = schema.safeParse({ target: 1, text: [{ text: 1 }, { text: 2 }] }).error!;
+    const { invalidFields } = metrics.errorDetailsFor(error) as { invalidFields: string[] };
+
+    expect(invalidFields).toHaveLength(10);
+    expect(invalidFields).toContain("target");
+    expect(invalidFields).toContain("text.*.text");
+    expect(new Set(invalidFields).size).toBe(invalidFields.length);
+  });
+
+  it("names the whole argument object when the issue has no path", () => {
+    expect(metrics.errorDetailsFor(z.object({}).safeParse("x").error)).toEqual({
+      invalidFields: ["arguments"],
+    });
+  });
+
+  it("says nothing about any other error", () => {
+    expect(metrics.errorDetailsFor(new Error("secret"))).toEqual({});
+    expect(metrics.errorDetailsFor(new TimeoutError("slow"))).toEqual({});
+    expect(metrics.errorDetailsFor(null)).toEqual({});
   });
 
   it("lowercases the language tags and defaults the source to auto", () => {
@@ -225,31 +406,40 @@ describe("installation id", () => {
 
   const idFile = (home: string) => join(home, "installation-id");
 
-  it("creates it on first run and reports install once", async () => {
+  it("writes nothing and sends nothing until there is an event", async () => {
+    const home = mkdtempSync(join(tmpdir(), "lara-metrics-"));
+
+    const metrics = await loadMetrics({ LARA_HOME: home });
+    await metrics.flushNow();
+
+    // No install event on the mcp channel: a start-up alone reports nothing.
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(() => readFileSync(idFile(home), "utf8")).toThrow();
+  });
+
+  it("creates it on the first token and reuses it across start-ups", async () => {
     const home = mkdtempSync(join(tmpdir(), "lara-metrics-"));
 
     const first = await loadMetrics({ LARA_HOME: home });
+    first.logEvent({ eventType: "auth_success", accountId: ACCOUNT });
     await first.flushNow();
 
     const stored = readFileSync(idFile(home), "utf8");
     expect(stored).toMatch(/^[0-9a-f-]{36}$/);
-
-    const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
-    expect(events).toHaveLength(1);
-    expect(events[0].eventType).toBe("install");
-    expect(events[0].accountId).toBeUndefined();
     expect(bodyOf(callsTo(fetchMock, TOKEN_URL)[0]).installationId).toBe(stored);
+    const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    expect(events.map((event: any) => event.eventType)).toEqual(["auth_success"]);
 
-    // A second start-up on the same home reuses the id and stays quiet.
     fetchMock.mockClear();
     const second = await loadMetrics({ LARA_HOME: home });
+    second.logEvent({ eventType: "auth_success", accountId: ACCOUNT });
     await second.flushNow();
 
     expect(readFileSync(idFile(home), "utf8")).toBe(stored);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(bodyOf(callsTo(fetchMock, TOKEN_URL)[0]).installationId).toBe(stored);
   });
 
-  it("rewrites a corrupted id without reporting a new install", async () => {
+  it("rewrites a corrupted id", async () => {
     const home = mkdtempSync(join(tmpdir(), "lara-metrics-"));
     writeFileSync(idFile(home), "not-a-uuid");
 
@@ -273,7 +463,6 @@ describe("installation id", () => {
 
     const installationId = bodyOf(callsTo(fetchMock, TOKEN_URL)[0]).installationId;
     expect(installationId).toMatch(/^[0-9a-f-]{36}$/);
-    // No install event: nothing was installed, the id simply could not be stored.
     const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
     expect(events.map((event: any) => event.eventType)).toEqual(["auth_success"]);
   });
@@ -363,7 +552,7 @@ describe("delivery", () => {
     let ingestCalls = 0;
     fetchMock.mockImplementation(async (...args: any[]) => {
       const url = args[0] as string;
-      if (url === TOKEN_URL) {
+      if (url.endsWith("/auth/issue-token")) {
         return {
           ok: true,
           status: 200,
@@ -391,7 +580,7 @@ describe("delivery", () => {
     let tokenSerial = 0;
     fetchMock.mockImplementation(async (...args: any[]) => {
       const url = args[0] as string;
-      if (url === TOKEN_URL) {
+      if (url.endsWith("/auth/issue-token")) {
         return {
           ok: true,
           status: 200,
@@ -410,7 +599,7 @@ describe("delivery", () => {
   it("requeues a batch the backend could not take, and drops one it rejected", async () => {
     fetchMock.mockImplementation(async (...args: any[]) => {
       const url = args[0] as string;
-      if (url === TOKEN_URL) {
+      if (url.endsWith("/auth/issue-token")) {
         return {
           ok: true,
           status: 200,
@@ -431,7 +620,7 @@ describe("delivery", () => {
     // A verdict from the backend is different — the same body would be refused forever.
     fetchMock.mockImplementation(async (...args: any[]) => {
       const url = args[0] as string;
-      if (url === TOKEN_URL) {
+      if (url.endsWith("/auth/issue-token")) {
         return {
           ok: true,
           status: 200,
@@ -488,7 +677,7 @@ describe("delivery", () => {
 
     fetchMock.mockImplementation(async (...args: any[]) => {
       const url = args[0] as string;
-      if (url === TOKEN_URL) {
+      if (url.endsWith("/auth/issue-token")) {
         return {
           ok: true,
           status: 200,
@@ -512,7 +701,7 @@ describe("delivery", () => {
     // Nothing more is logged after this, so only the requeue path can hold the bound.
     fetchMock.mockImplementation(async (...args: any[]) => {
       const url = args[0] as string;
-      if (url === TOKEN_URL) {
+      if (url.endsWith("/auth/issue-token")) {
         return {
           ok: true,
           status: 200,
@@ -538,6 +727,52 @@ describe("delivery", () => {
     const batches = callsTo(fetchMock, INGEST_URL).map((call) => bodyOf(call).events.length);
     expect(Math.max(...batches)).toBeLessThanOrEqual(500);
     expect(batches.reduce((a, b) => a + b, 0)).toBe(10_000);
+  });
+
+  it("drops an event whose metadata the backend would reject, and only that one", async () => {
+    metrics.logEvent(event({ metadata: { blob: "x".repeat(5000) } }));
+    metrics.logEvent(event());
+    await metrics.flushNow();
+
+    const events = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    expect(events).toHaveLength(1);
+    expect(events[0].metadata).toBeUndefined();
+  });
+
+  it("keeps the largest real event far under the metadata cap", async () => {
+    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    ctx.accountId = ACCOUNT;
+    const longPath = z.object(
+      Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`${"f".repeat(80)}${i}`, z.string()]))
+    );
+
+    metrics.reportCallError(
+      ctx,
+      {
+        toolName: "translate",
+        args: {
+          source: "zh-hant-tw-x1234567",
+          target: "zh-hant-tw-x1234567",
+          text: Array.from({ length: 100 }, () => ({ text: "x" })),
+          style: "creative",
+          priority: "background",
+          content_type: "application/xliff+xml",
+          reasoning: true,
+          glossaries: Array.from({ length: 10 }, (_, i) => `gls_${i}`),
+          adapt_to: Array.from({ length: 50 }, (_, i) => `mem_${i}`),
+          instructions: ["a", "b"],
+          context: "c",
+        },
+        startedAt: Date.now(),
+        client: "claude-code",
+        clientVersion: "1".repeat(32),
+      },
+      longPath.safeParse({}).error
+    );
+    await metrics.flushNow();
+
+    const [sent] = callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
+    expect(Buffer.byteLength(JSON.stringify(sent.metadata))).toBeLessThan(2048);
   });
 
   it("swallows a backend that rejects outright", async () => {
@@ -602,9 +837,25 @@ describe("opt-out and configuration", () => {
     expect(() => readFileSync(join(home, "installation-id"), "utf8")).toThrow();
   });
 
+  it("is on by default, against the production backend", async () => {
+    const metrics = await loadMetrics({ METRICS_URL: undefined, METRICS_API_KEY: undefined });
+    expect(metrics.metricsEnabled()).toBe(true);
+
+    // fetch is stubbed: nothing reaches production.
+    metrics.logEvent({ eventType: "call_success", accountId: ACCOUNT });
+    await metrics.flushNow();
+
+    const [url, init] = fetchMock.mock.calls[0] as any[];
+    expect(url).toBe("https://integration-metrics.laratranslate.com/auth/issue-token");
+    expect(init.headers.Authorization).toMatch(/^Bearer [0-9a-f]{48}$/);
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "https://integration-metrics.laratranslate.com/metrics/ingest-events"
+    );
+  });
+
   it.each([
-    ["an unset URL", { METRICS_URL: undefined }],
-    ["an unset API key", { METRICS_API_KEY: undefined }],
+    ["an empty URL", { METRICS_URL: "" }],
+    ["an empty API key", { METRICS_API_KEY: "" }],
     ["a blank API key", { METRICS_API_KEY: "   " }],
     ["a malformed URL", { METRICS_URL: "not a url" }],
   ])("is off with %s", async (_label, env) => {
@@ -638,6 +889,8 @@ describe("reporting a tool call", () => {
   const sentEvents = () =>
     callsTo(fetchMock, INGEST_URL).flatMap((call) => bodyOf(call).events);
 
+  const call = (toolName: string, args?: unknown) => ({ toolName, args, startedAt: Date.now() });
+
   beforeEach(async () => {
     fetchMock = createFetchMock();
     vi.stubGlobal("fetch", fetchMock);
@@ -651,8 +904,8 @@ describe("reporting a tool call", () => {
   it("reports auth_success once, then a call_success per call", async () => {
     const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
 
-    metrics.reportCallSuccess(ctx, "translate", { target: "it", text: [{ text: "ciao" }] }, Date.now());
-    metrics.reportCallSuccess(ctx, "list_memories", undefined, Date.now());
+    metrics.reportCallSuccess(ctx, call("translate", { target: "it", text: [{ text: "ciao" }] }));
+    metrics.reportCallSuccess(ctx, call("list_memories"));
     await metrics.flushNow();
 
     const events = sentEvents();
@@ -674,15 +927,11 @@ describe("reporting a tool call", () => {
     // Two sessions for the same account: the HTTP transport builds one per request.
     metrics.reportCallSuccess(
       metrics.createMetricsContext(translatorWithToken(token))!,
-      "list_memories",
-      undefined,
-      Date.now()
+      call("list_memories")
     );
     metrics.reportCallSuccess(
       metrics.createMetricsContext(translatorWithToken(token))!,
-      "list_memories",
-      undefined,
-      Date.now()
+      call("list_memories")
     );
     await metrics.flushNow();
 
@@ -693,9 +942,7 @@ describe("reporting a tool call", () => {
     for (const id of [ACCOUNT, "acc_other"]) {
       metrics.reportCallSuccess(
         metrics.createMetricsContext(translatorWithToken(laraToken({ id })))!,
-        "list_memories",
-        undefined,
-        Date.now()
+        call("list_memories")
       );
     }
     await metrics.flushNow();
@@ -710,12 +957,10 @@ describe("reporting a tool call", () => {
 
     metrics.reportCallError(
       ctx,
-      "translate",
-      { target: "it", text: [] },
-      Date.now(),
+      call("translate", { target: "it", text: [] }),
       new LaraApiError(401, "AuthenticationError", "nope")
     );
-    metrics.reportCallError(ctx, "translate", {}, Date.now(), new TimeoutError("slow"));
+    metrics.reportCallError(ctx, call("translate", {}), new TimeoutError("slow"));
     await metrics.flushNow();
 
     const events = sentEvents();
@@ -725,23 +970,79 @@ describe("reporting a tool call", () => {
       "call_error",
     ]);
     expect(events[0].errorType).toBe("auth_401");
+    expect(events[0].metadata).toMatchObject({ httpStatus: 401, laraErrorType: "AuthenticationError" });
+    expect(events[1].metadata).toMatchObject({ httpStatus: 401 });
     expect(events[2].errorType).toBe("timeout");
     expect(events[2].latencyMs).toBeGreaterThanOrEqual(0);
   });
 
-  it("reports nothing for a key the SDK never exchanged", async () => {
+  it("reports only auth_fail, without an account, for a key Lara rejected outright", async () => {
     const ctx = metrics.createMetricsContext(translatorWithToken(undefined))!;
 
-    metrics.reportCallSuccess(ctx, "translate", {}, Date.now());
-    metrics.reportCallError(ctx, "translate", {}, Date.now(), new LaraApiError(401, "AuthenticationError", "nope"));
+    metrics.reportCallSuccess(ctx, call("translate", {}));
+    metrics.reportCallError(ctx, call("translate", {}), new LaraApiError(401, "AuthenticationError", "nope"));
+    metrics.reportCallError(ctx, call("list_memories"), new LaraApiError(403, "Forbidden", "nope"));
     await metrics.flushNow();
 
-    expect(callsTo(fetchMock, INGEST_URL)).toHaveLength(0);
+    const events = sentEvents();
+    expect(events.map((e: any) => [e.eventType, e.errorType])).toEqual([
+      ["auth_fail", "auth_401"],
+      ["auth_fail", "auth_403"],
+    ]);
+    expect(events.every((e: any) => !("accountId" in e))).toBe(true);
+    expect(events[0].metadata).toMatchObject({ toolName: "translate", httpStatus: 401 });
+  });
+
+  it("reports nothing for any other error before the account is known", async () => {
+    const ctx = metrics.createMetricsContext(translatorWithToken(undefined))!;
+
+    metrics.reportCallError(ctx, call("translate", {}), z.string().safeParse(1).error);
+    metrics.reportCallError(ctx, call("translate", {}), new TimeoutError("slow"));
+    // A network failure during /v2/auth: the key was never judged.
+    metrics.reportCallError(ctx, call("translate", {}), new LaraApiError(500, "AuthenticationError", "fetch failed"));
+    await metrics.flushNow();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reports nothing at all for a no_trace call", async () => {
+    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    const private_ = { target: "it", text: [{ text: "secret" }], no_trace: true };
+
+    metrics.reportCallSuccess(ctx, call("translate", private_));
+    metrics.reportCallError(ctx, call("translate", private_), new LaraApiError(401, "AuthenticationError", "nope"));
+    metrics.reportCallError(
+      metrics.createMetricsContext(translatorWithToken(undefined))!,
+      call("translate", private_),
+      new LaraApiError(401, "AuthenticationError", "nope")
+    );
+    await metrics.flushNow();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // The opt-out is per call: the next one is reported, auth_success included.
+    metrics.reportCallSuccess(ctx, call("translate", { target: "it", text: [] }));
+    await metrics.flushNow();
+    expect(sentEvents().map((e: any) => e.eventType)).toEqual(["auth_success", "call_success"]);
+  });
+
+  it("stamps the client on auth_success and on every call", async () => {
+    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT })))!;
+    const withClient = { ...call("list_memories"), client: "claude", clientVersion: "0.9.1" };
+
+    metrics.reportCallSuccess(ctx, withClient);
+    metrics.reportCallError(ctx, withClient, new TimeoutError("slow"));
+    await metrics.flushNow();
+
+    const events = sentEvents();
+    expect(events.map((e: any) => e.eventType)).toEqual(["auth_success", "call_success", "call_error"]);
+    for (const e of events) {
+      expect(e.metadata).toMatchObject({ client: "claude", clientVersion: "0.9.1", os: process.platform });
+    }
   });
 
   it("is a no-op without a context", async () => {
-    metrics.reportCallSuccess(undefined, "translate", {}, Date.now());
-    metrics.reportCallError(undefined, "translate", {}, Date.now(), new Error("boom"));
+    metrics.reportCallSuccess(undefined, call("translate", {}));
+    metrics.reportCallError(undefined, call("translate", {}), new Error("boom"));
     await metrics.flushNow();
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -751,12 +1052,12 @@ describe("reporting a tool call", () => {
     const translator = translatorWithToken(laraToken({ id: ACCOUNT }));
     const ctx = metrics.createMetricsContext(translator)!;
 
-    metrics.reportCallSuccess(ctx, "list_memories", undefined, Date.now());
+    metrics.reportCallSuccess(ctx, call("list_memories"));
     expect(ctx.accountId).toBe(ACCOUNT);
 
     // The token is gone, but the account is already known.
     translator.client.token = undefined;
-    metrics.reportCallSuccess(ctx, "list_memories", undefined, Date.now());
+    metrics.reportCallSuccess(ctx, call("list_memories"));
     await metrics.flushNow();
 
     expect(sentEvents().filter((e: any) => e.eventType === "call_success")).toHaveLength(2);
