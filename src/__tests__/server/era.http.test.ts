@@ -128,7 +128,7 @@ describe.each(eras)("HTTP MCP endpoint ($era era, $label)", ({ era, clientOption
       { id: "mem_2", name: "Bare" },
     ];
     const glossaries = [
-      { id: "gls_1", name: "Team terms", ownerId: "team_1", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: null },
+      { id: "gls_1", name: "Team terms", ownerId: "team_1", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: null, isPersonal: null },
       { id: "gls_2", name: "Bare" },
     ];
     translator.memories.list.mockResolvedValue(memories);

@@ -120,6 +120,12 @@ import {
 } from "./tools/update_memory.tool.js";
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
+import {
+  type CallInfo,
+  type MetricsContext,
+  reportCallError,
+  reportCallSuccess,
+} from "../metrics.js";
 
 type Handler = (args: unknown, lara: Translator) => Promise<unknown>;
 type Lister = (lara: Translator) => Promise<unknown>;
@@ -226,25 +232,29 @@ function narrate(name: string, args: any, result: any): string {
 
 async function CallTool(
   request: CallToolRequest,
-  lara: Translator
+  lara: Translator,
+  metrics?: MetricsContext,
+  client?: Pick<CallInfo, "client" | "clientVersion">
 ): Promise<CallToolResult> {
   const { name, arguments: args } = request.params;
-
   logger.debug({ toolName: name }, "Tool called");
 
   const handler = Object.hasOwn(handlers, name) ? handlers[name] : undefined;
   const lister = Object.hasOwn(listers, name) ? listers[name] : undefined;
   if (!handler && !lister) {
     logger.warn(`Requested a tool with name ${name}, but it was not found`);
-    // MCP spec: an unknown tool is a protocol error, not a tool execution error
+    // MCP spec: an unknown tool is a protocol error, not a tool execution error. It never reached
+    // Lara, and its name is whatever the client made up, so it is not reported as a call either.
     throw new ProtocolError(ProtocolErrorCode.InvalidParams, `Tool ${name} not found`);
   }
+
+  const call: CallInfo = { toolName: name, args, startedAt: Date.now(), ...client };
 
   try {
     const result = handler ? await handler(args, lara) : await lister!(lara);
 
     const structuredContent = toStructuredContent(result);
-    return {
+    const response: CallToolResult = {
       structuredContent,
       // MCP spec: when outputSchema is declared, the server SHOULD also return
       // the serialized JSON in a TextContent block for legacy clients that
@@ -255,7 +265,17 @@ async function CallTool(
         { type: "text", text: JSON.stringify(structuredContent) },
       ],
     };
+
+    // Reported from inside the try, not from a wrapper around this function:
+    // the catch below turns every failure into an isError result, so only here
+    // is the original error still in hand. Last, once the response is built, so
+    // a call is never reported as both a success and an error. Fire-and-forget,
+    // and it swallows its own failures — it never delays or alters the result.
+    reportCallSuccess(metrics, call);
+    return response;
   } catch (error) {
+    reportCallError(metrics, call, error);
+
     // MCP spec: execution failures (bad arguments, API errors) are reported as
     // isError results so the model can read the message and self-correct.
     return {
@@ -294,7 +314,7 @@ function toolErrorMessage(error: unknown, name: string): string {
 // zod's JSON Schema payload type is structurally wider than the SDK's Tool schema type; the runtime
 // output (a type:"object" JSON Schema 2020-12 document) is what the spec requires.
 function toJsonSchema(schema: z.ZodType): Tool["inputSchema"] {
-  return z.toJSONSchema(schema, {
+  const output = z.toJSONSchema(schema, {
     // `.loose()` objects emit `additionalProperties: {}` — a keyword-less schema some MCP clients
     // refuse or mishandle. Omitting the keyword means the same thing (extra properties allowed).
     override: ({ jsonSchema }) => {
@@ -303,7 +323,24 @@ function toJsonSchema(schema: z.ZodType): Tool["inputSchema"] {
         delete jsonSchema.additionalProperties;
       }
     },
-  }) as Tool["inputSchema"];
+  });
+  return splitTypeArrays(output) as Tool["inputSchema"];
+}
+
+// zod compacts `anyOf: [{type: "string"}, {type: "null"}]` (a described `.nullish()`) into
+// `type: ["string", "null"]` after overrides run. Legal, but single-type dialects (e.g. Gemini's
+// OpenAPI subset) reject it, so it is spelled back as `anyOf`, which means the same.
+function splitTypeArrays<T>(node: T): T {
+  if (Array.isArray(node)) node.forEach(splitTypeArrays);
+  else if (node && typeof node === "object") {
+    const schema = node as Record<string, unknown>;
+    if (Array.isArray(schema.type)) {
+      schema.anyOf = schema.type.map((type) => ({ type }));
+      delete schema.type;
+    }
+    Object.values(schema).forEach(splitTypeArrays);
+  }
+  return node;
 }
 
 // Anthropic Software Directory policy requires every tool to advertise title,

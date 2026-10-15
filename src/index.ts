@@ -7,6 +7,7 @@ import mcpRouter, { MCP_MOUNT_PATH } from "./rest/routes/mcp.js";
 import serverInfoRouter from "./rest/routes/server-info.js";
 import { RestServer } from "./rest/server.js";
 import { logger } from "./logger.js";
+import { flushNow } from "./metrics.js";
 import { shutdown } from "./shutdown.js";
 
 // -- Start server
@@ -27,6 +28,11 @@ switch (env.TRANSPORT) {
 for (const signal of ["SIGINT", "SIGTERM", "SIGQUIT"] as const) {
   process.on(signal, () => shutdown(server).then((code) => process.exit(code)));
 }
+
+// A STDIO client that closes stdin ends the process without a signal: the event loop simply runs
+// dry, and the unref'd flush timer does not hold it. `once`, so a delivery that fails and requeues
+// cannot keep the process alive in a loop.
+process.once("beforeExit", () => void flushNow());
 
 // -- HTTP server
 function httpServer() {

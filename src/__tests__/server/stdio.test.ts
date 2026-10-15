@@ -34,6 +34,8 @@ describe.each(eras)("stdio MCP server ($label)", ({ era, clientOptions }) => {
         LOGGING_LEVEL: "debug",
         LARA_ACCESS_KEY_ID: "test-id",
         LARA_ACCESS_KEY_SECRET: "test-secret",
+        // The env is replaced, not merged: without this the child would report to production.
+        DO_NOT_TRACK: "1",
       },
       // Logs go to stderr; any log line on stdout would corrupt the JSON-RPC stream
       stderr: "pipe",

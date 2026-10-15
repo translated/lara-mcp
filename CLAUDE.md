@@ -141,6 +141,9 @@ Core configuration (`src/env.ts`):
 - `HOST` / `PORT` - HTTP server binding (default: `0.0.0.0:3000`)
 - `LARA_ACCESS_KEY_ID` / `LARA_ACCESS_KEY_SECRET` - API credentials (required for STDIO mode)
 - `LOGGING_LEVEL` - Log level: `debug`, `info`, `warn`, `error` (default: `info`)
+- `METRICS_URL` / `METRICS_API_KEY` - Override the compiled-in metrics backend
+- `LARA_HOME` - Where the metrics installation id lives (default: `~/.lara`)
+- `DO_NOT_TRACK` - `1`/`true`/`yes` disables usage metrics entirely
 
 ### Error Handling
 
@@ -157,9 +160,71 @@ Error handling in `src/mcp/tools.ts` (`CallTool`):
   - Other unexpected errors are logged internally and returned as generic "An error occurred while processing your request" message
 - Privacy-sensitive translations (with `no_trace=true`) are logged for audit purposes
 
+### Usage Metrics (`src/metrics.ts`)
+
+Funnel telemetry for the `mcp` channel of the Lara integrations monitoring
+backend (`integration-metrics.laratranslate.com`). On by default, both
+transports report; the module is self-contained and its failures never reach a
+tool call.
+
+- **Opt-out**: per call, `no_trace: true` on `translate` means that call emits
+  **no event of any kind** (`isNoTrace`, read from the raw arguments so a
+  malformed flag still counts). Globally, `DO_NOT_TRACK` set to `1`/`true`/`yes`.
+- **Configuration**: `DEFAULT_METRICS_URL` / `DEFAULT_METRICS_API_KEY` are
+  compiled in (the key is public by design: it only buys ingest tokens for
+  channel `mcp`) and overridden by `METRICS_URL` / `METRICS_API_KEY`. Either one
+  empty, a URL that is not http(s), or `DO_NOT_TRACK` and `metricsEnabled()` is false —
+  nothing is measured, queued or written to disk. `vitest.config.ts` sets
+  `DO_NOT_TRACK=1` so no test run reaches production.
+- **Delivery**: `POST /auth/issue-token` (API key, `{ installationId }`) buys a
+  token; events go to `POST /metrics/ingest-events` with it. Batched every 2s
+  behind an `unref`'d timer, one retry on 401 only, requeued on 429/5xx and
+  retried on its own 30s timer, dropped on any other rejection, queue capped at
+  10 000. One drain at a time;
+  flushes asked for meanwhile fold into one rerun. `shutdown()` ends with
+  `flushBeforeExit()` (capped at 2s), and `flushNow()` runs once on `beforeExit` — a STDIO client closing stdin ends
+  the process without a signal. An event whose metadata is over 4096 bytes is
+  dropped alone, since the backend would reject the whole batch.
+- **Installation id**: a UUID at `${LARA_HOME || ~/.lara}/installation-id`,
+  resolved on the first token request. `writeFileSync(..., { flag: "wx" })`
+  settles the race between two processes starting together; an empty file is
+  one still being written, so it is never overwritten. An unwritable home
+  falls back to a per-process id. There is **no `install` event**: on `mcp` the
+  backend's funnel starts at `auth_success`.
+- **Events**: `auth_success` (the first call from an account whose token the SDK
+  holds, failed or not, unless it failed on the credentials; deduplicated per
+  account per process — the HTTP transport is stateless and builds a Translator
+  per request), `call_success`,
+  `call_error`, and `auth_fail` beside a `call_error` Lara answered with
+  401/403. Unknown tool names are not reported.
+- **`accountId`**: the `id` claim of the Lara token the SDK holds, read through
+  `getLaraClient()` in `src/lara-client.ts` (the one cast through the SDK's
+  `protected client`). The SDK authenticates lazily, so it is only knowable
+  after a call has succeeded. Without it the only event is `auth_fail` (no
+  `accountId`, which the backend allows) for a key Lara rejected; any other
+  early error is lost — a made-up id would be a fake account in every dashboard.
+- **`metadata`**: never content, credentials, ids or raw client strings.
+  - Every event: `transport`, `os`, `nodeVersion`, `client` (closed bucket shared with mcp-private: `claude`,
+    `claude-code`, `chatgpt`, `cursor`, `codex`, `vscode`, `other`, from the
+    clientInfo — `initialize` or the 2026-07-28 per-request envelope — or else
+    the User-Agent), `clientVersion` (only if it looks like a version).
+  - Call events (`call_*`, and `auth_fail`, which is tied to a call): `feature`
+    (`text` / `language_detection` / `resource_management` — shared vocabulary,
+    stable forever) and `toolName`. `auth_success` is about the credentials, not
+    a call, so it carries neither, as on mcp-private.
+  - `translate`: `sourceLang`/`targetLang` only if they match a language-tag
+    pattern; option values/counts/flags (`style`, `priority`, `contentType`,
+    `reasoning`, `blockCount`, `glossaryCount`, `memoryCount`,
+    `instructionCount`, `hasContext`) only from a successful schema parse.
+  - Errors: `httpStatus`, `laraErrorType` (identifier-shaped only),
+    `invalidFields` (Zod paths, indices folded to `*`, max 10).
+- **Where it is emitted**: inside `CallTool`'s own try/catch, not from a wrapper
+  around it — `CallTool` turns every failure into an `isError` result, so only
+  there is the original error still available to classify.
+
 ### Shutdown
 
-`src/shutdown.ts` owns the signal path: it closes the MCP handler, stops the server, and returns the process exit code (1 when teardown throws, so a failed shutdown is not reported as success). It lives outside `index.ts` because importing `index.ts` starts a server, which would make the path untestable.
+`src/shutdown.ts` owns the signal path: it closes the MCP handler, stops the server, delivers the queued metrics, and returns the process exit code (1 when teardown throws, so a failed shutdown is not reported as success). It lives outside `index.ts` because importing `index.ts` starts a server, which would make the path untestable.
 
 ### Logging
 
@@ -170,11 +235,19 @@ The server uses Pino structured logging (`src/logger.ts`). Log level is controll
 Tests are located in `src/__tests__/` and mirror the source structure:
 - `tools/` - Individual tool tests, plus `dispatch.test.ts`, which calls every advertised tool by its MCP name through `CallTool` (catches a tool defined but not registered, or registered but not advertised)
 - `server/` - REST server tests, resources, and protocol tests:
+  - `mcp.metrics.test.ts` - the metrics wiring through `getMcpServer` and `CallTool`
   - `era.http.test.ts` - SDK client over a real socket in legacy, pinned 2026-07-28 and auto-negotiated modes
   - `wire2026.test.ts` - raw wire contract (cache fields, `resultType`, `serverInfo`, header mismatch -32020, unsupported version -32022, CORS)
   - `stdio.test.ts` - spawns `src/index.ts` with tsx and connects in each era
-  - `shutdown.test.ts` - MCP handler lifecycle (lazy build, closed once) and `shutdown()` exit codes
+  - `shutdown.test.ts` - MCP handler lifecycle (lazy build, closed once), `shutdown()` exit codes and its final metrics flush
+- `metrics.test.ts` - The metrics client in isolation
 - `utils/mocks.ts` - Shared test utilities with Vitest mocks (importing it registers a module-wide `vi.mock` of `@translated/lara`, so server-level tests that need their own Lara mock do not import it)
+
+The two metrics test files deliberately do **not** import `utils/mocks.ts`: its
+hoisted `vi.mock("@translated/lara")` would replace `LaraApiError`/`TimeoutError`,
+which `errorTypeFor` classifies with `instanceof`. They reset modules and
+re-import instead, because the queue, the token and the installation id are
+module state.
 
 Tests use Vitest with coverage reporting (v8 provider).
 

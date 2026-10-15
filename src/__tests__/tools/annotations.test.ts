@@ -58,16 +58,18 @@ describe("Tool annotations", () => {
     expect(new Set(tools.map((t) => t.name)).size).toBe(tools.length);
   });
 
-  it("has no keyword-less sub-schemas (e.g. additionalProperties: {}), which some MCP clients reject", async () => {
+  it("has no keyword-less sub-schemas (e.g. additionalProperties: {}) or type arrays, which some MCP clients reject", async () => {
     const SCHEMA_KEYS = ["items", "additionalProperties", "not", "if", "then", "else", "contains", "propertyNames"];
     const LIST_KEYS = ["anyOf", "oneOf", "allOf", "prefixItems"];
     const MAP_KEYS = ["properties", "$defs", "patternProperties"];
     const empty: string[] = [];
+    const typeArrays: string[] = [];
 
     const walk = (schema: unknown, path: string): void => {
       if (schema === null || typeof schema !== "object") return;
       const node = schema as Record<string, any>;
       if (Object.keys(node).every((k) => k === "description" || k === "title")) empty.push(path);
+      if (Array.isArray(node.type)) typeArrays.push(path);
       for (const k of SCHEMA_KEYS) if (k in node) walk(node[k], `${path}.${k}`);
       for (const k of LIST_KEYS) (node[k] ?? []).forEach((s: unknown, i: number) => walk(s, `${path}.${k}[${i}]`));
       for (const k of MAP_KEYS) for (const [n, s] of Object.entries(node[k] ?? {})) walk(s, `${path}.${k}.${n}`);
@@ -79,5 +81,6 @@ describe("Tool annotations", () => {
       walk(tool.outputSchema, `${tool.name}.outputSchema`);
     }
     expect(empty).toEqual([]);
+    expect(typeArrays).toEqual([]);
   });
 });
