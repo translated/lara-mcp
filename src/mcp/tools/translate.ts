@@ -5,7 +5,7 @@ import { glossaryIdSchema, textBlockSchema } from "./_schemas.js";
 
 export { textBlockSchema };
 
-const MAX_INSTRUCTION_WORDS = 20;
+const MAX_TEXT_BLOCKS = 128;
 
 export const translateOutputSchema = z.object({
   items: z
@@ -17,9 +17,13 @@ export const translateOutputSchema = z.object({
 
 export const translateSchema = z.object({
   text: z
-    .array(textBlockSchema)
+    // A bare string is read as a translatable block: models often send ["a", "b"].
+    .array(z.preprocess((block) => (typeof block === "string" ? { text: block } : block), textBlockSchema))
+    .min(1)
+    .max(MAX_TEXT_BLOCKS)
     .describe(
-      "An array of text blocks to translate. Each block contains a text string and a boolean indicating whether it should be translated. This allows for selective translation where some text blocks can be preserved in their original form while others are translated."
+      "An array of text blocks to translate. Each block contains a text string and a boolean indicating whether it should be translated. This allows for selective translation where some text blocks can be preserved in their original form while others are translated. " +
+      `Max ${MAX_TEXT_BLOCKS} blocks per call: split larger inputs into multiple calls.`
     ),
   source: z
     .string()
@@ -40,17 +44,12 @@ export const translateSchema = z.object({
       "Additional context string to improve translation quality (e.g., 'This is a legal document' or 'Im talking with a doctor'). This helps the translation system better understand the domain."
     ),
   instructions: z
-    .array(
-      z.string()
-        .refine(
-          (s) => s.trim().split(/\s+/).length <= MAX_INSTRUCTION_WORDS,
-          { message: `Each instruction must be no more than ${MAX_INSTRUCTION_WORDS} words` }
-        )
-    )
+    // Not enforced: Lara accepts much longer instructions, the limit is only advice.
+    .array(z.string())
     .optional()
     .describe(
       `Optional list of short localization directives to adjust translation output. ` +
-      `Each instruction MUST be no more than ${MAX_INSTRUCTION_WORDS} words. ` +
+      `Keep each instruction short (about 20 words). ` +
       `These are NOT free-form LLM prompts — they are expert localization directives about formality, tone, or domain-specific terminology. ` +
       `Only provide instructions when the content specifically requires them; omitting instructions for general content preserves higher translation quality. ` +
       `Do NOT combine contradictory instructions (e.g., formal and informal tone together). ` +
