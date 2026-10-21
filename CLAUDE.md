@@ -78,6 +78,8 @@ All MCP tools are organized in individual files under `src/mcp/tools/`:
 - `translate.ts` - Main translation with context, instructions, memory support, and glossaries
   - Advanced options: `glossaries` (array of glossary IDs, max 10), `no_trace` (privacy flag), `priority` (normal/background), `timeout_in_millis` (max 300000ms)
   - Validation includes format checks for glossary IDs (`gls_*` pattern) and timeout limits
+  - `text`: 1–128 blocks; a bare string block is read as `{ text }` (input only)
+  - `instructions`: the ~20-word limit is advice in the description, not enforced (Lara accepts longer)
 
 **Glossary Management Tools:**
 - `list_glossaries.ts` - List all glossaries
@@ -217,7 +219,9 @@ tool call.
     `reasoning`, `blockCount`, `glossaryCount`, `memoryCount`,
     `instructionCount`, `hasContext`) only from a successful schema parse.
   - Errors: `httpStatus`, `laraErrorType` (identifier-shaped only),
-    `invalidFields` (Zod paths, indices folded to `*`, max 10).
+    `invalidFields` (Zod paths, indices folded to `*`, max 10), `invalidIssues`
+    (`<path>:<zod issue code>`, e.g. `text:too_big`, same folding and cap; never
+    the message).
 - **Where it is emitted**: inside `CallTool`'s own try/catch, not from a wrapper
   around it — `CallTool` turns every failure into an `isError` result, so only
   there is the original error still available to classify.

@@ -354,9 +354,18 @@ describe("errorDetailsFor", () => {
     expect(new Set(invalidFields).size).toBe(invalidFields.length);
   });
 
+  it("pairs each invalid field with its Zod issue code, deduplicated and never the message", () => {
+    const schema = z.object({ text: z.array(z.object({ text: z.string() })).max(1) });
+    const error = schema.safeParse({ text: [{ text: 1 }, 2, 3] }).error!;
+    const { invalidIssues } = metrics.errorDetailsFor(error) as { invalidIssues: string[] };
+
+    expect(invalidIssues).toEqual(["text.*.text:invalid_type", "text.*:invalid_type", "text:too_big"]);
+  });
+
   it("names the whole argument object when the issue has no path", () => {
     expect(metrics.errorDetailsFor(z.object({}).safeParse("x").error)).toEqual({
       invalidFields: ["arguments"],
+      invalidIssues: ["arguments:invalid_type"],
     });
   });
 

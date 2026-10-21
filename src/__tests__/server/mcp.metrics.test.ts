@@ -216,6 +216,7 @@ describe("getMcpServer funnel metrics", () => {
     expect(events.map((event: any) => event.eventType)).toEqual(["auth_success", "call_error"]);
     expect(events[1].errorType).toBe("validation_error");
     expect(events[1].metadata.invalidFields).toContain("target");
+    expect(events[1].metadata.invalidIssues).toContain("target:invalid_type");
   });
 
   it("reports a key Lara rejected outright as one auth_fail with no account", async () => {
