@@ -47,6 +47,15 @@ describe('CallTool error handling', () => {
     expectToolError(result, 'Memory not found');
   });
 
+  it('should tell the model what a 403 means instead of Lara\'s raw text', async () => {
+    mockTranslator.memories.delete.mockRejectedValue(new LaraApiError(403, 'Forbidden', 'operation not allowed'));
+
+    const request = makeRequest('delete_memory', { id: 'mem_abc123' });
+    const result = await CallTool(request, mockTranslator as any as Translator);
+
+    expectToolError(result, /^Lara Translate refused this operation for this account/);
+  });
+
   it('should surface timeout error message', async () => {
     const timeoutError = new LaraTimeoutError('Request timed out');
     mockTranslator.memories.delete.mockRejectedValue(timeoutError);
