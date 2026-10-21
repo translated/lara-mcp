@@ -156,7 +156,8 @@ Error handling in `src/mcp/tools.ts` (`CallTool`):
 - Unknown tool names throw a `ProtocolError` with code -32602 (JSON-RPC error)
 - Every tool execution failure is returned in-band as `{ isError: true, content: [{ type: "text", text }] }` so the model can read it and self-correct:
   - Zod validation errors list field names and reasons (not full error details for security)
-  - `InvalidInputError`, `LaraApiError` messages and the Lara timeout message are surfaced as-is
+  - A `LaraApiError` 403 that is not an `AuthenticationError` gets a fixed `FORBIDDEN` text (key valid, operation not allowed for the account)
+  - `InvalidInputError`, other `LaraApiError` messages and the Lara timeout message are surfaced as-is
   - Other unexpected errors are logged internally and returned as generic "An error occurred while processing your request" message
 - Privacy-sensitive translations (with `no_trace=true`) are logged for audit purposes
 
@@ -196,7 +197,9 @@ tool call.
   account per process — the HTTP transport is stateless and builds a Translator
   per request), `call_success`,
   `call_error`, and `auth_fail` beside a `call_error` Lara answered with
-  401/403. Unknown tool names are not reported.
+  401 or an `AuthenticationError` (`auth_401`/`auth_403`). Any other 403 is
+  `forbidden_403`: the key was accepted, the operation was not, so it counts
+  toward `auth_success` and emits no `auth_fail`. Unknown tool names are not reported.
 - **`accountId`**: the `id` claim of the Lara token the SDK holds, read through
   `getLaraClient()` in `src/lara-client.ts` (the one cast through the SDK's
   `protected client`). The SDK authenticates lazily, so it is only knowable

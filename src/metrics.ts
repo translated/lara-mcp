@@ -505,14 +505,17 @@ export function accountIdFromToken(token: string): string | undefined {
 export function errorTypeFor(error: unknown): string {
   if (error instanceof LaraApiError) {
     const status = error.statusCode;
-    if (status === 401 || status === 403) return `auth_${status}`;
-    if (status === 429) return "rate_limit_429";
-    if (status === 413) return "payload_too_large";
     if (error.type === "AuthenticationError") {
       // The SDK wraps a /v2/auth request that never got an answer as a 500 AuthenticationError:
       // the network failed, the credentials were never judged.
-      return status >= 500 ? "network_error" : "auth_401";
+      if (status >= 500) return "network_error";
+      return status === 403 ? "auth_403" : "auth_401";
     }
+    if (status === 401) return "auth_401";
+    // Any other 403 comes from a key Lara accepted: the account may not do this, its credentials are fine.
+    if (status === 403) return "forbidden_403";
+    if (status === 429) return "rate_limit_429";
+    if (status === 413) return "payload_too_large";
     if (status >= 500) return "server_error";
     // Every other 4xx from Lara is a request we built wrong.
     if (status >= 400) return "validation_error";
