@@ -14,9 +14,8 @@ overrides:
   path-to-regexp@>=8.0.0 <8.4.2: ^8.4.2
   postcss@<8.5.23: ^8.5.23
   nanoid@<3.3.18: ^3.3.18
-  vite@<7.3.5: ^7.3.5
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
-  hono@<4.13.5: ^4.13.5
+  hono@<4.13.11: ^4.13.11
   '@hono/node-server@<1.19.15': ^1.19.15
   body-parser@>=2.0.0 <2.3.0: ^2.3.0
   form-data@>=4.0.0 <4.0.6: ^4.0.6
@@ -274,7 +273,7 @@ packages:
     resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: ^4.13.5
+      hono: ^4.13.11
 
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
@@ -522,7 +521,7 @@ packages:
     resolution: {integrity: sha512-fKShNpKZzupWZuY0z7egydvL0sqW4INEZBEExMBMAa6izlENEVHwoXgdaTCaBZ5fwlr4xf2o1wXC83n9RpO+NA==}
     peerDependencies:
       msw: ^2.4.9
-      vite: ^7.3.5
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       msw:
         optional: true
@@ -1241,7 +1240,7 @@ packages:
       '@vitest/ui': 4.1.12
       happy-dom: '*'
       jsdom: '*'
-      vite: ^7.3.5
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
