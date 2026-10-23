@@ -17,5 +17,4 @@ services:
       - ./package.json:/opt/package.json
       - ./pnpm-lock.yaml:/opt/pnpm-lock.yaml
       - ./vitest.config.ts:/opt/vitest.config.ts
-      - ./nodemon.json:/opt/nodemon.json
       - ./tsconfig.json:/opt/tsconfig.json

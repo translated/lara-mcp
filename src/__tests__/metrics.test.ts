@@ -126,7 +126,9 @@ describe("errorTypeFor", () => {
 
   it.each([
     [new LaraApiError(401, "AuthenticationError", "nope"), "auth_401"],
-    [new LaraApiError(403, "Forbidden", "nope"), "auth_403"],
+    [new LaraApiError(403, "AuthenticationError", "nope"), "auth_403"],
+    // The key was accepted, the operation was not: not a credentials failure.
+    [new LaraApiError(403, "Forbidden", "nope"), "forbidden_403"],
     [new LaraApiError(429, "TooManyRequests", "slow down"), "rate_limit_429"],
     [new LaraApiError(413, "PayloadTooLarge", "too big"), "payload_too_large"],
     [new LaraApiError(500, "ServerError", "boom"), "server_error"],
@@ -354,9 +356,18 @@ describe("errorDetailsFor", () => {
     expect(new Set(invalidFields).size).toBe(invalidFields.length);
   });
 
+  it("pairs each invalid field with its Zod issue code, deduplicated and never the message", () => {
+    const schema = z.object({ text: z.array(z.object({ text: z.string() })).max(1) });
+    const error = schema.safeParse({ text: [{ text: 1 }, 2, 3] }).error!;
+    const { invalidIssues } = metrics.errorDetailsFor(error) as { invalidIssues: string[] };
+
+    expect(invalidIssues).toEqual(["text.*.text:invalid_type", "text.*:invalid_type", "text:too_big"]);
+  });
+
   it("names the whole argument object when the issue has no path", () => {
     expect(metrics.errorDetailsFor(z.object({}).safeParse("x").error)).toEqual({
       invalidFields: ["arguments"],
+      invalidIssues: ["arguments:invalid_type"],
     });
   });
 
@@ -1073,7 +1084,7 @@ describe("reporting a tool call", () => {
 
     metrics.reportCallSuccess(ctx, call("translate", {}));
     metrics.reportCallError(ctx, call("translate", {}), new LaraApiError(401, "AuthenticationError", "nope"));
-    metrics.reportCallError(ctx, call("list_memories"), new LaraApiError(403, "Forbidden", "nope"));
+    metrics.reportCallError(ctx, call("list_memories"), new LaraApiError(403, "AuthenticationError", "nope"));
     await metrics.flushNow();
 
     const events = sentEvents();
@@ -1085,6 +1096,22 @@ describe("reporting a tool call", () => {
     expect(events[0].metadata).toMatchObject({ toolName: "translate", httpStatus: 401 });
   });
 
+  it("reports a plain 403 as forbidden_403, with auth_success and no auth_fail", async () => {
+    const ctx = accountCtx(metrics)!;
+    ctx.accountId = ACCOUNT;
+
+    metrics.reportCallError(ctx, call("list_memories"), new LaraApiError(403, "Forbidden", "operation not allowed"));
+    await metrics.flushNow();
+
+    const events = sentEvents();
+    // The key was accepted, only the operation was refused: not a credentials failure.
+    expect(events.map((e: any) => [e.eventType, e.errorType])).toEqual([
+      ["auth_success", undefined],
+      ["call_error", "forbidden_403"],
+    ]);
+    expect(events[1]).toMatchObject({ accountId: ACCOUNT, metadata: { toolName: "list_memories", httpStatus: 403 } });
+  });
+
   it("reports nothing for any other error before the account is known", async () => {
     const ctx = metrics.createMetricsContext(translatorWithToken(undefined))!;
 
@@ -1092,6 +1119,8 @@ describe("reporting a tool call", () => {
     metrics.reportCallError(ctx, call("translate", {}), new TimeoutError("slow"));
     // A network failure during /v2/auth: the key was never judged.
     metrics.reportCallError(ctx, call("translate", {}), new LaraApiError(500, "AuthenticationError", "fetch failed"));
+    // A plain 403 is about the operation, not the key: without an account it has nowhere to go.
+    metrics.reportCallError(ctx, call("list_memories"), new LaraApiError(403, "Forbidden", "nope"));
     await metrics.flushNow();
 
     expect(fetchMock).not.toHaveBeenCalled();

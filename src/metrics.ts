@@ -505,14 +505,17 @@ export function accountIdFromToken(token: string): string | undefined {
 export function errorTypeFor(error: unknown): string {
   if (error instanceof LaraApiError) {
     const status = error.statusCode;
-    if (status === 401 || status === 403) return `auth_${status}`;
-    if (status === 429) return "rate_limit_429";
-    if (status === 413) return "payload_too_large";
     if (error.type === "AuthenticationError") {
       // The SDK wraps a /v2/auth request that never got an answer as a 500 AuthenticationError:
       // the network failed, the credentials were never judged.
-      return status >= 500 ? "network_error" : "auth_401";
+      if (status >= 500) return "network_error";
+      return status === 403 ? "auth_403" : "auth_401";
     }
+    if (status === 401) return "auth_401";
+    // Any other 403 comes from a key Lara accepted: the account may not do this, its credentials are fine.
+    if (status === 403) return "forbidden_403";
+    if (status === 429) return "rate_limit_429";
+    if (status === 413) return "payload_too_large";
     if (status >= 500) return "server_error";
     // Every other 4xx from Lara is a request we built wrong.
     if (status >= 400) return "validation_error";
@@ -539,7 +542,8 @@ const MAX_INVALID_FIELDS = 10;
 /**
  * What went wrong, beyond errorType, for the problems errorType groups together. Never a message:
  * those can quote the request. The Lara error type is an identifier from the API, kept only while it
- * looks like one; the invalid fields are schema paths with array indices folded, never a value.
+ * looks like one; the invalid fields are schema paths with array indices folded, never a value, and
+ * the invalid issues the same paths with the Zod issue code.
  */
 export function errorDetailsFor(error: unknown): Record<string, unknown> {
   if (error instanceof LaraApiError) {
@@ -555,8 +559,14 @@ export function errorDetailsFor(error: unknown): Record<string, unknown> {
         ? issue.path.map((key) => (typeof key === "number" ? "*" : String(key))).join(".").slice(0, 64)
         : "arguments"
     );
+    // The why beside the where: Zod's issue code is a closed vocabulary (too_big, invalid_type...),
+    // its message is not and can quote the value.
+    const issues = error.issues.map((issue, i) => `${fields[i]}:${issue.code}`);
     // In issue order, which is schema order: the first fields are the ones a client got wrong first.
-    return { invalidFields: [...new Set(fields)].slice(0, MAX_INVALID_FIELDS) };
+    return {
+      invalidFields: [...new Set(fields)].slice(0, MAX_INVALID_FIELDS),
+      invalidIssues: [...new Set(issues)].slice(0, MAX_INVALID_FIELDS),
+    };
   }
 
   return {};

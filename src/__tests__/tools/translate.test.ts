@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { translateHandler, translateSchema } from '../../mcp/tools/translate.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
+import { ListTools } from '../../mcp/tools.js';
 
 // Setup mocks
 setupTranslatorMock();
@@ -139,22 +140,38 @@ describe('translateSchema', () => {
     })).not.toThrow();
   });
 
-  it('should reject an instruction with more than 20 words', () => {
-    const twentyOneWords = Array(21).fill('word').join(' ');
+  it('should accept an instruction longer than 20 words', () => {
+    const thirtyWords = Array(30).fill('word').join(' ');
     expect(() => translateSchema.parse({
       text: [{ text: 'hello', translatable: true }],
       target: 'it-IT',
-      instructions: [twentyOneWords]
-    })).toThrow(/no more than 20 words/);
+      instructions: ['Translate formally', thirtyWords]
+    })).not.toThrow();
   });
 
-  it('should reject when any instruction exceeds the word limit', () => {
-    const longInstruction = Array(25).fill('word').join(' ');
-    expect(() => translateSchema.parse({
-      text: [{ text: 'hello', translatable: true }],
-      target: 'it-IT',
-      instructions: ['Translate formally', longInstruction]
-    })).toThrow(/no more than 20 words/);
+  it('should reject an empty text array', () => {
+    expect(() => translateSchema.parse({ text: [], target: 'it-IT' })).toThrow();
+  });
+
+  it('should accept 128 text blocks and reject 129', () => {
+    const blocks = (n: number) => Array.from({ length: n }, () => ({ text: 'hello' }));
+    expect(() => translateSchema.parse({ text: blocks(128), target: 'it-IT' })).not.toThrow();
+    expect(() => translateSchema.parse({ text: blocks(129), target: 'it-IT' })).toThrow();
+  });
+
+  it('should read bare strings as text blocks', () => {
+    expect(translateSchema.parse({ text: ['a', 'b'], target: 'it-IT' }).text).toEqual([
+      { text: 'a' },
+      { text: 'b' }
+    ]);
+  });
+
+  it('should advertise the block limits and object items in the published input schema', async () => {
+    const { tools } = await ListTools();
+    const text = (tools.find((tool) => tool.name === 'translate')!.inputSchema.properties as any).text;
+    expect(text.minItems).toBe(1);
+    expect(text.maxItems).toBe(128);
+    expect(text.items.type).toBe('object');
   });
 
   it('should accept an empty instructions array', () => {

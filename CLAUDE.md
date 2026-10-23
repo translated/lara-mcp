@@ -78,6 +78,8 @@ All MCP tools are organized in individual files under `src/mcp/tools/`:
 - `translate.ts` - Main translation with context, instructions, memory support, and glossaries
   - Advanced options: `glossaries` (array of glossary IDs, max 10), `no_trace` (privacy flag), `priority` (normal/background), `timeout_in_millis` (max 300000ms)
   - Validation includes format checks for glossary IDs (`gls_*` pattern) and timeout limits
+  - `text`: 1–128 blocks; a bare string block is read as `{ text }` (input only)
+  - `instructions`: the ~20-word limit is advice in the description, not enforced (Lara accepts longer)
 
 **Glossary Management Tools:**
 - `list_glossaries.ts` - List all glossaries
@@ -156,7 +158,8 @@ Error handling in `src/mcp/tools.ts` (`CallTool`):
 - Unknown tool names throw a `ProtocolError` with code -32602 (JSON-RPC error)
 - Every tool execution failure is returned in-band as `{ isError: true, content: [{ type: "text", text }] }` so the model can read it and self-correct:
   - Zod validation errors list field names and reasons (not full error details for security)
-  - `InvalidInputError`, `LaraApiError` messages and the Lara timeout message are surfaced as-is
+  - A `LaraApiError` 403 that is not an `AuthenticationError` gets a fixed `FORBIDDEN` text (key valid, operation not allowed for the account)
+  - `InvalidInputError`, other `LaraApiError` messages and the Lara timeout message are surfaced as-is
   - Other unexpected errors are logged internally and returned as generic "An error occurred while processing your request" message
 - Privacy-sensitive translations (with `no_trace=true`) are logged for audit purposes
 
@@ -196,7 +199,9 @@ tool call.
   account per process — the HTTP transport is stateless and builds a Translator
   per request), `call_success`,
   `call_error`, and `auth_fail` beside a `call_error` Lara answered with
-  401/403. Unknown tool names are not reported.
+  401 or an `AuthenticationError` (`auth_401`/`auth_403`). Any other 403 is
+  `forbidden_403`: the key was accepted, the operation was not, so it counts
+  toward `auth_success` and emits no `auth_fail`. Unknown tool names are not reported.
 - **`accountId`**: the `id` claim of the Lara token the SDK holds, read through
   `getLaraClient()` in `src/lara-client.ts` (the one cast through the SDK's
   `protected client`). The SDK authenticates lazily, so it is only knowable
@@ -217,7 +222,9 @@ tool call.
     `reasoning`, `blockCount`, `glossaryCount`, `memoryCount`,
     `instructionCount`, `hasContext`) only from a successful schema parse.
   - Errors: `httpStatus`, `laraErrorType` (identifier-shaped only),
-    `invalidFields` (Zod paths, indices folded to `*`, max 10).
+    `invalidFields` (Zod paths, indices folded to `*`, max 10), `invalidIssues`
+    (`<path>:<zod issue code>`, e.g. `text:too_big`, same folding and cap; never
+    the message).
 - **Where it is emitted**: inside `CallTool`'s own try/catch, not from a wrapper
   around it — `CallTool` turns every failure into an `isError` result, so only
   there is the original error still available to classify.
@@ -253,8 +260,8 @@ Tests use Vitest with coverage reporting (v8 provider).
 
 ## Security Features
 
-- **Input validation**: All glossary IDs validated with regex, timeout capped at 300000ms, max 10 glossaries per request
-- **Error sanitization**: Zod errors filtered to show only field names, SDK errors hidden behind generic messages
+- **Input validation**: All glossary IDs validated with regex, timeout capped at 300000ms, max 10 glossaries per request, `text` 1–128 blocks
+- **Error sanitization**: Zod errors reduced to field path and Zod message (no input values), SDK errors hidden behind generic messages
 - **Audit logging**: Privacy-sensitive requests (no_trace=true) logged for compliance
 - **Credential protection**: Access key ID never logged in debug mode
 

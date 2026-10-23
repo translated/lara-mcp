@@ -1,6 +1,6 @@
 {
   "name": "@translated/lara-mcp",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Lara API official MCP server",
   "author": {
     "name": "Translated",
@@ -17,7 +17,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.23.4"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -36,7 +36,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "dev": "nodemon src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -54,29 +54,28 @@
     "translated"
   ],
   "dependencies": {
-    "@modelcontextprotocol/node": "^2.0.0",
-    "@modelcontextprotocol/server": "^2.0.0",
+    "@modelcontextprotocol/node": "^2.1.1",
+    "@modelcontextprotocol/server": "^2.3.1",
     "@translated/lara": "^1.8.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
-    "hono": "^4.13.8",
+    "hono": "^4.13.13",
     "pino": "^9.14.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.2.0",
+    "@modelcontextprotocol/client": "^2.3.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.15",
     "@types/supertest": "^6.0.3",
-    "@vitest/coverage-v8": "^4.1.11",
-    "nodemon": "^3.1.14",
+    "@vitest/coverage-v8": "^4.1.12",
     "supertest": "^7.2.2",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",
-    "vite": "^7.3.6",
-    "vitest": "^4.1.11"
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12"
   },
   "pnpm": {
     "overrides": {
@@ -89,9 +88,8 @@
       "path-to-regexp@>=8.0.0 <8.4.2": "^8.4.2",
       "postcss@<8.5.23": "^8.5.23",
       "nanoid@<3.3.18": "^3.3.18",
-      "vite@<7.3.5": "^7.3.5",
       "esbuild@>=0.27.3 <0.28.1": "^0.28.1",
-      "hono@<4.13.5": "^4.13.5",
+      "hono@<4.13.13": "^4.13.13",
       "@hono/node-server@<1.19.15": "^1.19.15",
       "body-parser@>=2.0.0 <2.3.0": "^2.3.0",
       "form-data@>=4.0.0 <4.0.6": "^4.0.6",

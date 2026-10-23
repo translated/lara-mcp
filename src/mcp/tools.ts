@@ -123,6 +123,7 @@ import { logger } from "#logger";
 import {
   type CallInfo,
   type MetricsContext,
+  errorTypeFor,
   reportCallError,
   reportCallSuccess,
 } from "../metrics.js";
@@ -285,6 +286,9 @@ async function CallTool(
   }
 }
 
+const FORBIDDEN =
+  "Lara Translate refused this operation for this account: the access key is valid, but not allowed to do this. Check the account's plan or permissions; retrying will not help.";
+
 function toolErrorMessage(error: unknown, name: string): string {
   if (error instanceof z.ZodError) {
     const fieldErrors = error.issues
@@ -295,6 +299,10 @@ function toolErrorMessage(error: unknown, name: string): string {
       .join('; ');
     return `Invalid input: ${fieldErrors}`;
   }
+
+  // Lara's own text ("operation not allowed") does not say what to do next.
+  // Keyed off the metrics classification, so the metric and what the model is told never disagree.
+  if (errorTypeFor(error) === "forbidden_403") return FORBIDDEN;
 
   if (error instanceof InvalidInputError || error instanceof LaraApiError) {
     return error.message;

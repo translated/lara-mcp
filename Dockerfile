@@ -1,4 +1,4 @@
-FROM node:22.14.0-alpine
+FROM node:22.23.4-alpine
 
 ENV CI=true
 
