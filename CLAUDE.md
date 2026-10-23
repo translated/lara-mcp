@@ -260,8 +260,8 @@ Tests use Vitest with coverage reporting (v8 provider).
 
 ## Security Features
 
-- **Input validation**: All glossary IDs validated with regex, timeout capped at 300000ms, max 10 glossaries per request
-- **Error sanitization**: Zod errors filtered to show only field names, SDK errors hidden behind generic messages
+- **Input validation**: All glossary IDs validated with regex, timeout capped at 300000ms, max 10 glossaries per request, `text` 1–128 blocks
+- **Error sanitization**: Zod errors reduced to field path and Zod message (no input values), SDK errors hidden behind generic messages
 - **Audit logging**: Privacy-sensitive requests (no_trace=true) logged for compliance
 - **Credential protection**: Access key ID never logged in debug mode
 
