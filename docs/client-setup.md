@@ -21,7 +21,7 @@ Connect Lara Translate to your favorite AI client. The recommended method uses *
 1. Open Claude Desktop and go to **Settings** > **Connectors**
 2. Click **Add Custom Connector**
 3. Enter the name: `Lara`
-4. Enter the URL: `https://mcp-v2.laratranslate.com/v1`
+4. Enter the URL: `https://mcp.laratranslate.com/v1`
 5. Click **Add**
 6. Click **Connect** next to the connector. Your browser will open the Lara Translate login page.
 7. Log in with your Lara Translate credentials. You'll be redirected back to Claude Desktop automatically.
@@ -34,13 +34,11 @@ That's it — Lara Translate is now available in your conversations.
 
 ## Cursor
 
-The recommended install is via the Cursor plugin marketplace: open the plugin browser, search for **Lara Translate**, and click **Install**. The first tool call opens your browser to authenticate.
-
-Alternatively, configure the MCP server manually:
+Configure the MCP server manually:
 
 1. Open the MCP config file:
    - **macOS**: `~/.cursor/mcp.json`
-   - **Windows**: `%APPDATA%\Cursor\mcp.json`
+   - **Windows**: `%USERPROFILE%\.cursor\mcp.json`
    - **Linux**: `~/.cursor/mcp.json`
 
 2. Paste:
@@ -49,7 +47,7 @@ Alternatively, configure the MCP server manually:
 {
   "mcpServers": {
     "lara-translate": {
-      "url": "https://mcp-v2.laratranslate.com/v1"
+      "url": "https://mcp.laratranslate.com/v1"
     }
   }
 }
@@ -65,7 +63,7 @@ Alternatively, configure the MCP server manually:
 Run this command in your terminal:
 
 ```bash
-claude mcp add lara-translate --transport http --url https://mcp-v2.laratranslate.com/v1
+claude mcp add --transport http lara-translate https://mcp.laratranslate.com/v1
 ```
 
 The first time Lara tools are used, Claude Code will open your browser to authenticate with your Lara Translate credentials.
@@ -77,7 +75,7 @@ Alternatively, create a `.mcp.json` file in your project root:
   "mcpServers": {
     "lara-translate": {
       "type": "http",
-      "url": "https://mcp-v2.laratranslate.com/v1"
+      "url": "https://mcp.laratranslate.com/v1"
     }
   }
 }
@@ -98,7 +96,7 @@ Create a `.vscode/mcp.json` file in your project:
   "servers": {
     "lara-translate": {
       "type": "http",
-      "url": "https://mcp-v2.laratranslate.com/v1"
+      "url": "https://mcp.laratranslate.com/v1"
     }
   }
 }
@@ -114,7 +112,7 @@ Open VS Code Settings (JSON) and add:
     "servers": {
       "lara-translate": {
         "type": "http",
-        "url": "https://mcp-v2.laratranslate.com/v1"
+        "url": "https://mcp.laratranslate.com/v1"
       }
     }
   }
@@ -141,7 +139,7 @@ Save and reload VS Code. When you first use a Lara tool in Copilot's agent mode,
 {
   "mcpServers": {
     "lara-translate": {
-      "serverUrl": "https://mcp-v2.laratranslate.com/v1"
+      "serverUrl": "https://mcp.laratranslate.com/v1"
     }
   }
 }
@@ -162,7 +160,7 @@ Save and reload VS Code. When you first use a Lara tool in Copilot's agent mode,
 {
   "mcpServers": {
     "lara-translate": {
-      "url": "https://mcp-v2.laratranslate.com/v1"
+      "url": "https://mcp.laratranslate.com/v1"
     }
   }
 }
@@ -187,7 +185,7 @@ Save and reload VS Code. When you first use a Lara tool in Copilot's agent mode,
   "mcpServers": [
     {
       "name": "lara-translate",
-      "url": "https://mcp-v2.laratranslate.com/v1"
+      "url": "https://mcp.laratranslate.com/v1"
     }
   ]
 }
@@ -210,7 +208,7 @@ Add your credentials as headers alongside the URL:
 ```json
 {
   "lara-translate": {
-    "url": "https://mcp-v2.laratranslate.com/v1",
+    "url": "https://mcp.laratranslate.com/v1",
     "headers": {
       "x-lara-access-key-id": "<YOUR_ACCESS_KEY_ID>",
       "x-lara-access-key-secret": "<YOUR_ACCESS_KEY_SECRET>"
@@ -238,7 +236,7 @@ Paste:
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp-v2.laratranslate.com/v1",
+        "https://mcp.laratranslate.com/v1",
         "--header",
         "x-lara-access-key-id: ${X_LARA_ACCESS_KEY_ID}",
         "--header",

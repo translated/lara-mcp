@@ -1,6 +1,6 @@
 # Lara Translate — plugin
 
-Official plugin for [Lara Translate](https://laratranslate.com), compatible with both **Claude Code** and **Cursor**. Gives your AI assistant access to Lara's translation engine, translation memories, and glossaries via the hosted MCP endpoint at `https://mcp-v2.laratranslate.com/v1`.
+Official plugin for [Lara Translate](https://laratranslate.com), compatible with both **Claude Code** and **Cursor**. Gives your AI assistant access to Lara's translation engine, translation memories, and glossaries via the hosted MCP endpoint at `https://mcp.laratranslate.com/v1` (also reachable at `https://mcp-v2.laratranslate.com/v1`).
 
 ## Install
 

@@ -1,6 +1,6 @@
 {
   "name": "@translated/lara-mcp",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Lara API official MCP server",
   "author": {
     "name": "Translated",
@@ -44,13 +44,14 @@
   },
   "keywords": [
     "mcp",
-    "mcpserver",
+    "mcp-server",
+    "model-context-protocol",
     "laratranslate",
     "lara",
-    "translate",
     "translation",
-    "ai",
     "translate",
+    "localization",
+    "ai",
     "translated"
   ],
   "dependencies": {
