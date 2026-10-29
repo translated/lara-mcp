@@ -12,12 +12,14 @@ Lara leverages Translation Language Models (T-LMs) trained on billions of profes
 
 Pick your client below — no API keys needed, just log in through your browser.
 
+> The previous URL, https://mcp-v2.laratranslate.com/v1, keeps working: existing connectors need no change.
+
 ### Claude Desktop
 
 1. Go to **Settings** > **Connectors**
 2. Click **Add Custom Connector**
 3. Enter the name: `Lara`
-4. Enter the URL: `https://mcp-v2.laratranslate.com/v1`
+4. Enter the URL: `https://mcp.laratranslate.com/v1`
 5. Click **Add**, then click **Connect**
 6. Log in with your Lara Translate credentials in the browser
 
@@ -25,31 +27,37 @@ Done — Lara Translate is now available in your conversations.
 
 ### Cursor
 
-Once Lara Translate is listed in the official Cursor plugin marketplace, install it from inside Cursor:
+Add to `~/.cursor/mcp.json`:
 
-1. Open the plugin browser and search for **Lara Translate**.
-2. Click **Install**.
-3. The first time you use a Lara tool, your browser will open to authenticate.
+```json
+{
+  "mcpServers": {
+    "lara-translate": {
+      "url": "https://mcp.laratranslate.com/v1"
+    }
+  }
+}
+```
 
-In the meantime, or for manual installation, see the [Client Setup Guide](docs/client-setup.md#cursor).
+Restart Cursor. The first time you use a Lara tool, your browser will open to authenticate.
+
+Full instructions: [Client Setup Guide](docs/client-setup.md#cursor).
 
 ### Claude Code
 
-Once Lara Translate is listed in the official Claude Code plugin marketplace, install it from inside Claude Code:
-
-```
-/plugin
+```bash
+claude mcp add --transport http lara-translate https://mcp.laratranslate.com/v1
 ```
 
-Search for **Lara Translate** and install. The first time you use a Lara tool, your browser will open to authenticate.
+Then run `/mcp` inside Claude Code to log in through your browser.
 
-In the meantime, or for manual installation, see the [Client Setup Guide](docs/client-setup.md#claude-code).
+Full instructions: [Client Setup Guide](docs/client-setup.md#claude-code).
 
 ### Other Clients
 
 For step-by-step OAuth setup on **VS Code (GitHub Copilot)**, **Windsurf**, **Cline**, **Continue**, and more, see the **[Client Setup Guide](docs/client-setup.md)**.
 
-If your client isn't listed, the general approach is to add the server URL (`https://mcp-v2.laratranslate.com/v1`) to your MCP config — the client will handle OAuth authentication automatically.
+If your client isn't listed, the general approach is to add the server URL (`https://mcp.laratranslate.com/v1`) to your MCP config — the client will handle OAuth authentication automatically.
 
 > For a complete list of MCP-compatible clients, visit the [official MCP clients page](https://modelcontextprotocol.io/clients).
 
@@ -129,11 +137,11 @@ See the [Access Key section in the Client Setup Guide](docs/client-setup.md#alte
 
 ## Self-Hosting
 
-Most users can connect to the hosted endpoint (`https://mcp-v2.laratranslate.com/v1`) using the [Quick Start](#quick-start) instructions above. The options below are for running the server yourself.
+Most users can connect to the hosted endpoint (`https://mcp.laratranslate.com/v1`) using the [Quick Start](#quick-start) instructions above. The options below are for running the server yourself.
 
 ### STDIO via NPX
 
-Requires [Node.js](https://nodejs.org/).
+Requires [Node.js](https://nodejs.org/) 22.23.4 or later (the `engines` field of the published package). Only needed to run the server locally: the hosted endpoint above needs no installation.
 
 ```json
 {
@@ -177,6 +185,8 @@ Requires [Docker](https://www.docker.com/).
 ### Building from Source
 
 #### Node.js
+
+Requires Node.js 22.23.4 or later and pnpm.
 
 ```bash
 git clone https://github.com/translated/lara-mcp.git
