@@ -378,11 +378,13 @@ describe("errorDetailsFor", () => {
   });
 
   it("pairs each invalid field with its Zod issue code, deduplicated and never the message", () => {
-    const schema = z.object({ text: z.array(z.object({ text: z.string() })).max(1) });
-    const error = schema.safeParse({ text: [{ text: 1 }, 2, 3] }).error!;
-    const { invalidIssues } = metrics.errorDetailsFor(error) as { invalidIssues: string[] };
+    const schema = z.object({ text: z.array(z.object({ text: z.string() })).max(3) });
+    const issuesOf = (text: unknown[]) =>
+      (metrics.errorDetailsFor(schema.safeParse({ text }).error!) as { invalidIssues: string[] }).invalidIssues;
 
-    expect(invalidIssues).toEqual(["text.*.text:invalid_type", "text.*:invalid_type", "text:too_big"]);
+    expect(issuesOf([{ text: 1 }, 2, 3])).toEqual(["text.*.text:invalid_type", "text.*:invalid_type"]);
+    // Since zod 4.6.6 an oversized array is refused before its elements are validated.
+    expect(issuesOf([{ text: 1 }, 2, 3, 4])).toEqual(["text:too_big"]);
   });
 
   it("names the whole argument object when the issue has no path", () => {
