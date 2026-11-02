@@ -161,6 +161,27 @@ describe("errorTypeFor", () => {
   });
 });
 
+describe("isQuotaError", () => {
+  let metrics: Metrics;
+  beforeEach(async () => {
+    metrics = await loadMetrics();
+  });
+
+  it.each([
+    [new LaraApiError(403, "Forbidden", "quota exceeded"), true],
+    [new LaraApiError(400, "BadRequest", 'You have exceeded your "quota"'), true],
+    [new LaraApiError(429, "QuotaExceeded", "slow down"), true],
+    [new LaraApiError(400, "BadRequest", "unsupported quotation style"), false],
+    [new LaraApiError(403, "Forbidden", "operation not allowed"), false],
+    [new LaraApiError(429, "TooManyRequests", "slow down"), false],
+    // Only a Lara refusal: any other error's message is not ours to read.
+    [new Error("quota exceeded"), false],
+    [null, false],
+  ])("recognises a Lara out-of-quota refusal (%#)", (error, expected) => {
+    expect(metrics.isQuotaError(error)).toBe(expected);
+  });
+});
+
 describe("callFieldsFor", () => {
   let metrics: Metrics;
   beforeEach(async () => {
