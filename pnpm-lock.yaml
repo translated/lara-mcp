@@ -36,8 +36,8 @@ importers:
         specifier: ^2.3.1
         version: 2.3.1
       '@translated/lara':
-        specifier: ^1.8.3
-        version: 1.10.1
+        specifier: ^1.18.2
+        version: 1.18.2
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -448,8 +448,8 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@translated/lara@1.10.1':
-    resolution: {integrity: sha512-mUn/kCX8v1tzNveYGGZJuSym04hsSRwnh/J/kpQZMQCw3kFfdzrd3RPq4H43KuJaiyOz0ucwhFZCw2cbGTEmLQ==}
+  '@translated/lara@1.18.2':
+    resolution: {integrity: sha512-9C/AdZeoqpPPY8cXH265mejyH7rWaQHlAsR8ayzYIsRgrFrDtPPO5OgKBjd/lizOk0WZP14avTDfsLEQfMue9Q==}
     engines: {node: '>=12.*'}
 
   '@types/body-parser@1.19.6':
@@ -1507,7 +1507,7 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@translated/lara@1.10.1':
+  '@translated/lara@1.18.2':
     dependencies:
       form-data: 4.0.6
 

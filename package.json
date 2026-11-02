@@ -57,7 +57,7 @@
   "dependencies": {
     "@modelcontextprotocol/node": "^2.1.2",
     "@modelcontextprotocol/server": "^2.3.1",
-    "@translated/lara": "^1.8.3",
+    "@translated/lara": "^1.18.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
