@@ -201,7 +201,12 @@ tool call.
   `call_error`, and `auth_fail` beside a `call_error` Lara answered with
   401 or an `AuthenticationError` (`auth_401`/`auth_403`). Any other 403 is
   `forbidden_403`: the key was accepted, the operation was not, so it counts
-  toward `auth_success` and emits no `auth_fail`. Unknown tool names are not reported.
+  toward `auth_success` and emits no `auth_fail`. `quota_exceeded` replaces
+  `call_error` when Lara refuses a call for lack of quota (`isQuotaError`: a
+  `LaraApiError` whose type or message says `quota`, any status — the API has no
+  dedicated one): an upsell signal, not an integration fault. It counts toward
+  `auth_success`, carries `latencyMs` and the call's metadata, no `errorType`.
+  Unknown tool names are not reported.
 - **`accountId`**: the `id` claim of the Lara token the SDK holds, read through
   `getLaraClient()` in `src/lara-client.ts` (the one cast through the SDK's
   `protected client`). The SDK authenticates lazily, so it is only knowable

@@ -94,7 +94,7 @@ const BASE_METADATA = {
 };
 
 type MetricsEvent = {
-  eventType: "auth_success" | "auth_fail" | "call_success" | "call_error";
+  eventType: "auth_success" | "auth_fail" | "call_success" | "call_error" | "quota_exceeded";
   /** Absent only on an `auth_fail` for credentials Lara never accepted. */
   accountId?: string;
   errorType?: string;
@@ -536,6 +536,15 @@ export function errorTypeFor(error: unknown): string {
   return "unknown";
 }
 
+/**
+ * Lara refused the call because the account is out of quota. The API has no dedicated status for
+ * it, so it is matched on the error's type and message, as lara-cli does (`QuotaExceeded` too, but
+ * not `quotation`): the same refusal reads the same way on every channel.
+ */
+export function isQuotaError(error: unknown): boolean {
+  return error instanceof LaraApiError && /\bquota(?!tion)/i.test(`${error.type} ${error.message}`);
+}
+
 const LARA_ERROR_TYPE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const MAX_INVALID_FIELDS = 10;
 
@@ -706,6 +715,12 @@ function describeError(ctx: MetricsContext, call: CallInfo, error: unknown): voi
   // The SDK holds a token, so the credentials were accepted even though this call failed: a first
   // call that fails must not leave an account with errors and no auth_success.
   if (!isAuthError) reportAuthSuccessOnce(accountId, call);
+
+  // Out of quota is an upsell signal, not an integration fault: its own event, instead of call_error.
+  if (!isAuthError && isQuotaError(error)) {
+    logEvent({ eventType: "quota_exceeded", accountId, latencyMs: Date.now() - call.startedAt, metadata });
+    return;
+  }
 
   logEvent({
     eventType: "call_error",

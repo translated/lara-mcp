@@ -204,6 +204,24 @@ describe("getMcpServer funnel metrics", () => {
     expect(events[0].latencyMs).toBeGreaterThanOrEqual(0);
   });
 
+  it("reports an out-of-quota refusal as quota_exceeded instead of call_error", async () => {
+    const { getMcpServer, metrics } = await loadServer();
+    const { LaraApiError } = await import("@translated/lara");
+    getMcpServer("key-id", "key-secret");
+
+    translators[0].translate.mockRejectedValue(new LaraApiError(403, "Forbidden", "quota exceeded"));
+
+    await expectToolError(callTool("translate", { target: "it", text: [{ text: "hello" }] }));
+    await metrics.flushNow();
+
+    const events = sentEvents();
+    // Lara judged the key before refusing the call, so the account still authenticated.
+    expect(events.map((event: any) => event.eventType)).toEqual(["auth_success", "quota_exceeded"]);
+    expect(events[1].errorType).toBeUndefined();
+    expect(events[1].latencyMs).toBeGreaterThanOrEqual(0);
+    expect(events[1].metadata).toMatchObject({ toolName: "translate", feature: "text", httpStatus: 403 });
+  });
+
   it("reports a validation failure as call_error without auth_fail", async () => {
     const { getMcpServer, metrics } = await loadServer();
     getMcpServer("key-id", "key-secret");

@@ -252,7 +252,8 @@ They are **pseudonymous**, not anonymous: each event is tied to your Lara accoun
 id.
 
 **Events:** an `auth_success` the first time your credentials are accepted, a
-`call_success` / `call_error` per tool call, and an `auth_fail` when Lara
+`call_success` / `call_error` per tool call (`quota_exceeded` instead of
+`call_error` when the account is out of quota), and an `auth_fail` when Lara
 rejects your credentials (sent without an account id when the key never worked).
 
 **What is sent:**
