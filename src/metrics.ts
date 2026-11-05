@@ -206,6 +206,7 @@ function translateFieldsIn(args: unknown): {
     priority,
     contentType: content_type,
     reasoning,
+    reasoningEffort: reasoning ? parsed.data.reasoning_effort ?? "high" : undefined,
     glossaryCount: glossaries?.length,
     memoryCount: adapt_to?.length,
     instructionCount: instructions?.length,
@@ -651,16 +652,16 @@ const clientFields = ({ client, clientVersion }: CallInfo) => ({
  * Both reporters swallow their own failures: a bug in here must never turn a call Lara completed
  * into an error, or add a call_error to a call that succeeded.
  */
-export function reportCallSuccess(ctx: MetricsContext | undefined, call: CallInfo): void {
+export function reportCallSuccess(ctx: MetricsContext | undefined, call: CallInfo, reasoningFallback?: boolean): void {
   if (!ctx || isNoTrace(call.args)) return;
   try {
-    describeSuccess(ctx, call);
+    describeSuccess(ctx, call, reasoningFallback);
   } catch (error) {
     logger.debug({ error }, "Metrics: could not report a call");
   }
 }
 
-function describeSuccess(ctx: MetricsContext, call: CallInfo): void {
+function describeSuccess(ctx: MetricsContext, call: CallInfo, reasoningFallback?: boolean): void {
   const accountId = accountIdFor(ctx);
   if (!accountId) return;
 
@@ -672,7 +673,7 @@ function describeSuccess(ctx: MetricsContext, call: CallInfo): void {
     accountId,
     latencyMs: Date.now() - call.startedAt,
     charsTranslated,
-    metadata: { ...metadata, ...clientFields(call) },
+    metadata: { ...metadata, ...clientFields(call), ...(reasoningFallback === undefined ? {} : { reasoningFallback }) },
   });
 }
 

@@ -262,7 +262,9 @@ async function CallTool(
       // don't read structuredContent. The narration stays as the first block
       // so display-oriented clients keep their short summary.
       content: [
-        { type: "text", text: narrate(name, args, result) },
+        { type: "text", text: narrate(name, args, result) +
+          (name === "translate" && structuredContent.warnings
+            ? " Warning: Lara returned reasoning feedback; inspect warnings.reasoning (applied: false means Think was not applied)." : "") },
         { type: "text", text: JSON.stringify(structuredContent) },
       ],
     };
@@ -272,7 +274,8 @@ async function CallTool(
     // is the original error still in hand. Last, once the response is built, so
     // a call is never reported as both a success and an error. Fire-and-forget,
     // and it swallows its own failures — it never delays or alters the result.
-    reportCallSuccess(metrics, call);
+    reportCallSuccess(metrics, call, name === "translate" && structuredContent.warnings
+      ? (structuredContent.warnings as { reasoning: { applied: boolean } }).reasoning.applied === false : undefined);
     return response;
   } catch (error) {
     reportCallError(metrics, call, error);

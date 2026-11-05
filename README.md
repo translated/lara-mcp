@@ -310,3 +310,20 @@ in the background, and a monitoring backend that is down is ignored.
 
 - For issues with Lara Translate API: visit [Lara Translate Support](https://support.laratranslate.com)
 - For issues with this MCP server: open an issue on [GitHub](https://github.com/translated/lara-mcp/issues)
+
+## Lara Think
+
+Select Lara Think with `reasoning: true` on the `translate` tool. Choose Low,
+Medium or High with `reasoning_effort: "low" | "medium" | "high"`. Think defaults
+to **high** when the level is omitted. Without reasoning, Lara Base is used.
+A level requires `reasoning: true`; other combinations are rejected before the API call.
+
+```json
+{"text":[{"text":"Hello","translatable":true}],"target":"it","reasoning":true,"reasoning_effort":"medium"}
+```
+
+Think can take substantially longer. Existing timeout options still apply.
+If Lara reports a reasoning fallback, the translation is retained and
+`warnings.reasoning.applied: false` and an explanatory text warning are returned.
+Absence of feedback does not prove which reasoning level ran internally.
+Opted-in usage metrics include the requested effective level and reported fallback, never source text.

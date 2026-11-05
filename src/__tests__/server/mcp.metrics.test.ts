@@ -157,6 +157,18 @@ describe("getMcpServer funnel metrics", () => {
     expect(events[1].metadata.transport).toBe("http");
   });
 
+  it("reports Think effort and server fallback without error text", async () => {
+    const { getMcpServer, metrics } = await loadServer();
+    getMcpServer("key-id", "key-secret");
+    translators[0].translate.mockResolvedValue({ translation: [{ text: "ciao" }], warnings: { reasoning: { applied: false, error: { statusCode: 503, message: "private-backend-message" } } } });
+    await callTool("translate", { text: [{ text: "hello" }], target: "it", reasoning: true });
+    await metrics.flushNow();
+    const event = sentEvents().find((event: any) => event.eventType === "call_success");
+    expect(event.metadata).toMatchObject({ reasoningFallback: true });
+    expect(JSON.stringify(event)).toContain('"reasoningEffort":"high"');
+    expect(JSON.stringify(event)).not.toContain("private-backend-message");
+  });
+
   it("describes a translate call with feature, languages and character count", async () => {
     const { getMcpServer, metrics } = await loadServer();
     getMcpServer("key-id", "key-secret");

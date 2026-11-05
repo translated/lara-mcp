@@ -1,4 +1,4 @@
-import { Translator } from "@translated/lara";
+import { Translator, type TranslateOptions } from "@translated/lara";
 import { z } from "zod/v4";
 import { logger } from "#logger";
 import { glossaryIdSchema, textBlockSchema } from "./_schemas.js";
@@ -7,7 +7,14 @@ export { textBlockSchema };
 
 const MAX_TEXT_BLOCKS = 128;
 
+const reasoningWarningSchema = z.object({
+  applied: z.boolean(),
+  error: z.object({ statusCode: z.number(), message: z.string() }).optional(),
+  warnings: z.array(z.object({ code: z.string(), message: z.string() })).optional(),
+});
+
 export const translateOutputSchema = z.object({
+  warnings: z.object({ reasoning: reasoningWarningSchema }).optional(),
   items: z
     .array(textBlockSchema)
     .describe(
@@ -104,6 +111,8 @@ export const translateSchema = z.object({
     .describe(
       "Controls how the translation balances accuracy against natural readability. 'faithful' stays close to the source, 'fluid' prioritizes natural readability, 'creative' allows more freedom in the translation."
     ),
+  reasoning_effort: z.enum(["low", "medium", "high"]).optional()
+    .describe("Lara Think reasoning level. Requires reasoning: true; defaults to high."),
   reasoning: z
     .boolean()
     .optional()
@@ -116,6 +125,8 @@ export const translateSchema = z.object({
     .describe(
       "Specifies the content type of the text. Autodetected if omitted."
     ),
+}).refine((args) => args.reasoning_effort === undefined || args.reasoning === true, {
+  path: ["reasoning_effort"], message: "reasoning_effort requires reasoning: true",
 });
 
 const makeInstructions = (text: string) =>
@@ -135,6 +146,7 @@ export async function translateHandler(args: unknown, lara: Translator) {
     timeout_in_millis,
     style,
     reasoning,
+    reasoning_effort,
     content_type
   } = translateSchema.parse(args);
   let instructionsList = [...(instructions ?? [])];
@@ -153,7 +165,7 @@ export async function translateHandler(args: unknown, lara: Translator) {
   }
 
   // Build options object dynamically to avoid passing undefined values
-  const options: Record<string, unknown> = {};
+  const options: TranslateOptions = {};
 
   if (instructionsList.length > 0) {
     options.instructions = instructionsList;
@@ -178,11 +190,14 @@ export async function translateHandler(args: unknown, lara: Translator) {
   }
   if (typeof reasoning !== "undefined") {
     options.reasoning = reasoning;
+    if (reasoning) options.reasoningEffort = reasoning_effort ?? "high";
   }
   if (typeof content_type !== "undefined") {
     options.contentType = content_type;
   }
 
   const result = await lara.translate(text, source ?? null, target, options);
-  return result.translation;
+  return result.warnings?.reasoning
+    ? { items: result.translation, warnings: { reasoning: result.warnings.reasoning } }
+    : result.translation;
 }
