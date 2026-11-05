@@ -326,4 +326,5 @@ Think can take substantially longer. Existing timeout options still apply.
 If Lara reports a reasoning fallback, the translation is retained and
 `warnings.reasoning.applied: false` and an explanatory text warning are returned.
 Absence of feedback does not prove which reasoning level ran internally.
-Opted-in usage metrics include the requested effective level and reported fallback, never source text.
+Usage metrics are enabled by default and can be disabled as described in Usage Metrics above.
+When enabled, they include the requested effective level and reported fallback, never source text.
