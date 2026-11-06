@@ -121,6 +121,24 @@ afterEach(() => {
 });
 
 describe("getMcpServer funnel metrics", () => {
+  it.each(["enabled", "disabled", "no_trace"])("forwards progress with metrics %s", async (mode) => {
+    const { getMcpServer } = await loadServer(mode === "disabled" ? { DO_NOT_TRACK: "1" } : {});
+    getMcpServer("key-id", "key-secret");
+    translators[0].translate.mockImplementation(async (_text: unknown, _source: unknown, _target: unknown, _options: unknown, callback: (() => void) | undefined) => {
+      callback?.();
+      return { translation: [] };
+    });
+    const notify = vi.fn().mockResolvedValue(undefined);
+    const result = await callTool("translate", {
+      text: [{ text: "hello" }], target: "it", reasoning: true, no_trace: mode === "no_trace",
+    }, { mcpReq: { _meta: { progressToken: 0 }, signal: new AbortController().signal, notify } });
+    expect(result.isError).not.toBe(true);
+    expect(notify).toHaveBeenCalledWith({
+      method: "notifications/progress",
+      params: { progressToken: 0, progress: 1, message: "Received a translation update from Lara Think" },
+    });
+  });
+
   it("reports auth_success then a call_success per tool call", async () => {
     const { getMcpServer, metrics } = await loadServer();
     getMcpServer("key-id", "key-secret");
@@ -155,6 +173,18 @@ describe("getMcpServer funnel metrics", () => {
     const events = sentEvents();
     expect(events.filter((event: any) => event.eventType === "auth_success")).toHaveLength(1);
     expect(events[1].metadata.transport).toBe("http");
+  });
+
+  it("reports Think effort and server fallback without error text", async () => {
+    const { getMcpServer, metrics } = await loadServer();
+    getMcpServer("key-id", "key-secret");
+    translators[0].translate.mockResolvedValue({ translation: [{ text: "ciao" }], warnings: { reasoning: { applied: false, error: { statusCode: 503, message: "private-backend-message" } } } });
+    await callTool("translate", { text: [{ text: "hello" }], target: "it", reasoning: true });
+    await metrics.flushNow();
+    const event = sentEvents().find((event: any) => event.eventType === "call_success");
+    expect(event.metadata).toMatchObject({ reasoningFallback: true });
+    expect(JSON.stringify(event)).toContain('"reasoningEffort":"high"');
+    expect(JSON.stringify(event)).not.toContain("private-backend-message");
   });
 
   it("describes a translate call with feature, languages and character count", async () => {

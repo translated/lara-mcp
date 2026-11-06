@@ -3,6 +3,7 @@ import {
   CallToolResult,
   ProtocolError,
   ProtocolErrorCode,
+  type ServerContext,
   Tool,
 } from "@modelcontextprotocol/server";
 import { LaraApiError, TimeoutError as LaraTimeoutError, Translator } from "@translated/lara";
@@ -128,7 +129,7 @@ import {
   reportCallSuccess,
 } from "../metrics.js";
 
-type Handler = (args: unknown, lara: Translator) => Promise<unknown>;
+type Handler = (args: unknown, lara: Translator, context?: ServerContext) => Promise<unknown>;
 type Lister = (lara: Translator) => Promise<unknown>;
 
 const handlers: Record<string, Handler> = {
@@ -235,7 +236,8 @@ async function CallTool(
   request: CallToolRequest,
   lara: Translator,
   metrics?: MetricsContext,
-  client?: Pick<CallInfo, "client" | "clientVersion">
+  client?: Pick<CallInfo, "client" | "clientVersion">,
+  context?: ServerContext
 ): Promise<CallToolResult> {
   const { name, arguments: args } = request.params;
   logger.debug({ toolName: name }, "Tool called");
@@ -252,7 +254,7 @@ async function CallTool(
   const call: CallInfo = { toolName: name, args, startedAt: Date.now(), ...client };
 
   try {
-    const result = handler ? await handler(args, lara) : await lister!(lara);
+    const result = handler ? await handler(args, lara, context) : await lister!(lara);
 
     const structuredContent = toStructuredContent(result);
     const response: CallToolResult = {
@@ -262,7 +264,9 @@ async function CallTool(
       // don't read structuredContent. The narration stays as the first block
       // so display-oriented clients keep their short summary.
       content: [
-        { type: "text", text: narrate(name, args, result) },
+        { type: "text", text: narrate(name, args, result) +
+          (name === "translate" && structuredContent.warnings
+            ? " Warning: Lara returned reasoning feedback; inspect warnings.reasoning (applied: false means Think was not applied)." : "") },
         { type: "text", text: JSON.stringify(structuredContent) },
       ],
     };
@@ -272,7 +276,8 @@ async function CallTool(
     // is the original error still in hand. Last, once the response is built, so
     // a call is never reported as both a success and an error. Fire-and-forget,
     // and it swallows its own failures — it never delays or alters the result.
-    reportCallSuccess(metrics, call);
+    reportCallSuccess(metrics, call, name === "translate" && structuredContent.warnings
+      ? (structuredContent.warnings as { reasoning: { applied: boolean } }).reasoning.applied === false : undefined);
     return response;
   } catch (error) {
     reportCallError(metrics, call, error);

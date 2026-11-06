@@ -78,7 +78,7 @@ export default function getMcpServer(
         ctx?.http?.req?.headers.get("user-agent")
       ),
       clientVersion: clientVersionFor(clientInfo?.version),
-    });
+    }, ctx);
   });
 
   // -- Resources
