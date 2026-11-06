@@ -323,6 +323,10 @@ A level requires `reasoning: true`; other combinations are rejected before the A
 ```
 
 Think can take substantially longer. Existing timeout options still apply.
+When the MCP client supplies a `progressToken`, Lara Think streaming updates are
+forwarded as `notifications/progress`, without translation text or a percentage.
+These updates do not guarantee a longer client timeout; configure the client's
+request timeout separately.
 If Lara reports a reasoning fallback, the translation is retained and
 `warnings.reasoning.applied: false` and an explanatory text warning are returned.
 Absence of feedback does not prove which reasoning level ran internally.

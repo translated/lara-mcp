@@ -121,6 +121,24 @@ afterEach(() => {
 });
 
 describe("getMcpServer funnel metrics", () => {
+  it.each(["enabled", "disabled", "no_trace"])("forwards progress with metrics %s", async (mode) => {
+    const { getMcpServer } = await loadServer(mode === "disabled" ? { DO_NOT_TRACK: "1" } : {});
+    getMcpServer("key-id", "key-secret");
+    translators[0].translate.mockImplementation(async (_text: unknown, _source: unknown, _target: unknown, _options: unknown, callback: (() => void) | undefined) => {
+      callback?.();
+      return { translation: [] };
+    });
+    const notify = vi.fn().mockResolvedValue(undefined);
+    const result = await callTool("translate", {
+      text: [{ text: "hello" }], target: "it", reasoning: true, no_trace: mode === "no_trace",
+    }, { mcpReq: { _meta: { progressToken: 0 }, signal: new AbortController().signal, notify } });
+    expect(result.isError).not.toBe(true);
+    expect(notify).toHaveBeenCalledWith({
+      method: "notifications/progress",
+      params: { progressToken: 0, progress: 1, message: "Received a translation update from Lara Think" },
+    });
+  });
+
   it("reports auth_success then a call_success per tool call", async () => {
     const { getMcpServer, metrics } = await loadServer();
     getMcpServer("key-id", "key-secret");

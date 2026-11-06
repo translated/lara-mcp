@@ -3,6 +3,7 @@ import {
   CallToolResult,
   ProtocolError,
   ProtocolErrorCode,
+  type ServerContext,
   Tool,
 } from "@modelcontextprotocol/server";
 import { LaraApiError, TimeoutError as LaraTimeoutError, Translator } from "@translated/lara";
@@ -128,7 +129,7 @@ import {
   reportCallSuccess,
 } from "../metrics.js";
 
-type Handler = (args: unknown, lara: Translator) => Promise<unknown>;
+type Handler = (args: unknown, lara: Translator, context?: ServerContext) => Promise<unknown>;
 type Lister = (lara: Translator) => Promise<unknown>;
 
 const handlers: Record<string, Handler> = {
@@ -235,7 +236,8 @@ async function CallTool(
   request: CallToolRequest,
   lara: Translator,
   metrics?: MetricsContext,
-  client?: Pick<CallInfo, "client" | "clientVersion">
+  client?: Pick<CallInfo, "client" | "clientVersion">,
+  context?: ServerContext
 ): Promise<CallToolResult> {
   const { name, arguments: args } = request.params;
   logger.debug({ toolName: name }, "Tool called");
@@ -252,7 +254,7 @@ async function CallTool(
   const call: CallInfo = { toolName: name, args, startedAt: Date.now(), ...client };
 
   try {
-    const result = handler ? await handler(args, lara) : await lister!(lara);
+    const result = handler ? await handler(args, lara, context) : await lister!(lara);
 
     const structuredContent = toStructuredContent(result);
     const response: CallToolResult = {

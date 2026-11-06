@@ -1,4 +1,5 @@
 import { Translator, type TranslateOptions } from "@translated/lara";
+import type { ServerContext } from "@modelcontextprotocol/server";
 import { z } from "zod/v4";
 import { logger } from "#logger";
 import { glossaryIdSchema, textBlockSchema } from "./_schemas.js";
@@ -132,7 +133,7 @@ export const translateSchema = z.object({
 const makeInstructions = (text: string) =>
   `Always consider the following contextual information: ${text}`;
 
-export async function translateHandler(args: unknown, lara: Translator) {
+export async function translateHandler(args: unknown, lara: Translator, mcpContext?: ServerContext) {
   const {
     text,
     source,
@@ -196,8 +197,29 @@ export async function translateHandler(args: unknown, lara: Translator) {
     options.contentType = content_type;
   }
 
-  const result = await lara.translate(text, source ?? null, target, options);
-  return result.warnings?.reasoning
-    ? { items: result.translation, warnings: { reasoning: result.warnings.reasoning } }
-    : result.translation;
+  const progressToken = mcpContext?.mcpReq?._meta?.progressToken;
+  let progress = 0;
+  let notifications = Promise.resolve();
+  const onPartial = reasoning && mcpContext && progressToken !== undefined ? () => {
+    const update = ++progress;
+    // Lara's callback is synchronous; serialize sends and drain them before the final response.
+    notifications = notifications.then(async () => {
+      if (mcpContext.mcpReq.signal.aborted) return;
+      await mcpContext.mcpReq.notify({
+        method: "notifications/progress",
+        params: { progressToken, progress: update, message: "Received a translation update from Lara Think" },
+      });
+    }).catch(() => {
+      logger.debug("Could not send Lara Think progress notification");
+    });
+  } : undefined;
+
+  try {
+    const result = await lara.translate(text, source ?? null, target, options, onPartial);
+    return result.warnings?.reasoning
+      ? { items: result.translation, warnings: { reasoning: result.warnings.reasoning } }
+      : result.translation;
+  } finally {
+    await notifications;
+  }
 }

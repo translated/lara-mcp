@@ -267,7 +267,8 @@ describe('translateHandler', () => {
       args.text,
       null,
       args.target,
-      {}
+      {},
+      undefined
     );
     expect(result).toEqual(mockTranslationResult.translation);
   });
@@ -297,7 +298,8 @@ describe('translateHandler', () => {
           'Always consider the following contextual information: Casual conversation'
         ],
         adaptTo: undefined
-      }
+      },
+      undefined
     );
   });
 
@@ -321,7 +323,8 @@ describe('translateHandler', () => {
       'it-IT',
       expect.objectContaining({
         glossaries: ['gls_xyz123']
-      })
+      }),
+      undefined
     );
   });
 
@@ -345,7 +348,8 @@ describe('translateHandler', () => {
       'it-IT',
       expect.objectContaining({
         noTrace: true
-      })
+      }),
+      undefined
     );
   });
 
@@ -371,7 +375,8 @@ describe('translateHandler', () => {
       expect.objectContaining({
         priority: 'background',
         timeoutInMillis: 60000
-      })
+      }),
+      undefined
     );
   });
 
@@ -392,7 +397,8 @@ describe('translateHandler', () => {
       'it-IT',
       expect.objectContaining({
         style: 'creative'
-      })
+      }),
+      undefined
     );
   });
 
@@ -413,7 +419,8 @@ describe('translateHandler', () => {
       'it-IT',
       expect.objectContaining({
         reasoning: true
-      })
+      }),
+      undefined
     );
   });
 
@@ -434,7 +441,8 @@ describe('translateHandler', () => {
       'it-IT',
       expect.objectContaining({
         contentType: 'text/html'
-      })
+      }),
+      undefined
     );
   });
 
@@ -459,7 +467,8 @@ describe('translateHandler', () => {
         style: 'fluid',
         reasoning: true,
         contentType: 'application/xliff+xml'
-      })
+      }),
+      undefined
     );
   });
 }); 
