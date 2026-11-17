@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { translateHandler, translateSchema } from '../../mcp/tools/translate.js';
+import { MAX_INSTRUCTIONS, translateHandler, translateSchema } from '../../mcp/tools/translate.js';
 import { getMockTranslator, setupTranslatorMock, type MockTranslator } from '../utils/mocks.js';
 import { Translator } from '@translated/lara';
 import { ListTools } from '../../mcp/tools.js';
@@ -18,12 +18,11 @@ describe('translateSchema', () => {
   });
 
   it('should reject invalid input', () => {
-    const invalidInput = {
-      text: 'not an array',
-      target: 'it-IT'
-    };
+    expect(() => translateSchema.parse({ text: 42, target: 'it-IT' })).toThrow();
+  });
 
-    expect(() => translateSchema.parse(invalidInput)).toThrow();
+  it('should read a bare string as one translatable block', () => {
+    expect(translateSchema.parse({ text: 'Hello', target: 'it-IT' }).text).toEqual([{ text: 'Hello' }]);
   });
 
   it('should require target language', () => {
@@ -471,4 +470,49 @@ describe('translateHandler', () => {
       undefined
     );
   });
-}); 
+
+  const translated = (texts: string[]) => ({ translation: texts.map((text) => ({ text, translatable: true })) });
+  const optionsSent = () => mockTranslator.translate.mock.calls[0][3];
+
+  it('should send source_hint only as a language code and only without source', async () => {
+    mockTranslator.translate.mockResolvedValue(translated(['ciao']));
+    const text = [{ text: 'hello' }];
+
+    await translateHandler({ text, target: 'it-IT', source_hint: 'en' }, mockTranslator as any as Translator);
+    await translateHandler({ text, target: 'it-IT', source_hint: 'English' }, mockTranslator as any as Translator);
+    await translateHandler({ text, source: 'en-US', target: 'it-IT', source_hint: 'en' }, mockTranslator as any as Translator);
+
+    expect(mockTranslator.translate.mock.calls.map((c: any[]) => c[3].sourceHint)).toEqual(['en', undefined, undefined]);
+  });
+
+  it('should join instructions past the limit into the last one, context included', async () => {
+    mockTranslator.translate.mockResolvedValue(translated(['ciao']));
+    const instructions = Array.from({ length: 11 }, (_, i) => `i${i}`);
+
+    await translateHandler({ text: ['hello'], target: 'it-IT', instructions, context: 'ctx' }, mockTranslator as any as Translator);
+
+    const sent = optionsSent().instructions;
+    expect(sent).toHaveLength(MAX_INSTRUCTIONS);
+    expect(sent.slice(0, 9)).toEqual(instructions.slice(0, 9));
+    expect(sent[9]).toBe('i9 i10 Always consider the following contextual information: ctx');
+  });
+
+  it('should not send empty blocks to Lara and put them back in place', async () => {
+    mockTranslator.translate.mockResolvedValue(translated(['uno', 'due']));
+
+    const result = await translateHandler(
+      { text: [{ text: 'one' }, { text: '' }, { text: 'two' }], target: 'it-IT' },
+      mockTranslator as any as Translator
+    );
+
+    expect(mockTranslator.translate.mock.calls[0][0]).toEqual([{ text: 'one' }, { text: 'two' }]);
+    expect(result).toEqual([{ text: 'uno', translatable: true }, { text: '' }, { text: 'due', translatable: true }]);
+  });
+
+  it('should return the input without calling Lara when nothing is translatable', async () => {
+    const text = [{ text: '' }, { text: '<b>', translatable: false }];
+
+    expect(await translateHandler({ text, target: 'it-IT' }, mockTranslator as any as Translator)).toEqual(text);
+    expect(mockTranslator.translate).not.toHaveBeenCalled();
+  });
+});

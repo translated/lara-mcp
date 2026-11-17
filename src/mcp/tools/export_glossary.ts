@@ -12,11 +12,17 @@ export const exportGlossarySchema = z.object({
   id: glossaryIdSchema
     .describe("The glossary ID (format: gls_*, e.g., 'gls_xyz123')"),
   content_type: glossaryFileFormatSchema
-    .describe("The export format. 'csv/table-uni' for unidirectional (requires source parameter), 'csv/table-multi' for multidirectional"),
+    .describe(
+      "The export format. It must match the glossary: get_glossary_counts returns 'unidirectional' " +
+      "(use 'csv/table-uni', requires source) or 'multidirectional' (use 'csv/table-multi')."
+    ),
   source: z
     .string()
     .optional()
-    .describe("The source language code. Required when content_type is 'csv/table-uni'"),
+    .describe("The source language to export. Required with 'csv/table-uni': one of the language keys get_glossary_counts returns."),
+}).refine((args) => args.content_type !== "csv/table-uni" || args.source, {
+  // Lara 400s it otherwise.
+  path: ["source"], message: "source is required when content_type is csv/table-uni: use a language key from get_glossary_counts",
 });
 
 export async function exportGlossary(args: unknown, lara: Translator) {

@@ -8,7 +8,7 @@ export const createMemorySchema = z.object({
   name: z
     .string()
     .describe(
-      "The name of the new memory, it should be short and generic, like 'catch_phrases' or 'brand_names'"
+      "The name of the new memory, it should be short and generic, like 'catch_phrases' or 'brand_names'. Lara rejects names with HTML, JavaScript or SQL special characters (e.g. < > ' \" ;)."
     )
     .refine((name) => name.length <= 250, {
       message: "Name of the memory can't be more than 250 characters",

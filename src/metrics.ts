@@ -10,7 +10,8 @@ import * as z from "zod/v4";
 import { env } from "#env";
 import { InvalidInputError } from "#exception";
 import { logger } from "#logger";
-import { getLaraClient } from "./lara-client.js";
+import { getLaraClient, tokenClaims } from "./lara-client.js";
+import { planMetadata, planOf } from "./mcp/lara-plan.js";
 import { translateSchema } from "./mcp/tools/translate.js";
 import { PACKAGE_VERSION } from "./version.js";
 
@@ -488,15 +489,8 @@ async function sendBatch(events: QueuedEvent[]): Promise<void> {
  * the Lara API itself, here we only need an identifier out of our own credential.
  */
 export function accountIdFromToken(token: string): string | undefined {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return undefined;
-
-    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return typeof decoded?.id === "string" && decoded.id ? decoded.id : undefined;
-  } catch {
-    return undefined;
-  }
+  const id = tokenClaims(token)?.id;
+  return typeof id === "string" && id ? id : undefined;
 }
 
 /**
@@ -621,12 +615,15 @@ function accountIdFor(ctx: MetricsContext): string | undefined {
  */
 const seenAccounts = new Set<string>();
 
-function reportAuthSuccessOnce(accountId: string, call: CallInfo): void {
+/** Reported on auth_success and on plan refusals, to learn how plans map to what Lara allows. */
+const planFor = (ctx: MetricsContext) => planMetadata(planOf(ctx.translator));
+
+function reportAuthSuccessOnce(ctx: MetricsContext, accountId: string, call: CallInfo): void {
   if (seenAccounts.has(accountId)) return;
   if (seenAccounts.size >= MAX_SEEN_ACCOUNTS) seenAccounts.clear();
   seenAccounts.add(accountId);
 
-  logEvent({ eventType: "auth_success", accountId, metadata: { ...BASE_METADATA, ...clientFields(call) } });
+  logEvent({ eventType: "auth_success", accountId, metadata: { ...BASE_METADATA, ...clientFields(call), ...planFor(ctx) } });
 }
 
 /** One tool call, as CallTool sees it. */
@@ -652,20 +649,25 @@ const clientFields = ({ client, clientVersion }: CallInfo) => ({
  * Both reporters swallow their own failures: a bug in here must never turn a call Lara completed
  * into an error, or add a call_error to a call that succeeded.
  */
-export function reportCallSuccess(ctx: MetricsContext | undefined, call: CallInfo, reasoningFallback?: boolean): void {
+export function reportCallSuccess(
+  ctx: MetricsContext | undefined,
+  call: CallInfo,
+  reasoningFallback?: boolean,
+  planRestricted?: boolean
+): void {
   if (!ctx || isNoTrace(call.args)) return;
   try {
-    describeSuccess(ctx, call, reasoningFallback);
+    describeSuccess(ctx, call, reasoningFallback, planRestricted);
   } catch (error) {
     logger.debug({ error }, "Metrics: could not report a call");
   }
 }
 
-function describeSuccess(ctx: MetricsContext, call: CallInfo, reasoningFallback?: boolean): void {
+function describeSuccess(ctx: MetricsContext, call: CallInfo, reasoningFallback?: boolean, planRestricted?: boolean): void {
   const accountId = accountIdFor(ctx);
   if (!accountId) return;
 
-  reportAuthSuccessOnce(accountId, call);
+  reportAuthSuccessOnce(ctx, accountId, call);
 
   const { metadata, charsTranslated } = callFieldsFor(call.toolName, call.args);
   logEvent({
@@ -673,7 +675,12 @@ function describeSuccess(ctx: MetricsContext, call: CallInfo, reasoningFallback?
     accountId,
     latencyMs: Date.now() - call.startedAt,
     charsTranslated,
-    metadata: { ...metadata, ...clientFields(call), ...(reasoningFallback === undefined ? {} : { reasoningFallback }) },
+    metadata: {
+      ...metadata,
+      ...clientFields(call),
+      ...(reasoningFallback === undefined ? {} : { reasoningFallback }),
+      ...(planRestricted && { planRestricted, ...planFor(ctx) }),
+    },
   });
 }
 
@@ -707,6 +714,7 @@ function describeError(ctx: MetricsContext, call: CallInfo, error: unknown): voi
     ...callFieldsFor(call.toolName, call.args).metadata,
     ...clientFields(call),
     ...errorDetailsFor(error),
+    ...(errorType === "forbidden_403" && planFor(ctx)),
   };
   if (!accountId) {
     logEvent({ eventType: "auth_fail", errorType, metadata });
@@ -715,7 +723,7 @@ function describeError(ctx: MetricsContext, call: CallInfo, error: unknown): voi
 
   // The SDK holds a token, so the credentials were accepted even though this call failed: a first
   // call that fails must not leave an account with errors and no auth_success.
-  if (!isAuthError) reportAuthSuccessOnce(accountId, call);
+  if (!isAuthError) reportAuthSuccessOnce(ctx, accountId, call);
 
   // Out of quota is an upsell signal, not an integration fault: its own event, instead of call_error.
   if (!isAuthError && isQuotaError(error)) {
