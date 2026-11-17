@@ -120,6 +120,7 @@ import {
   updateMemoryOutputSchema,
 } from "./tools/update_memory.tool.js";
 import { InvalidInputError } from "#exception";
+import { noGlossariesMessage, planOf } from "./lara-plan.js";
 import { logger } from "#logger";
 import {
   type CallInfo,
@@ -206,7 +207,7 @@ function narrate(name: string, args: any, result: any): string {
     case "check_import_status":
       return `TMX import status: ${result?.status ?? "unknown"}`;
     case "list_glossaries":
-      return `Found ${Array.isArray(result) ? result.length : 0} glossaries`;
+      return result?.unavailable ?? `Found ${Array.isArray(result) ? result.length : 0} glossaries`;
     case "get_glossary":
       return `Retrieved glossary "${result?.glossary?.name ?? args?.id ?? ""}"`;
     case "create_glossary":
@@ -277,7 +278,8 @@ async function CallTool(
     // a call is never reported as both a success and an error. Fire-and-forget,
     // and it swallows its own failures — it never delays or alters the result.
     reportCallSuccess(metrics, call, name === "translate" && structuredContent.warnings
-      ? (structuredContent.warnings as { reasoning: { applied: boolean } }).reasoning.applied === false : undefined);
+      ? (structuredContent.warnings as { reasoning: { applied: boolean } }).reasoning.applied === false : undefined,
+      structuredContent.unavailable !== undefined);
     return response;
   } catch (error) {
     reportCallError(metrics, call, error);
@@ -286,7 +288,7 @@ async function CallTool(
     // isError results so the model can read the message and self-correct.
     return {
       isError: true,
-      content: [{ type: "text", text: toolErrorMessage(error, name) }],
+      content: [{ type: "text", text: toolErrorMessage(error, name, lara) }],
     };
   }
 }
@@ -294,7 +296,7 @@ async function CallTool(
 const FORBIDDEN =
   "Lara Translate refused this operation for this account: the access key is valid, but not allowed to do this. Check the account's plan or permissions; retrying will not help.";
 
-function toolErrorMessage(error: unknown, name: string): string {
+function toolErrorMessage(error: unknown, name: string, lara: Translator): string {
   if (error instanceof z.ZodError) {
     const fieldErrors = error.issues
       .map(i => {
@@ -307,8 +309,19 @@ function toolErrorMessage(error: unknown, name: string): string {
 
   // Lara's own text ("operation not allowed") does not say what to do next.
   // Keyed off the metrics classification, so the metric and what the model is told never disagree.
-  if (errorTypeFor(error) === "forbidden_403") return FORBIDDEN;
+  if (errorTypeFor(error) === "forbidden_403") {
+    // The SDK holds a token once Lara has answered: a 403 on a plan without glossaries says so.
+    // ponytail: every glossary tool has "glossary" in its name; list_glossaries handles its own 403.
+    const plan = name.includes("glossary") ? planOf(lara) : undefined;
+    return plan?.glossaries === 0 ? noGlossariesMessage(plan) : FORBIDDEN;
+  }
 
+  if (error instanceof LaraApiError && /maximum number of glossaries/i.test(error.message)) {
+    return `${error.message}. The plan's glossary limit is reached: delete an unused glossary (list_glossaries, delete_glossary) or upgrade the plan at laratranslate.com.`;
+  }
+  if (error instanceof LaraApiError && /unsupported language/i.test(error.message)) {
+    return `${error.message}. Lara does not support this language: retrying with it will not help; list_languages returns the supported codes.`;
+  }
   if (error instanceof InvalidInputError || error instanceof LaraApiError) {
     return error.message;
   }

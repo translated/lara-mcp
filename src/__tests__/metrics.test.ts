@@ -1135,6 +1135,24 @@ describe("reporting a tool call", () => {
     expect(events[1]).toMatchObject({ accountId: ACCOUNT, metadata: { toolName: "list_memories", httpStatus: 403 } });
   });
 
+  it("reports the token's plan on auth_success, plan refusals and an unavailable glossary list", async () => {
+    const plan = { name: "credit_free", features: "1111001111111111111", limits: { glossaries_number: "0" } };
+    const ctx = metrics.createMetricsContext(translatorWithToken(laraToken({ id: ACCOUNT, subscription: { plan } })))!;
+    const planFields = { planName: "credit_free", planFeatures: "1111001111111111111", planGlossaries: 0 };
+
+    metrics.reportCallSuccess(ctx, call("list_glossaries"), undefined, true);
+    metrics.reportCallError(ctx, call("get_glossary", { id: "gls_a" }), new LaraApiError(403, "Forbidden", "nope"));
+    metrics.reportCallSuccess(ctx, call("list_memories"));
+    await metrics.flushNow();
+
+    const [auth, listed, refused, plain] = sentEvents();
+    expect(auth).toMatchObject({ eventType: "auth_success", metadata: planFields });
+    expect(listed).toMatchObject({ eventType: "call_success", metadata: { planRestricted: true, ...planFields } });
+    expect(refused).toMatchObject({ eventType: "call_error", errorType: "forbidden_403", metadata: { httpStatus: 403, ...planFields } });
+    // The plan rides only on the events it explains.
+    expect(plain.metadata).not.toHaveProperty("planName");
+  });
+
   it("reports nothing for any other error before the account is known", async () => {
     const ctx = metrics.createMetricsContext(translatorWithToken(undefined))!;
 

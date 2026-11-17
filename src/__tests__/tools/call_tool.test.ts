@@ -178,4 +178,73 @@ describe('CallTool error handling', () => {
       await expect(promise).rejects.toMatchObject({ code: ProtocolErrorCode.InvalidParams });
     }
   );
+
+  describe('Lara errors the model can act on', () => {
+    const token = (payload: unknown) => `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`;
+    const withPlan = (plan: unknown) => { (mockTranslator.client as any).token = token({ id: 'acc_x', subscription: { plan } }); };
+    const forbidden = () => new LaraApiError(403, 'Forbidden', 'operation not allowed');
+    const run = (name: string, args: Record<string, unknown> = {}) =>
+      CallTool(makeRequest(name, args), mockTranslator as any as Translator);
+
+    it('translates without Lara Think when the plan does not include it', async () => {
+      mockTranslator.translate
+        .mockRejectedValueOnce(forbidden())
+        .mockResolvedValueOnce({ translation: [{ text: 'ciao', translatable: true }] });
+
+      const result = await run('translate', { text: ['hello'], target: 'it-IT', reasoning: true, reasoning_effort: 'low' });
+
+      expect(result.isError).toBeUndefined();
+      const retry = mockTranslator.translate.mock.calls[1][3];
+      expect(retry.reasoning).toBe(false);
+      expect(retry).not.toHaveProperty('reasoningEffort');
+      expect(result.structuredContent).toMatchObject({
+        items: [{ text: 'ciao' }],
+        warnings: { reasoning: { applied: false, error: { statusCode: 403 } } },
+      });
+    });
+
+    it('does not retry a 403 without Lara Think, nor an auth 403', async () => {
+      mockTranslator.translate.mockRejectedValue(forbidden());
+      await run('translate', { text: ['hello'], target: 'it-IT' });
+      mockTranslator.translate.mockRejectedValue(new LaraApiError(403, 'AuthenticationError', 'bad key'));
+      await run('translate', { text: ['hello'], target: 'it-IT', reasoning: true });
+
+      expect(mockTranslator.translate).toHaveBeenCalledTimes(2);
+    });
+
+    it('says retrying an unsupported language will not help', async () => {
+      mockTranslator.translate.mockRejectedValue(new LaraApiError(400, 'InvalidArgument', 'Unsupported language: uz-UZ'));
+      expectToolError(await run('translate', { text: ['hello'], target: 'uz-UZ' }), /^Unsupported language: uz-UZ\. .*list_languages/);
+    });
+
+    it('says how to get past the glossary limit', async () => {
+      mockTranslator.glossaries.create.mockRejectedValue(new LaraApiError(400, 'LimitExceeded', 'Maximum number of glossaries reached'));
+      expectToolError(await run('create_glossary', { name: 'g' }), /delete an unused glossary/);
+    });
+
+    it('names the plan when a glossary tool is refused on a plan without glossaries', async () => {
+      withPlan({ name: 'credit_free', limits: { glossaries_number: 0 } });
+      mockTranslator.glossaries.get.mockRejectedValue(forbidden());
+
+      expectToolError(await run('get_glossary', { id: 'gls_abc123' }), /plan \("credit_free"\) does not include glossaries/);
+    });
+
+    it('keeps the generic 403 message when the plan has glossaries or is unknown', async () => {
+      mockTranslator.glossaries.get.mockRejectedValue(forbidden());
+      expectToolError(await run('get_glossary', { id: 'gls_abc123' }), /^Lara Translate refused this operation/);
+      withPlan({ limits: { glossaries_number: 5 } });
+      expectToolError(await run('get_glossary', { id: 'gls_abc123' }), /^Lara Translate refused this operation/);
+    });
+
+    it('answers list_glossaries on a plan without glossaries with an empty list that says why', async () => {
+      withPlan({ name: 'credit_free', limits: { glossaries_number: 0 } });
+      mockTranslator.glossaries.list.mockRejectedValue(forbidden());
+
+      const result = await run('list_glossaries');
+
+      expect(result.isError).toBeUndefined();
+      expect(result.structuredContent).toEqual({ items: [], unavailable: expect.stringContaining('credit_free') });
+      expect((result.content as any)[0].text).toMatch(/does not include glossaries/);
+    });
+  });
 });

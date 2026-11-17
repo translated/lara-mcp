@@ -22,6 +22,12 @@ describe('exportGlossarySchema', () => {
     })).not.toThrow();
   });
 
+  it('should require source for csv/table-uni', () => {
+    const result = exportGlossarySchema.safeParse({ id: 'gls_xyz123', content_type: 'csv/table-uni' });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]).toMatchObject({ path: ['source'], message: expect.stringContaining('get_glossary_counts') });
+  });
+
   it('should reject missing id', () => {
     expect(() => exportGlossarySchema.parse({
       content_type: 'csv/table-uni',

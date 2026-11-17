@@ -12,7 +12,7 @@ export const updateMemorySchema = z.object({
     ),
   name: z
     .string()
-    .describe("The new name for the memory")
+    .describe("The new name for the memory. Lara rejects names with HTML, JavaScript or SQL special characters (e.g. < > ' \" ;).")
     .refine((name) => name.length <= 250, {
       message: "Name can't be more than 250 characters",
     }),

@@ -33,3 +33,16 @@ export function getLaraClient(
   }
   return client as LaraClientShape;
 }
+
+/**
+ * The claims of a Lara access token, read without verifying the signature or `exp`: Lara checks
+ * both on every request, here we only read facts out of our own credential.
+ */
+export function tokenClaims(token: unknown): any {
+  if (typeof token !== "string") return undefined;
+  try {
+    return JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8"));
+  } catch {
+    return undefined;
+  }
+}
