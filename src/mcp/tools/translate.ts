@@ -118,7 +118,7 @@ export const translateSchema = z.object({
       "Controls how the translation balances accuracy against natural readability. 'faithful' stays close to the source, 'fluid' prioritizes natural readability, 'creative' allows more freedom in the translation."
     ),
   reasoning_effort: z.enum(["low", "medium", "high"]).optional()
-    .describe("Lara Think reasoning level. Requires reasoning: true; defaults to high."),
+    .describe("Lara Think reasoning level. Ignored unless reasoning is true; defaults to high."),
   reasoning: z
     .boolean()
     .optional()
@@ -132,8 +132,6 @@ export const translateSchema = z.object({
     .describe(
       "Specifies the content type of the text. Autodetected if omitted."
     ),
-}).refine((args) => args.reasoning_effort === undefined || args.reasoning === true, {
-  path: ["reasoning_effort"], message: "reasoning_effort requires reasoning: true",
 });
 
 const makeInstructions = (text: string) =>
@@ -218,6 +216,7 @@ export async function translateHandler(args: unknown, lara: Translator, mcpConte
   }
   if (typeof reasoning !== "undefined") {
     options.reasoning = reasoning;
+    // Models send a level without reasoning: true; rejecting it failed the translation, so it is dropped.
     if (reasoning) options.reasoningEffort = reasoning_effort ?? "high";
   }
   if (typeof content_type !== "undefined") {

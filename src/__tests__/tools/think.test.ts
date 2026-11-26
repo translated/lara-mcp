@@ -43,10 +43,12 @@ describe("Lara Think contract with real SDK", () => {
     expect(await translateHandler(input, translator)).toEqual(input.text);
     expect(body).not.toHaveProperty("effort");
   });
-  it.each([undefined, false])("rejects effort without Think (%s) before SDK", async (reasoning) => {
-    const translate = vi.spyOn(translator, "translate");
-    await expect(translateHandler({ ...input, reasoning, reasoning_effort: "low" }, translator)).rejects.toThrow();
-    expect(translate).not.toHaveBeenCalled();
+  it.each([undefined, false])("ignores effort without Think (%s)", async (reasoning) => {
+    const args = { ...input, reasoning, reasoning_effort: "low" };
+    expect(await translateHandler(args, translator)).toEqual(input.text);
+    expect(body).not.toHaveProperty("effort");
+    expect(body.reasoning).not.toBe(true);
+    expect(JSON.stringify(callFieldsFor("translate", args))).not.toContain("reasoningEffort");
   });
   it.each(["HIGH", "invalid", 1, null])("rejects invalid effort %s", (reasoning_effort) => {
     expect(translateSchema.safeParse({ ...input, reasoning: true, reasoning_effort }).success).toBe(false);

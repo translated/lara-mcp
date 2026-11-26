@@ -316,7 +316,7 @@ in the background, and a monitoring backend that is down is ignored.
 Select Lara Think with `reasoning: true` on the `translate` tool. Choose Low,
 Medium or High with `reasoning_effort: "low" | "medium" | "high"`. Think defaults
 to **high** when the level is omitted. Without reasoning, Lara Base is used.
-A level requires `reasoning: true`; other combinations are rejected before the API call.
+A level only applies with `reasoning: true`; without it the level is ignored and Lara Base translates.
 
 ```json
 {"text":[{"text":"Hello","translatable":true}],"target":"it","reasoning":true,"reasoning_effort":"medium"}
