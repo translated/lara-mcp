@@ -11,6 +11,18 @@ describe('planFromToken', () => {
     });
   });
 
+  it('reads the named features of current tokens, sorted, and an empty list as no features', () => {
+    const plan = (features: unknown) => token({ subscription: { plan: { features } } });
+    expect(planFromToken(plan(['text_translation', 'api_access']))).toEqual({ features: 'api_access,text_translation' });
+    expect(planFromToken(plan([]))).toEqual({ features: '' });
+    expect(planMetadata(planFromToken(plan([])))).toEqual({ planFeatures: '' });
+  });
+
+  it.each([[['api_access', 'Bad Name']], [['api_access', 1]], [Array(65).fill('api_access')], [{ 0: 'api_access' }]])(
+    'drops a feature list that is not all feature names: %j', (features) => {
+      expect(planFromToken(token({ subscription: { plan: { features } } }))).toEqual({});
+    });
+
   it.each([undefined, 42, 'not-a-jwt', token({ id: 'acc_x' }), token({ subscription: { plan: 'free' } })])(
     'has no plan for %s', (value) => {
       expect(planFromToken(value)).toBeUndefined();

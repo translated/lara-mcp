@@ -9,7 +9,10 @@ import { getLaraClient, tokenClaims } from "../lara-client.js";
  */
 export type LaraPlan = {
   name?: string;
-  /** Lara's feature bitmask ("1111101111111111111"); which bit is which is not documented yet. */
+  /**
+   * The plan's enabled features: names joined by "," ("api_access,glossaries") from current
+   * tokens, which carry an array; legacy tokens carry a bitmask ("1111101111111111111"), kept as is.
+   */
   features?: string;
   /** `limits.glossaries_number`: 0 means the plan has no glossaries. Absent: unknown, Lara decides. */
   glossaries?: number;
@@ -17,17 +20,26 @@ export type LaraPlan = {
 
 const PLAN_NAME = /^[A-Za-z0-9_.-]{1,64}$/;
 const FEATURES = /^[01]{1,64}$/;
+const FEATURE_NAME = /^[a-z0-9_]{1,64}$/;
 const COUNT = /^\d{1,9}$/;
 // RegExp.test would read undefined as "undefined", a valid plan name.
 const matches = (value: unknown, pattern: RegExp): value is string => typeof value === "string" && pattern.test(value);
+
+// One odd name drops the whole list: a partial list would read as a plan without those features.
+function featuresOf(value: unknown): string | undefined {
+  if (matches(value, FEATURES)) return value;
+  if (!Array.isArray(value) || value.length > 64 || !value.every((name) => matches(name, FEATURE_NAME))) return undefined;
+  return [...value].sort().join(",");
+}
 
 export function planFromToken(token: unknown): LaraPlan | undefined {
   const plan = tokenClaims(token)?.subscription?.plan;
   if (!plan || typeof plan !== "object") return undefined;
   const glossaries = String(plan.limits?.glossaries_number ?? "");
+  const features = featuresOf(plan.features);
   return {
     ...(matches(plan.name, PLAN_NAME) && { name: plan.name }),
-    ...(matches(plan.features, FEATURES) && { features: plan.features }),
+    ...(features !== undefined && { features }),
     ...(COUNT.test(glossaries) && { glossaries: Number(glossaries) }),
   };
 }
@@ -42,7 +54,8 @@ export const planOf = (lara: Translator): LaraPlan | undefined => planFromToken(
 export function planMetadata(plan: LaraPlan | undefined): Record<string, unknown> {
   return {
     ...(plan?.name && { planName: plan.name }),
-    ...(plan?.features && { planFeatures: plan.features }),
+    // "" is a plan with no features, still worth reporting.
+    ...(plan?.features !== undefined && { planFeatures: plan.features }),
     ...(plan?.glossaries !== undefined && { planGlossaries: plan.glossaries }),
   };
 }
