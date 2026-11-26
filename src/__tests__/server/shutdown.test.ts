@@ -114,12 +114,19 @@ describe("process shutdown", () => {
   it.each(["SIGTERM", "SIGINT"] as const)("exits 0 on %s in HTTP mode", async (signal) => {
     const child = spawn(join(root, "node_modules/.bin/tsx"), ["src/index.ts"], {
       cwd: root,
-      env: { ...process.env, TRANSPORT: "http", HOST: "127.0.0.1", PORT: "0", LOGGING_LEVEL: "error" },
+      env: { ...process.env, TRANSPORT: "http", HOST: "127.0.0.1", PORT: "0", LOGGING_LEVEL: "info" },
       stdio: ["ignore", "pipe", "pipe"],
     });
 
-    // Give the server a moment to bind before signalling it
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Signal only once the server is listening: the handlers are installed by then, whereas a fixed
+    // delay races tsx's startup on a slow runner (the default handler then exits 128 + signal).
+    await new Promise<void>((resolve) => {
+      let out = "";
+      child.stdout.on("data", (chunk) => {
+        out += chunk;
+        if (out.includes("HTTP server successfully started")) resolve();
+      });
+    });
     child.kill(signal);
 
     const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
