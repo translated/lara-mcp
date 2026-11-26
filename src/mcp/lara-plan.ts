@@ -26,10 +26,12 @@ const COUNT = /^\d{1,9}$/;
 const matches = (value: unknown, pattern: RegExp): value is string => typeof value === "string" && pattern.test(value);
 
 // One odd name drops the whole list: a partial list would read as a plan without those features.
+// An over-long list is dropped too, so the event stays under the metrics metadata cap.
 function featuresOf(value: unknown): string | undefined {
   if (matches(value, FEATURES)) return value;
-  if (!Array.isArray(value) || value.length > 64 || !value.every((name) => matches(name, FEATURE_NAME))) return undefined;
-  return [...value].sort().join(",");
+  if (!Array.isArray(value) || !value.every((name) => matches(name, FEATURE_NAME))) return undefined;
+  const names = value.sort().join(",");
+  return names.length <= 1024 ? names : undefined;
 }
 
 export function planFromToken(token: unknown): LaraPlan | undefined {

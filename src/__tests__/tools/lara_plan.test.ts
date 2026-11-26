@@ -14,11 +14,12 @@ describe('planFromToken', () => {
   it('reads the named features of current tokens, sorted, and an empty list as no features', () => {
     const plan = (features: unknown) => token({ subscription: { plan: { features } } });
     expect(planFromToken(plan(['text_translation', 'api_access']))).toEqual({ features: 'api_access,text_translation' });
-    expect(planFromToken(plan([]))).toEqual({ features: '' });
-    expect(planMetadata(planFromToken(plan([])))).toEqual({ planFeatures: '' });
+    const none = planFromToken(plan([]));
+    expect(none).toEqual({ features: '' });
+    expect(planMetadata(none)).toEqual({ planFeatures: '' });
   });
 
-  it.each([[['api_access', 'Bad Name']], [['api_access', 1]], [Array(65).fill('api_access')], [{ 0: 'api_access' }]])(
+  it.each([[['api_access', 'Bad Name']], [['api_access', 1]], [Array(100).fill('text_translation')], [{ 0: 'api_access' }]])(
     'drops a feature list that is not all feature names: %j', (features) => {
       expect(planFromToken(token({ subscription: { plan: { features } } }))).toEqual({});
     });
